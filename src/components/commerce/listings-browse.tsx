@@ -1,0 +1,377 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
+import { apiGet, apiPost } from '@/lib/client'
+import type { ListingsPage } from '@/lib/client'
+import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
+import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
+import { useSession } from '@/hooks/use-session'
+import { ListingCard } from './listing-card'
+import { ListingListSkeleton } from './skeletons'
+import { EmptyState } from './empty-state'
+
+// Browse — the primary user task: find who buys/sells what, nearby.
+export function ListingsBrowse() {
+  const { filters, setFilters, resetFilters, navigate } = useAppStore()
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchInput, setSearchInput] = useState(filters.q)
+
+  // Debounced search input → store
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchInput !== filters.q) setFilters({ q: searchInput })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput, filters.q, setFilters])
+
+  const query = filtersToQuery(filters)
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ['listings', query],
+    queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}`),
+    placeholderData: (prev) => prev,
+  })
+
+  const activeFilterCount = [
+    filters.type !== 'any' ? 1 : 0,
+    filters.category !== 'any' ? 1 : 0,
+    filters.county !== 'any' ? 1 : 0,
+    filters.unit !== 'any' ? 1 : 0,
+    filters.minPrice !== '' ? 1 : 0,
+    filters.maxPrice !== '' ? 1 : 0,
+  ].reduce<number>((a, b) => a + b, 0)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            type="search"
+            placeholder="Search copper, flour, maize…"
+            className="pl-9"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search listings"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowFilters(true)}
+          className="shrink-0 gap-1.5 px-3"
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal className="size-4" aria-hidden />
+          <span className="hidden sm:inline">Filters</span>
+          {activeFilterCount > 0 ? (
+            <span className="flex size-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </Button>
+      </div>
+
+      {/* Active filter chips + sort */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-slim pb-0.5">
+        <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v as typeof filters.sort })}>
+          <SelectTrigger size="sm" className="shrink-0 border-dashed text-muted-foreground" aria-label="Sort results">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest first</SelectItem>
+            <SelectItem value="price_asc">Price: low to high</SelectItem>
+            <SelectItem value="price_desc">Price: high to low</SelectItem>
+          </SelectContent>
+        </Select>
+        <SaveSearchButton />
+        {activeFilterCount > 0 ? (
+          <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
+            <X className="size-3.5" aria-hidden /> Clear all
+          </Button>
+        ) : null}
+      </div>
+
+      <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
+
+      {isLoading ? (
+        <ListingListSkeleton />
+      ) : isError ? (
+        <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
+      ) : data && data.items.length === 0 ? (
+        <EmptyState
+          icon={<Search />}
+          title="No listings found"
+          description={
+            activeFilterCount > 0 || filters.q
+              ? 'Nothing matches your current search and filters. Try fewer filters or a different word.'
+              : 'There are no listings yet. Be the first to post what you sell or need.'
+          }
+          action={
+            activeFilterCount > 0 || filters.q ? (
+              <Button variant="outline" onClick={resetFilters}>
+                Clear search & filters
+              </Button>
+            ) : (
+              <Button onClick={() => navigate({ name: 'publish' })}>Post a listing</Button>
+            )
+          }
+        />
+      ) : data ? (
+        <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
+          <p className="text-sm text-muted-foreground" role="status">
+            {data.total} {data.total === 1 ? 'listing' : 'listings'} found
+            {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
+          </p>
+          {data.items.map((listing) => (
+            <ListingCard key={listing.id} listing={listing} onOpen={(id) => navigate({ name: 'listing', id })} />
+          ))}
+
+          {data.pageCount > 1 ? (
+            <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function Pagination({ page, pageCount, onPage }: { page: number; pageCount: number; onPage: (p: number) => void }) {
+  return (
+    <nav className="flex items-center justify-center gap-2 pt-2" aria-label="Pagination">
+      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        <ChevronLeft className="size-4" aria-hidden /> Prev
+      </Button>
+      <span className="px-2 text-sm text-muted-foreground">
+        {page} / {pageCount}
+      </span>
+      <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
+        Next <ChevronRight className="size-4" aria-hidden />
+      </Button>
+    </nav>
+  )
+}
+
+function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { filters, setFilters } = useAppStore()
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filters</DialogTitle>
+          <DialogDescription>Narrow results by type, category, location and price.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Type</Label>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Listing type">
+              {(['any', 'OFFER', 'REQUEST'] as const).map((t) => (
+                <Button
+                  key={t}
+                  type="button"
+                  variant={filters.type === t ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilters({ type: t })}
+                  aria-pressed={filters.type === t}
+                >
+                  {t === 'any' ? 'All' : t}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="f-category">Category</Label>
+            <Select value={filters.category} onValueChange={(v) => setFilters({ category: v })}>
+              <SelectTrigger id="f-category">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="any">All categories</SelectItem>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.key} value={c.key}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="f-county">County</Label>
+            <Select value={filters.county} onValueChange={(v) => setFilters({ county: v })}>
+              <SelectTrigger id="f-county">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="any">All counties</SelectItem>
+                {COUNTIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="f-min">Min price (KSh)</Label>
+              <Input
+                id="f-min"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={filters.minPrice}
+                onChange={(e) => setFilters({ minPrice: e.target.value })}
+                placeholder="Any"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="f-max">Max price (KSh)</Label>
+              <Input
+                id="f-max"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={filters.maxPrice}
+                onChange={(e) => setFilters({ maxPrice: e.target.value })}
+                placeholder="Any"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="f-unit">Price unit</Label>
+            <Select value={filters.unit} onValueChange={(v) => setFilters({ unit: v })}>
+              <SelectTrigger id="f-unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any unit</SelectItem>
+                {UNITS.map((u) => (
+                  <SelectItem key={u.key} value={u.key}>
+                    per {u.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setFilters({ ...DEFAULT_FILTERS, q: filters.q, sort: filters.sort })
+            }}
+          >
+            Reset
+          </Button>
+          <Button type="button" onClick={() => onOpenChange(false)}>
+            Show results
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SaveSearchButton() {
+  const { filters } = useAppStore()
+  const { user } = useSession()
+  const setAuthOpen = useAppStore((s) => s.setAuthOpen)
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  function openDialog() {
+    if (!user) {
+      setAuthOpen(true)
+      return
+    }
+    // Suggest an honest, readable name from current filters.
+    const bits: string[] = []
+    if (filters.type !== 'any') bits.push(filters.type === 'OFFER' ? 'Offers' : 'Requests')
+    if (filters.category !== 'any') bits.push(CATEGORIES.find((c) => c.key === filters.category)?.label ?? filters.category)
+    if (filters.county !== 'any') bits.push(filters.county)
+    if (filters.q) bits.push(`"${filters.q}"`)
+    setName(bits.join(' · ') || 'Everything')
+    setOpen(true)
+  }
+
+  async function save() {
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      await apiPost('/api/saved-searches', {
+        name: name.trim(),
+        query: {
+          q: filters.q || undefined,
+          type: filters.type !== 'any' ? filters.type : undefined,
+          category: filters.category !== 'any' ? filters.category : undefined,
+          county: filters.county !== 'any' ? filters.county : undefined,
+          unit: filters.unit !== 'any' ? filters.unit : undefined,
+          minPrice: filters.minPrice !== '' ? Number(filters.minPrice) : undefined,
+          maxPrice: filters.maxPrice !== '' ? Number(filters.maxPrice) : undefined,
+        },
+      })
+      await queryClient.invalidateQueries({ queryKey: ['saved-searches'] })
+      toast({ title: 'Search saved', description: 'You will get alerts when new listings match.' })
+      setOpen(false)
+    } catch (err) {
+      toast({ title: 'Could not save search', description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={openDialog}>
+        <Bookmark className="size-3.5" aria-hidden /> Save this search
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Save this search</DialogTitle>
+            <DialogDescription>We will alert you when new listings match these filters.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="ss-name">Search name</Label>
+            <Input id="ss-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={save} disabled={busy || !name.trim()}>
+              {busy ? 'Saving…' : 'Save search'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
+      <p className="text-sm font-medium">{message}</p>
+      <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
+      {onRetry ? (
+        <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+          Try again
+        </Button>
+      ) : null}
+    </div>
+  )
+}
