@@ -1,5 +1,5 @@
 /**
- * Commerce OS — development seed.
+ * Duuka — development seed.
  *
  * These are DEVELOPMENT FIXTURES for reviewing the product, clearly labeled as
  * such in the repository. Fixture users have demo passwords and 0000xxx phone
@@ -27,10 +27,12 @@ interface SeedListing {
   description: string
   category: string
   price: number | null
+  currency?: string
   priceNegotiable?: boolean
   unit: string | null
   quantity: number | null
   county: string
+  country: string
   area: string | null
   refreshedHoursAgo: number
   views: number
@@ -39,37 +41,48 @@ interface SeedListing {
 }
 
 const users = [
-  { name: 'Jomo Scrap Traders', phone: '+254712000001', profile: { businessName: 'Jomo Scrap Traders', category: 'scrap-recyclables', county: 'Nairobi', area: 'Gikomba', description: 'We buy and grade non-ferrous scrap. Same-day payment on verified weights.', hours: 'Mon–Sat, 7am–5pm' } },
-  { name: 'Pendo Flour Millers', phone: '+254712000002', profile: { businessName: 'Pendo Flour Millers', category: 'food-groceries', county: 'Nakuru', area: 'Free Area', description: 'Millers of wheat and maize flour for shops and institutions.', hours: 'Mon–Fri, 8am–4pm' } },
-  { name: 'Mama Amina Chapati Supplies', phone: '+254712000003', profile: { businessName: 'Mama Amina Chapati Supplies', category: 'food-groceries', county: 'Mombasa', area: 'Kongowea', description: 'Wholesale supplies for chapati and mandazi vendors.', hours: 'Daily, 6am–2pm' } },
-  { name: 'Kisumu Fresh Produce', phone: '+254712000004', profile: { businessName: 'Kisumu Fresh Produce', category: 'farm-produce', county: 'Kisumu', area: 'Ahero', description: 'Direct from farms around Ahero. Bulk buyers welcome.', hours: 'Mon–Sat, 6am–6pm' } },
-  { name: 'Eldo Hardware & Steel', phone: '+254712000005', profile: { businessName: 'Eldo Hardware & Steel', category: 'hardware-building', county: 'Uasin Gishu', area: 'Kapsoya', description: 'Steel, roofing and general hardware at trade prices.', hours: 'Mon–Sat, 8am–6pm' } },
-  { name: 'Nakuru Dairy Collective', phone: '+254712000006', profile: { businessName: 'Nakuru Dairy Collective', category: 'livestock-feed', county: 'Nakuru', area: 'Njoro', description: 'Cooperative of 40 dairy farmers. Chilled collection point in Njoro.', hours: 'Daily, 5am–10am' } },
+  // Uganda — the launch market.
+  { name: 'Nakato Fresh Produce', phone: '+256772123456', country: 'UG', profile: { businessName: 'Nakato Fresh Produce', category: 'farm-produce', county: 'Kampala', area: 'Nakasero', description: 'Fresh matooke, tomatoes and onions from farms around Mpigi. Wholesale and retail.', hours: 'Daily, 6am–6pm' } },
+  { name: 'Kampalamart Scrap Dealers', phone: '+256776123456', country: 'UG', profile: { businessName: 'Kampalamart Scrap Dealers', category: 'scrap-recyclables', county: 'Kampala', area: 'Kisenyi', description: 'We buy copper, brass, aluminium and plastics. Honest weighing on a certified scale, same-day payment.', hours: 'Mon–Sat, 7am–5pm' } },
+  { name: 'Jinja Hardware Centre', phone: '+256758123456', country: 'UG', profile: { businessName: 'Jinja Hardware Centre', category: 'hardware-building', county: 'Jinja', area: 'Kimaka', description: 'Cement, roofing sheets, steel bars and general hardware at friendly prices.', hours: 'Mon–Sat, 8am–6pm' } },
+  // Tanzania.
+  { name: 'Dodoma Agri Supplies', phone: '+255712345678', country: 'TZ', profile: { businessName: 'Dodoma Agri Supplies', category: 'farm-produce', county: 'Dodoma', area: 'Chang’ombe', description: 'Sunflower oil, beans and maize supplied to shops and institutions around Dodoma.', hours: 'Mon–Sat, 7am–4pm' } },
+  // Kenya (existing fixtures kept for regional coverage).
+  { name: 'Jomo Scrap Traders', phone: '+254712000001', country: 'KE', profile: { businessName: 'Jomo Scrap Traders', category: 'scrap-recyclables', county: 'Nairobi', area: 'Gikomba', description: 'We buy and grade non-ferrous scrap. Same-day payment on verified weights.', hours: 'Mon–Sat, 7am–5pm' } },
+  { name: 'Pendo Flour Millers', phone: '+254712000002', country: 'KE', profile: { businessName: 'Pendo Flour Millers', category: 'food-groceries', county: 'Nakuru', area: 'Free Area', description: 'Millers of wheat and maize flour for shops and institutions.', hours: 'Mon–Fri, 8am–4pm' } },
+  { name: 'Mama Amina Chapati Supplies', phone: '+254712000003', country: 'KE', profile: { businessName: 'Mama Amina Chapati Supplies', category: 'food-groceries', county: 'Mombasa', area: 'Kongowea', description: 'Wholesale supplies for chapati and mandazi vendors.', hours: 'Daily, 6am–2pm' } },
+  { name: 'Kisumu Fresh Produce', phone: '+254712000004', country: 'KE', profile: { businessName: 'Kisumu Fresh Produce', category: 'farm-produce', county: 'Kisumu', area: 'Ahero', description: 'Direct from farms around Ahero. Bulk buyers welcome.', hours: 'Mon–Sat, 6am–6pm' } },
 ]
 
 const listings: SeedListing[] = [
-  { ownerIdx: 0, type: 'OFFER', title: 'Copper scrap, 99.5% clean', description: 'Clean copper wire scrap, no insulation, sorted and ready. Weighing done on a certified platform scale in front of the seller. Collection from our Gikomba yard.', category: 'scrap-recyclables', price: 620, unit: 'kg', quantity: 850, county: 'Nairobi', area: 'Gikomba', refreshedHoursAgo: 2, views: 34 },
-  { ownerIdx: 0, type: 'REQUEST', title: 'Copper wire scrap wanted — bulk', description: 'Buying insulated and bare copper wire monthly. Pay per kg on graded weight, LPO for consistent suppliers. Contact with your available quantity and location.', category: 'scrap-recyclables', price: 650, unit: 'kg', quantity: 2000, county: 'Nairobi', area: null, refreshedHoursAgo: 26, views: 12 },
-  { ownerIdx: 1, type: 'OFFER', title: 'Wheat flour premium, 50kg bags', description: 'Baking-grade wheat flour, milled this week. Packed in 50kg bags on pallets. Delivery within Nakuru town free for orders above 20 bags.', category: 'food-groceries', price: 4800, priceNegotiable: true, unit: 'bag', quantity: 120, county: 'Nakuru', area: 'Free Area', refreshedHoursAgo: 24, views: 21 },
-  { ownerIdx: 2, type: 'REQUEST', title: 'Cooking oil 20L — weekly supply needed', description: 'Looking for a consistent weekly supplier of cooking oil in 20L jerricans for our chapati vendors. Payment on delivery, Mombasa island and Kongowea.', category: 'food-groceries', price: 5300, unit: 'piece', quantity: 15, county: 'Mombasa', area: 'Kongowea', refreshedHoursAgo: 72, views: 8 },
-  { ownerIdx: 3, type: 'OFFER', title: 'Dry maize, grade 1 Ahero', description: 'Grade 1 dry maize, moisture 13.2%, from this season harvest. Sold per kg or per tonne with weighing bridge scales at Ahero. Transport can be arranged.', category: 'farm-produce', price: 58, unit: 'kg', quantity: 12000, county: 'Kisumu', area: 'Ahero', refreshedHoursAgo: 72, views: 45 },
-  { ownerIdx: 3, type: 'OFFER', title: 'Fresh eggs in crates', description: 'Grade A fresh eggs collected daily. Sold per crate of 30. Bring your own crates or buy ours at cost.', category: 'farm-produce', price: 420, unit: 'crate', quantity: 300, county: 'Kisumu', area: 'Ahero', refreshedHoursAgo: 4, views: 18 },
-  { ownerIdx: 4, type: 'OFFER', title: 'Y12 deformed steel bars, 12mm', description: 'Y12 ribbed steel bars, 12 metre lengths, BS standard. Cut to size on request at no extra charge. Bulk discount above 100 pieces.', category: 'hardware-building', price: 1150, unit: 'piece', quantity: 480, county: 'Uasin Gishu', area: 'Kapsoya', refreshedHoursAgo: 144, views: 27 },
-  { ownerIdx: 4, type: 'OFFER', title: 'Mabati roofing sheets 30 gauge', description: 'Pre-painted 30 gauge mabati, box profile, various colours in stock. Per piece price for 3 metre lengths. Delivery within Eldoret.', category: 'hardware-building', price: 950, unit: 'piece', quantity: 200, county: 'Uasin Gishu', area: null, refreshedHoursAgo: 288, views: 31 },
-  { ownerIdx: 5, type: 'OFFER', title: 'Raw milk, chilled same-day', description: 'Fresh raw milk from our cooperative members, chilled at collection point. Sold per litre in 50 litre cans. Early morning collection recommended.', category: 'livestock-feed', price: 65, unit: 'litre', quantity: 900, county: 'Nakuru', area: 'Njoro', refreshedHoursAgo: 7, views: 52 },
-  { ownerIdx: 0, type: 'OFFER', title: 'Second-hand clothes bales, mixed', description: 'Original mixed bales from our imports, unopened. Per bale price for ladies, gents and children mixes. Opening of bales allowed before payment.', category: 'textiles-clothing', price: 6200, priceNegotiable: true, unit: 'bale', quantity: 40, county: 'Nairobi', area: 'Toi Market', refreshedHoursAgo: 48, views: 63 },
-  { ownerIdx: 4, type: 'OFFER', title: 'Solar panels 150W monocrystalline', description: '150W mono panels with 10 year performance warranty. Ideal for boda battery charging and home lighting kits. Few pieces left from this shipment.', category: 'electronics', price: 8900, unit: 'piece', quantity: 25, county: 'Uasin Gishu', area: 'Kapsoya', refreshedHoursAgo: 216, views: 14, expiresInDaysOverride: 2 },
-  { ownerIdx: 2, type: 'OFFER', title: 'Charcoal 50kg sacks, acacia', description: 'Hardwood acacia charcoal, long burning, packed in 50kg sacks. Delivery for 10 sacks and above within Mombasa.', category: 'home-kitchen', price: 3800, unit: 'sack', quantity: 80, county: 'Mombasa', area: 'Kongowea', refreshedHoursAgo: 240, views: 39, status: 'FULFILLED' },
-  { ownerIdx: 1, type: 'OFFER', title: 'Firewood bundles for lenders', description: 'Split firewood bundles, dry eucalyptus. Ideal for institutions and ovens. Price per bundle of about 20kg.', category: 'other', price: 350, unit: 'bunch', quantity: 500, county: 'Nakuru', area: 'Free Area', refreshedHoursAgo: 768, views: 11, expiresInDaysOverride: -1 },
+  // Uganda (UGX).
+  { ownerIdx: 0, type: 'OFFER', title: 'Fresh matooke, wholesale bunches', description: 'Green matooke straight from Mpigi farms, hand-picked this morning. Bunches from 8kg up. Bring your own transport or we arrange delivery within Kampala.', category: 'farm-produce', price: 18000, currency: 'UGX', unit: 'bunch', quantity: 250, county: 'Kampala', country: 'UG', area: 'Nakasero', refreshedHoursAgo: 3, views: 41 },
+  { ownerIdx: 0, type: 'OFFER', title: 'Grade A eggs in crates of 30', description: 'Fresh grade A eggs collected daily from our layers in Mukono. Sold per crate of 30. Bring your own crates or buy ours at cost.', category: 'farm-produce', price: 12000, currency: 'UGX', unit: 'crate', quantity: 180, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 6, views: 27 },
+  { ownerIdx: 1, type: 'OFFER', title: 'Copper scrap, 99.5% clean', description: 'Clean copper wire scrap, no insulation, sorted and ready. Weighing done on a certified platform scale in front of the seller. Collection from our Kisenyi yard.', category: 'scrap-recyclables', price: 20000, currency: 'UGX', unit: 'kg', quantity: 600, county: 'Kampala', country: 'UG', area: 'Kisenyi', refreshedHoursAgo: 2, views: 55 },
+  { ownerIdx: 1, type: 'REQUEST', title: 'Aluminium scrap wanted — monthly bulk', description: 'Buying aluminium scrap monthly: ingots, sheets, castings. Pay per kg on graded weight, same-day mobile money payment. Contact with your available quantity and location.', category: 'scrap-recyclables', price: 6500, currency: 'UGX', unit: 'kg', quantity: 1500, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 20, views: 14 },
+  { ownerIdx: 2, type: 'OFFER', title: 'Cement 42.5N, 50kg bags', description: 'Tororo cement 42.5N in 50kg bags, stored dry in our Kimaka godown. Discount above 100 bags, delivery around Jinja town available.', category: 'hardware-building', price: 32000, currency: 'UGX', priceNegotiable: true, unit: 'bag', quantity: 900, county: 'Jinja', country: 'UG', area: 'Kimaka', refreshedHoursAgo: 30, views: 33 },
+  { ownerIdx: 2, type: 'OFFER', title: 'Iron sheets 30 gauge, 3m', description: 'Pre-painted 30 gauge iron sheets, box profile, various colours in stock. Per piece price for 3 metre lengths. Delivery within Jinja and Iganga.', category: 'hardware-building', price: 38000, currency: 'UGX', unit: 'piece', quantity: 320, county: 'Jinja', country: 'UG', area: null, refreshedHoursAgo: 96, views: 19 },
+  { ownerIdx: 0, type: 'REQUEST', title: 'Red onions wanted — weekly supply', description: 'Looking for a steady weekly supplier of red onions for our market stall, at least 300kg per week. Payment on delivery, Kampala Nakasero.', category: 'farm-produce', price: 5200, currency: 'UGX', unit: 'kg', quantity: 300, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 50, views: 9 },
+  // Tanzania (TZS).
+  { ownerIdx: 3, type: 'OFFER', title: 'Sunflower cooking oil, 20L', description: 'Pure sunflower cooking oil in 20L jerricans, pressed in Dodoma. Ideal for vendors and institutions. Delivery around Dodoma municipality.', category: 'food-groceries', price: 58000, currency: 'TZS', unit: 'piece', quantity: 120, county: 'Dodoma', country: 'TZ', area: 'Chang’ombe', refreshedHoursAgo: 8, views: 22 },
+  { ownerIdx: 3, type: 'OFFER', title: 'Dry maize grade 1, per kg', description: 'Grade 1 dry maize, moisture 13%, from this season harvest in Kongwa. Sold per kg or per tonne with weighing at our Chang’ombe store.', category: 'farm-produce', price: 950, currency: 'TZS', unit: 'kg', quantity: 15000, county: 'Dodoma', country: 'TZ', area: null, refreshedHoursAgo: 60, views: 47 },
+  // Kenya (KES).
+  { ownerIdx: 4, type: 'OFFER', title: 'Wheat flour premium, 50kg bags', description: 'Baking-grade wheat flour, milled this week. Packed in 50kg bags on pallets. Delivery within Nakuru town free for orders above 20 bags.', category: 'food-groceries', price: 4800, currency: 'KES', priceNegotiable: true, unit: 'bag', quantity: 120, county: 'Nakuru', country: 'KE', area: 'Free Area', refreshedHoursAgo: 24, views: 21 },
+  { ownerIdx: 5, type: 'OFFER', title: 'Fresh eggs in crates', description: 'Grade A fresh eggs collected daily. Sold per crate of 30. Bring your own crates or buy ours at cost.', category: 'farm-produce', price: 420, currency: 'KES', unit: 'crate', quantity: 300, county: 'Kisumu', country: 'KE', area: 'Ahero', refreshedHoursAgo: 4, views: 18 },
+  { ownerIdx: 6, type: 'REQUEST', title: 'Cooking oil 20L — weekly supply needed', description: 'Looking for a consistent weekly supplier of cooking oil in 20L jerricans for our chapati vendors. Payment on delivery, Mombasa island and Kongowea.', category: 'food-groceries', price: 5300, currency: 'KES', unit: 'piece', quantity: 15, county: 'Mombasa', country: 'KE', area: 'Kongowea', refreshedHoursAgo: 72, views: 8 },
+  { ownerIdx: 4, type: 'OFFER', title: 'Second-hand clothes bales, mixed', description: 'Original mixed bales from our imports, unopened. Per bale price for ladies, gents and children mixes. Opening of bales allowed before payment.', category: 'textiles-clothing', price: 6200, currency: 'KES', priceNegotiable: true, unit: 'bale', quantity: 40, county: 'Nairobi', country: 'KE', area: 'Toi Market', refreshedHoursAgo: 48, views: 63 },
+  { ownerIdx: 7, type: 'OFFER', title: 'Raw milk, chilled same-day', description: 'Fresh raw milk from our cooperative members, chilled at collection point. Sold per litre in 50 litre cans. Early morning collection recommended.', category: 'livestock-feed', price: 65, currency: 'KES', unit: 'litre', quantity: 900, county: 'Kisumu', country: 'KE', area: 'Ahero', refreshedHoursAgo: 7, views: 52 },
+  { ownerIdx: 6, type: 'OFFER', title: 'Charcoal 50kg sacks, acacia', description: 'Hardwood acacia charcoal, long burning, packed in 50kg sacks. Delivery for 10 sacks and above within Mombasa.', category: 'home-kitchen', price: 3800, currency: 'KES', unit: 'sack', quantity: 80, county: 'Mombasa', country: 'KE', area: 'Kongowea', refreshedHoursAgo: 240, views: 39, status: 'FULFILLED' },
+  { ownerIdx: 5, type: 'OFFER', title: 'Firewood bundles for lenders', description: 'Split firewood bundles, dry eucalyptus. Ideal for institutions and ovens. Price per bundle of about 20kg.', category: 'other', price: 350, currency: 'KES', unit: 'bunch', quantity: 500, county: 'Nakuru', country: 'KE', area: 'Free Area', refreshedHoursAgo: 768, views: 11, expiresInDaysOverride: -1 },
 ]
 
 const savedSearches = [
-  { userIdx: 1, name: 'Maize in Kisumu', query: { q: 'maize', county: 'Kisumu' } },
-  { userIdx: 2, name: 'Flour offers', query: { q: 'flour', type: 'OFFER' as const } },
+  { userIdx: 0, name: 'Copper scrap in Kampala', query: { q: 'copper', county: 'Kampala' } },
+  { userIdx: 4, name: 'Maize offers', query: { q: 'maize', type: 'OFFER' as const } },
 ]
 
 async function main() {
-  console.log('Seeding Commerce OS development fixtures…')
+  console.log('Seeding Duuka development fixtures…')
   await db.notification.deleteMany()
   await db.savedSearch.deleteMany()
   await db.listing.deleteMany()
@@ -77,10 +90,10 @@ async function main() {
   await db.session.deleteMany()
   await db.user.deleteMany()
 
-  const createdUsers = []
+  const createdUsers: { id: string; phone: string }[] = []
   for (const u of users) {
     const user = await db.user.create({
-      data: { name: u.name, phone: u.phone, passwordHash: hashPassword('demo1234') },
+      data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234') },
     })
     await db.businessProfile.create({ data: { userId: user.id, phone: u.phone, whatsapp: u.phone, verified: false, ...u.profile } })
     createdUsers.push(user)
@@ -98,10 +111,12 @@ async function main() {
         description: l.description,
         category: l.category,
         price: l.price,
+        currency: l.currency ?? 'UGX',
         priceNegotiable: l.priceNegotiable ?? false,
         unit: l.unit,
         quantity: l.quantity,
         county: l.county,
+        country: l.country,
         area: l.area,
         contactPhone: createdUsers[l.ownerIdx].phone,
         contactWhatsapp: createdUsers[l.ownerIdx].phone,

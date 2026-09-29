@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { route, jsonOk, parseBody, requireUser, ApiError } from '@/lib/api'
-import { listingCreateSchema, listingQuerySchema } from '@/lib/validation'
+import { listingCreateSchema, listingQuerySchema, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
 import {
   expireOverdueListings,
@@ -9,7 +9,7 @@ import {
   buildSearchText,
   notifySavedSearchMatches,
 } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS } from '@/lib/constants'
+import { LISTING_ACTIVE_DAYS, countryDef, currencyDef } from '@/lib/constants'
 
 // Public search — filter, sort and paginate in the database, not the browser.
 export async function GET(request: NextRequest) {
@@ -44,6 +44,30 @@ export async function POST(request: Request) {
     const user = await requireUser('Sign in to publish a listing')
     const data = await parseBody(request, listingCreateSchema)
 
+    // Country comes from the account (the client may also send it); currency
+    // defaults to that country's currency unless the listing picks one.
+    const country = (data.country ?? user.country ?? 'UG') as CountryKey
+    const currency = data.currency ?? currencyDef(country).key
+    const contactPhone = normalizePhone(data.contactPhone, country)
+    if (!contactPhone) {
+      throw new ApiError(400, 'Enter a valid phone number for the selected country', {
+        contactPhone: 'Invalid phone number for the selected country',
+      })
+    }
+    const contactWhatsapp = data.contactWhatsapp ? normalizePhone(data.contactWhatsapp, country) : null
+    if (data.contactWhatsapp && !contactWhatsapp) {
+      throw new ApiError(400, 'Enter a valid WhatsApp number for the selected country', {
+        contactWhatsapp: 'Invalid WhatsApp number for the selected country',
+      })
+    }
+    // The location must belong to the listing's country.
+    const def = countryDef(country)
+    if (!def.locations.includes(data.county)) {
+      throw new ApiError(400, `Choose a district or region in ${def.name}`, {
+        county: `Choose a district or region in ${def.name}`,
+      })
+    }
+
     const now = new Date()
     const listing = await db.listing.create({
       data: {
@@ -53,13 +77,15 @@ export async function POST(request: Request) {
         description: data.description,
         category: data.category,
         price: data.price,
+        currency,
         priceNegotiable: data.priceNegotiable,
         unit: data.unit,
         quantity: data.quantity,
         county: data.county,
+        country,
         area: data.area,
-        contactPhone: data.contactPhone,
-        contactWhatsapp: data.contactWhatsapp,
+        contactPhone,
+        contactWhatsapp,
         status: 'ACTIVE',
         searchText: buildSearchText({
           title: data.title,

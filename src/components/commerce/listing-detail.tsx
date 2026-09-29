@@ -68,7 +68,7 @@ export function ListingDetail({ id }: { id: string }) {
 
           <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <p className="text-xl font-semibold text-primary">
-              {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null)}
+              {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
             </p>
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
           </div>
@@ -148,18 +148,19 @@ export function ListingDetail({ id }: { id: string }) {
         <h2 className="text-sm font-semibold">About the seller</h2>
         <div className="mt-2 flex items-center gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-            {listing.user.name.charAt(0).toUpperCase()}
+            {(listing.user.profile?.businessName || listing.user.name).charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 truncate font-medium">
-              {listing.user.profile ? listing.user.profile.businessName : listing.user.name}
+            {/* The shop name the seller chose — this is their space, named by them. */}
+            <p className="flex items-center gap-1.5 truncate text-[15px] font-semibold">
+              {listing.user.profile?.businessName?.trim() || listing.user.name}
               <Store className="size-3.5 text-muted-foreground" aria-hidden />
             </p>
             <p className="text-sm text-muted-foreground">
               {listing.user.profile?.area || listing.user.profile?.county
                 ? [listing.user.profile?.area, listing.user.profile?.county].filter(Boolean).join(', ') + ' · '
                 : ''}
-              Member since {new Date(listing.user.createdAt).toLocaleDateString('en-KE', { month: 'short', year: 'numeric' })}
+              Member since {new Date(listing.user.createdAt).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
             </p>
           </div>
         </div>

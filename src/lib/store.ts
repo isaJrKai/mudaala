@@ -1,4 +1,4 @@
-// Commerce OS — client navigation + filter state.
+// Duuka — client navigation + filter state.
 // Views are client-side (the product ships as a single route), synced to the
 // URL hash so the browser back button behaves as users expect.
 
@@ -130,8 +130,8 @@ export function describeQuery(q: Partial<ListingQuery>): string {
   if (q.category) bits.push(q.category.replace(/-/g, ' '))
   if (q.county) bits.push(q.county)
   if (q.minPrice !== undefined || q.maxPrice !== undefined) {
-    const min = q.minPrice !== undefined ? `KSh ${q.minPrice}` : ''
-    const max = q.maxPrice !== undefined ? `KSh ${q.maxPrice}` : ''
+    const min = q.minPrice !== undefined ? `${q.minPrice}` : ''
+    const max = q.maxPrice !== undefined ? `${q.maxPrice}` : ''
     bits.push(`${min || 'any'} – ${max || 'any'}`)
   }
   return bits.length > 0 ? bits.join(' · ') : 'Everything'

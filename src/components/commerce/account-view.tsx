@@ -13,9 +13,10 @@ import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPut } from '@/lib/client'
 import type { BusinessProfileT, SessionUser } from '@/lib/client'
 import { businessProfileSchema, fieldErrors } from '@/lib/validation'
-import { CATEGORIES, COUNTIES } from '@/lib/constants'
+import { CATEGORIES, countryDef } from '@/lib/constants'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
+import { formatPhonePretty } from '@/lib/format'
 import { ListingListSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
 
@@ -64,7 +65,7 @@ export function AccountView() {
         </span>
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold">{user.name}</h1>
-          <p className="text-sm text-muted-foreground">{user.phone}</p>
+          <p className="text-sm text-muted-foreground">{formatPhonePretty(user.phone)}</p>
         </div>
       </div>
 
@@ -172,7 +173,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     try {
       await apiPut('/api/profile', parsed.data)
       await queryClient.invalidateQueries({ queryKey: ['profile'] })
-      toast({ title: 'Profile saved', description: 'Your listings now show this business information.' })
+      toast({ title: 'Shop saved', description: 'Your listings now show this name and information.' })
     } catch (err) {
       const withFields = err as Error & { fields?: Record<string, string> }
       if (withFields.fields) setErrors(withFields.fields)
@@ -185,8 +186,12 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold">Business profile</h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">Optional. Shown on your listings so buyers know who they are dealing with.</p>
+        <h2 className="flex items-center gap-1.5 text-base font-semibold">
+          <Store className="size-4" aria-hidden /> My Shop
+        </h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          This is your space on Duuka — give it the name of your shop. Buyers see it on every listing you post.
+        </p>
         <p className="mt-1.5 flex items-start gap-1.5 rounded-md border bg-secondary/40 px-2.5 py-2 text-xs text-muted-foreground">
           <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Verification is not offered yet, so no “verified” badge is shown to anyone.
@@ -194,7 +199,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="bp-name">Business name</Label>
+        <Label htmlFor="bp-name">Shop name</Label>
         <Input id="bp-name" value={form.businessName} onChange={(e) => set('businessName', e.target.value)} maxLength={80} required />
         {errors.businessName ? <p role="alert" className="text-sm text-destructive">{errors.businessName}</p> : null}
       </div>
@@ -218,14 +223,14 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           {errors.category ? <p role="alert" className="text-sm text-destructive">{errors.category}</p> : null}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="bp-county">County</Label>
+          <Label htmlFor="bp-county">District / Region</Label>
           <Select value={form.county} onValueChange={(v) => set('county', v)}>
             <SelectTrigger id="bp-county">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-64">
               <SelectItem value="none">Not specified</SelectItem>
-              {COUNTIES.map((c) => (
+              {countryDef(user.country ?? 'UG').locations.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
                 </SelectItem>
@@ -267,7 +272,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       </div>
 
       <Button type="submit" disabled={busy}>
-        {busy ? 'Saving…' : 'Save profile'}
+        {busy ? 'Saving…' : 'Save shop'}
       </Button>
     </form>
   )

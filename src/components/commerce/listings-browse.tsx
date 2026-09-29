@@ -206,13 +206,13 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="f-county">County</Label>
+            <Label htmlFor="f-county">District / Region</Label>
             <Select value={filters.county} onValueChange={(v) => setFilters({ county: v })}>
               <SelectTrigger id="f-county">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                <SelectItem value="any">All counties</SelectItem>
+                <SelectItem value="any">All districts</SelectItem>
                 {COUNTIES.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
@@ -224,7 +224,7 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="f-min">Min price (KSh)</Label>
+              <Label htmlFor="f-min">Min price</Label>
               <Input
                 id="f-min"
                 type="number"
@@ -236,7 +236,7 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="f-max">Max price (KSh)</Label>
+              <Label htmlFor="f-max">Max price</Label>
               <Input
                 id="f-max"
                 type="number"

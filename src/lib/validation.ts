@@ -1,39 +1,75 @@
-// Commerce OS — shared validation schemas (zod).
+// Duuka — shared validation schemas (zod).
 // Used by BOTH the API routes (integrity boundary) and the forms (usability).
 // Never duplicate these rules elsewhere.
 
 import { z } from 'zod'
-import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTIES, ALLOWED_STATUS_TRANSITIONS, type ListingStatus } from './constants'
+import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, type ListingStatus } from './constants'
 
-// Kenyan phone numbers: 07XX/01XX, 7XX/1XX, 2547XX/2541XX, +2547XX...
-// Normalized to +2547XXXXXXXX / +2541XXXXXXXX.
-export function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/[\s\-()]/g, '')
-  let local = ''
-  if (/^\+254\d{9}$/.test(digits)) local = digits.slice(4)
-  else if (/^254\d{9}$/.test(digits)) local = digits.slice(3)
-  else if (/^0\d{9}$/.test(digits)) local = digits.slice(1)
-  else if (/^[17]\d{8}$/.test(digits)) local = digits
-  else return null
-  if (!/^[17]\d{8}$/.test(local)) return null
-  return `+254${local}`
+// Multi-country phone normalization (Uganda, Tanzania, Kenya).
+// Accepted inputs: 07XX XXX XXX, 7XXXXXXXX, +2567XXXXXXXX, 2567XXXXXXXX...
+// Normalized to E.164: +2567XXXXXXXX / +2557XXXXXXXX / +2547XXXXXXXX.
+export type CountryKey = 'UG' | 'TZ' | 'KE'
+
+const DIAL_CODES: Record<CountryKey, string> = { UG: '256', TZ: '255', KE: '254' }
+// Local part (after the leading 0) per country:
+//   UG: mobiles 7XXXXXXXX (MTN/Airtel), fixed 3XXXXXXXX
+//   TZ: mobiles 6XXXXXXXX / 7XXXXXXXX
+//   KE: mobiles 7XXXXXXXX / 1XXXXXXXX
+const LOCAL_PATTERNS: Record<CountryKey, RegExp> = {
+  UG: /^[37]\d{8}$/,
+  TZ: /^[67]\d{8}$/,
+  KE: /^[17]\d{8}$/,
 }
 
-export const phoneSchema = z
-  .string()
-  .trim()
-  .min(1, 'Phone number is required')
-  .transform((v) => normalizePhone(v))
-  .refine((v): v is string => v !== null, 'Enter a valid Kenyan phone number (e.g. 0712 345 678)')
+function normalizeFor(raw: string, country: CountryKey): string | null {
+  const digits = raw.replace(/[\s\-()]/g, '')
+  const dial = DIAL_CODES[country]
+  let local = ''
+  if (digits.startsWith(`+${dial}`)) local = digits.slice(1 + dial.length)
+  else if (digits.startsWith(dial)) local = digits.slice(dial.length)
+  else if (digits.startsWith('0')) local = digits.slice(1)
+  else if (/^\d{8,9}$/.test(digits)) local = digits
+  else return null
+  if (!LOCAL_PATTERNS[country].test(local)) return null
+  return `+${dial}${local}`
+}
+
+/** Normalize with a known country (register, listing contact fields). */
+export function normalizePhone(raw: string, country: CountryKey = 'UG'): string | null {
+  return normalizeFor(raw, country)
+}
+
+/** A raw local number is ambiguous across UG/TZ/KE — produce every candidate.
+ *  Used by login so a returning user never needs to pick their country again. */
+export function phoneCandidates(raw: string): string[] {
+  const out = new Set<string>()
+  for (const c of ['UG', 'TZ', 'KE'] as CountryKey[]) {
+    const n = normalizeFor(raw, c)
+    if (n) out.add(n)
+  }
+  return [...out]
+}
+
+export function countryPhoneMessage(country: CountryKey): string {
+  if (country === 'UG') return 'Enter a valid Ugandan phone number (e.g. 0772 345 678)'
+  if (country === 'TZ') return 'Enter a valid Tanzanian phone number (e.g. 0712 345 678)'
+  return 'Enter a valid Kenyan phone number (e.g. 0712 345 678)'
+}
+
+// Shared untransformed phone string for schemas that carry an explicit country
+// (register / listings) — the route normalizes after parsing so the error can
+// name the right country.
+const rawPhone = z.string().trim().min(1, 'Phone number is required').max(20, 'Phone number is too long')
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80, 'Name is too long'),
-  phone: phoneSchema,
+  phone: rawPhone,
+  country: z.enum(['UG', 'TZ', 'KE']).default('UG'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
 })
 
 export const loginSchema = z.object({
-  phone: phoneSchema,
+  phone: rawPhone,
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -49,19 +85,24 @@ const quantitySchema = z
   .max(10_000_000, 'Quantity is too large')
 
 // Base object schema (no refinements) so .partial()/.omit() remain available.
+// NOTE: country/currency are deliberately OPTIONAL without defaults — in zod 4
+// a .default() survives .partial() and would silently inject 'UG'/'UGX' into
+// every PATCH. Servers derive the country from the user/listing instead.
 const listingBaseSchema = z.object({
   type: z.enum(LISTING_TYPES, { message: 'Choose OFFER or REQUEST' }),
   title: z.string().trim().min(4, 'Title must be at least 4 characters').max(120, 'Title must be 120 characters or fewer'),
   description: z.string().trim().min(20, 'Describe what you offer or need (at least 20 characters)').max(2000, 'Description must be 2000 characters or fewer'),
   category: z.enum(CATEGORY_KEYS as [string, ...string[]], { message: 'Choose a category' }),
   price: priceSchema.nullable(),
+  currency: z.enum(CURRENCY_KEYS as [string, ...string[]]).optional(),
   priceNegotiable: z.boolean().default(false),
   unit: z.enum(UNIT_KEYS as [string, ...string[]]).nullable(),
   quantity: quantitySchema.nullable(),
-  county: z.enum(COUNTIES as unknown as [string, ...string[]], { message: 'Choose a county' }),
+  country: z.enum(COUNTRY_KEYS as [string, ...string[]]).optional(),
+  county: z.string().trim().min(1, 'Choose your district or region').max(30),
   area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
-  contactPhone: phoneSchema,
-  contactWhatsapp: phoneSchema.nullable(),
+  contactPhone: rawPhone,
+  contactWhatsapp: rawPhone.nullable(),
 })
 
 export const listingCreateSchema = listingBaseSchema
@@ -116,10 +157,10 @@ export const businessProfileSchema = z.object({
   businessName: z.string().trim().min(2, 'Business name must be at least 2 characters').max(80, 'Business name is too long'),
   category: z.enum(CATEGORY_KEYS as [string, ...string[]]).nullable(),
   description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullable(),
-  county: z.enum(COUNTIES as unknown as [string, ...string[]]).nullable(),
+  county: z.string().trim().min(1, 'Choose your district or region').max(30).nullable(),
   area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
-  phone: phoneSchema,
-  whatsapp: phoneSchema.nullable(),
+  phone: rawPhone,
+  whatsapp: rawPhone.nullable(),
   hours: z.string().trim().max(120, 'Opening hours must be 120 characters or fewer').nullable(),
 })
 

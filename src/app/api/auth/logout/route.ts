@@ -1,13 +1,12 @@
 import { route, jsonOk } from '@/lib/api'
-import { clearSessionCookie } from '@/lib/auth'
+import { clearSessionCookie, getCurrentSessionToken } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { cookies } from 'next/headers'
 
 export async function POST() {
   return route(async () => {
     // Delete only the current browser's session, not sessions on other devices.
-    const store = await cookies()
-    const token = store.get('cos_session')?.value
+    // Works for both channels: cookie-based and Bearer-based clients.
+    const token = await getCurrentSessionToken()
     if (token) {
       await db.session.deleteMany({ where: { id: token } })
     }

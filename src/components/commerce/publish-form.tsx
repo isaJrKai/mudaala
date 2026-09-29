@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast'
 import { apiPost, apiPatch, apiGet } from '@/lib/client'
 import type { Listing, SessionUser } from '@/lib/client'
 import { listingCreateSchema, fieldErrors } from '@/lib/validation'
-import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
+import { CATEGORIES, UNITS, CURRENCIES, countryDef, currencyDef } from '@/lib/constants'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { ErrorState } from './listings-browse'
@@ -26,6 +26,7 @@ interface FormState {
   description: string
   category: string
   price: string
+  currency: string
   priceNegotiable: boolean
   unit: string
   quantity: string
@@ -41,6 +42,7 @@ const EMPTY_FORM: FormState = {
   description: '',
   category: 'none',
   price: '',
+  currency: 'UGX',
   priceNegotiable: false,
   unit: 'none',
   quantity: '',
@@ -63,10 +65,16 @@ export function PublishForm() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (user && form.contactPhone === '') {
-      setForm((f) => ({ ...f, contactPhone: user.phone }))
+    if (user) {
+      // Pre-fill contact phone and default the currency to the account's
+      // country (UG → USh, TZ → TSh, KE → KSh). Still switchable per listing.
+      setForm((f) => ({
+        ...f,
+        contactPhone: f.contactPhone === '' ? user.phone : f.contactPhone,
+        currency: f.currency === 'UGX' ? countryDef(user.country ?? 'UG').currency : f.currency,
+      }))
     }
-  }, [user, form.contactPhone])
+  }, [user])
 
   if (sessionLoading) {
     return <ListingListSkeleton count={3} />
@@ -108,6 +116,8 @@ export function PublishForm() {
       description: form.description,
       category: form.category === 'none' ? undefined : form.category,
       price: priceRaw === '' ? null : Number(priceRaw),
+      currency: form.currency,
+      country: user?.country ?? 'UG',
       priceNegotiable: form.priceNegotiable,
       unit: form.unit === 'none' ? null : form.unit,
       quantity: quantityRaw === '' ? null : Number(quantityRaw),
@@ -225,18 +235,34 @@ export function PublishForm() {
       </Field>
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label={form.type === 'OFFER' ? 'Price (KSh)' : 'Budget (KSh)'} htmlFor="p-price" error={errors.price}>
-            <Input
-              id="p-price"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              value={form.price}
-              onChange={(e) => set('price', e.target.value)}
-              placeholder="Leave empty if negotiable"
-            />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field label={form.type === 'OFFER' ? 'Price' : 'Budget'} htmlFor="p-price" error={errors.price}>
+            <div className="flex gap-2">
+              <Input
+                id="p-price"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={currencyDef(form.currency).zeroDecimal ? '1' : '0.01'}
+                value={form.price}
+                onChange={(e) => set('price', e.target.value)}
+                placeholder="Leave empty if negotiable"
+                className="flex-1"
+              />
+              {/* Native select: opens the phone's own picker, easiest for everyone. */}
+              <select
+                aria-label="Currency"
+                value={form.currency}
+                onChange={(e) => set('currency', e.target.value)}
+                className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.symbol}
+                  </option>
+                ))}
+              </select>
+            </div>
           </Field>
           <Field label="Per" htmlFor="p-unit" error={errors.unit}>
             <Select value={form.unit} onValueChange={(v) => set('unit', v)}>
@@ -272,13 +298,13 @@ export function PublishForm() {
             placeholder="e.g. 500"
           />
         </Field>
-        <Field label="County" htmlFor="p-county" error={errors.county}>
+        <Field label="District / Region" htmlFor="p-county" error={errors.county}>
           <Select value={form.county} onValueChange={(v) => set('county', v)}>
             <SelectTrigger id="p-county" aria-invalid={Boolean(errors.county)}>
-              <SelectValue placeholder="Choose county" />
+              <SelectValue placeholder="Choose district" />
             </SelectTrigger>
             <SelectContent className="max-h-64">
-              {COUNTIES.map((c) => (
+              {countryDef(user.country ?? 'UG').locations.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
                 </SelectItem>
@@ -386,6 +412,7 @@ export function EditListingForm({ id }: { id: string }) {
           description: listing.description,
           category: listing.category,
           price: listing.price === null ? '' : String(listing.price),
+          currency: listing.currency ?? 'UGX',
           priceNegotiable: listing.priceNegotiable,
           unit: listing.unit ?? 'none',
           quantity: listing.quantity === null ? '' : String(listing.quantity),
@@ -441,6 +468,7 @@ export function EditListingForm({ id }: { id: string }) {
       description: form.description,
       category: form.category === 'none' ? undefined : form.category,
       price: priceRaw === '' ? null : Number(priceRaw),
+      currency: form.currency,
       priceNegotiable: form.priceNegotiable,
       unit: form.unit === 'none' ? null : form.unit,
       quantity: quantityRaw === '' ? null : Number(quantityRaw),
@@ -503,17 +531,32 @@ export function EditListingForm({ id }: { id: string }) {
         <Textarea id="e-desc" value={form.description} onChange={(e) => set('description', e.target.value)} rows={5} maxLength={2000} required />
       </Field>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Price (KSh)" htmlFor="e-price" error={errors.price}>
-          <Input
-            id="e-price"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
-            value={form.price}
-            onChange={(e) => set('price', e.target.value)}
-          />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field label="Price" htmlFor="e-price" error={errors.price}>
+          <div className="flex gap-2">
+            <Input
+              id="e-price"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={currencyDef(form.currency).zeroDecimal ? '1' : '0.01'}
+              value={form.price}
+              onChange={(e) => set('price', e.target.value)}
+              className="flex-1"
+            />
+            <select
+              aria-label="Currency"
+              value={form.currency}
+              onChange={(e) => set('currency', e.target.value)}
+              className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
         </Field>
         <Field label="Per" htmlFor="e-unit" error={errors.unit}>
           <Select value={form.unit} onValueChange={(v) => set('unit', v)}>
@@ -547,13 +590,13 @@ export function EditListingForm({ id }: { id: string }) {
             onChange={(e) => set('quantity', e.target.value)}
           />
         </Field>
-        <Field label="County" htmlFor="e-county" error={errors.county}>
+        <Field label="District / Region" htmlFor="e-county" error={errors.county}>
           <Select value={form.county} onValueChange={(v) => set('county', v)}>
             <SelectTrigger id="e-county">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-64">
-              {COUNTIES.map((c) => (
+              {countryDef(loaded.country ?? 'UG').locations.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
                 </SelectItem>
