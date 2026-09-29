@@ -32,3 +32,29 @@ Stage Summary:
 - 66/66 API behavior + security tests passing; lint clean; app code typechecks clean
 - Dev fixtures seeded (passwords demo1234, phones +254712000001..06) — documented as dev-only
 - Special requirement met: ALL PostgreSQL link configuration lives in Settings → Advanced Settings (stored in AppSetting, masked responses, real TCP test, honest messaging about sandbox runtime store)
+
+---
+Task ID: 5
+Agent: main (Super Z)
+Task: "WE DONT LOG IN — debug the whole app for errors, then give me log ins" + previously approved items (UGX/TZS currency, Duuka rename, seller shop naming, single sign-in model)
+
+Work Log:
+- Discovered disk state was Task-2 era: the earlier session's login fixes (dual-channel auth, sessionLoading skeleton, postgres test route) were NEVER persisted, and worklog entries for Tasks 3/4 were missing. Rebuilt everything from scratch.
+- Root causes of "can't log in": (1) session cookie was SameSite=Lax → dropped in the cross-origin preview iframe, no fallback existed; (2) phone validation was Kenya-only (+254) → Ugandan/Tanzanian numbers rejected at register AND login.
+- Auth rebuilt (src/lib/auth.ts): getSessionUser reads cookie OR Authorization: Bearer; setSessionCookie picks None+Secure on public hosts (x-forwarded-host based), Lax on localhost; getCurrentSessionToken powers logout for both channels.
+- Multi-country phones (src/lib/validation.ts): UG (+256, 7XXXXXXXX/3XXXXXXXX), TZ (+255, 6/7XXXXXXXX), KE (+254, 1/7XXXXXXXX); login resolves a local number against ALL dial codes via phoneCandidates() so users never pick country at sign-in.
+- Login/register API return sessionToken (Bearer channel); register stores User.country (default UG).
+- client.ts: duuka_session_token in localStorage, apiFetch attaches Bearer, 401 self-heal (exempting login/register), useSignOut clears token + query cache.
+- Currency: Listing.currency (UGX default) + Listing.country; UGX/TZS zero-decimal formatting via currencyDef; publish/edit forms have a native currency selector (USh/TSh/KSh) defaulting from account country; listing card/detail render per-listing currency; price filter labels genericized.
+- Locations: COUNTRIES in constants.ts — Uganda (Kampala, Wakiso, Entebbe, Mukono, Jinja, ...), Tanzania (Dar es Salaam, Mwanza, Arusha, Dodoma, ...), Kenya (counties kept); create/PATCH validate location ∈ listing.country and re-normalize contact phones.
+- Zod 4 gotcha found + fixed: .default() survives .partial() — a {price} PATCH injected country:'UG' and broke edits on KE listings. country/currency are now .optional(); create route derives country from user.country and currency from countryDef.
+- Duuka rename: header, auth dialog ("Welcome to Duuka"), layout metadata, page footer, WhatsApp intro text, all lib comments, README.
+- Shop naming: Account → "My Shop" section (shop name is the first field), PUT /api/profile upserts it; listing detail shows the named shop prominently (larger, semibold, Store icon); seed shops all named.
+- Rebuilt missing /api/settings/postgres/test route (honest TCP test, was 404 → suite crash).
+- Auth dialog: dev-only one-tap demo account quick-fill buttons; register has a country <select> with dial codes.
+- Seed rebuilt: 3 Ugandan shops (Nakato Fresh Produce, Kampalamart Scrap Dealers, Jinja Hardware Centre — UGX listings), 1 Tanzanian (Dodoma Agri Supplies — TZS), 4 Kenyan kept; scripts/cleanup-test-data.ts removes suite pollution.
+- Verified with agent-browser through the proxy (:81): sign-in via UI, RELOAD keeps session, COOKIES CLEARED + reload still signed in (Bearer works), listing detail "USh 20,000 / kg" + "+256 776 123 456" + shop name, publish form currency selector + UG districts only, full UI publish → "USh 15,000 / bunch", 375px mobile: no horizontal overflow, bottom nav intact, zero console errors.
+
+Stage Summary:
+- 78/78 API tests passing (was 66; +12 for multi-country/Bearer/currency coverage), tsc + eslint clean for src/ + scripts/.
+- Logins for the user: 0772123456 / 0776123456 / 0758123456 (Uganda), 0712345678 (Tanzania), 0712000001..04 (Kenya) — all password demo1234. One account = buyer + seller, no second sign-in anywhere.

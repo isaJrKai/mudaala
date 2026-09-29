@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast'
 
 export function AppHeader() {
   const { view, navigate, setAuthOpen } = useAppStore()
-  const { user } = useSession()
+  const { user, isLoading: sessionLoading } = useSession()
   const signOut = useSignOut()
   const { toast } = useToast()
 
@@ -42,11 +42,11 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-card">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
-        <button type="button" onClick={() => navigate({ name: 'browse' })} className="flex items-center gap-2" aria-label="Commerce OS home">
+        <button type="button" onClick={() => navigate({ name: 'browse' })} className="flex items-center gap-2" aria-label="Duuka home">
           <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Store className="size-4" aria-hidden />
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">Commerce OS</span>
+          <span className="text-[15px] font-semibold tracking-tight">Duuka</span>
         </button>
 
         <nav aria-label="Primary" className="ml-4 hidden items-center gap-1 lg:flex">
@@ -73,7 +73,12 @@ export function AppHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          {user ? (
+          {sessionLoading ? (
+            // Skeleton — never flash "Sign in" while the session is still
+            // being checked; that fake-logged-out blink is what made refresh
+            // feel like a logout.
+            <span className="inline-flex h-8 w-24 items-center rounded-md bg-muted animate-pulse" aria-hidden />
+          ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">

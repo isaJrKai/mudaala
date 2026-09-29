@@ -1,17 +1,28 @@
-# Commerce OS
+# Duuka
 
 A local-commerce discovery platform: people post **OFFER** and **REQUEST** listings,
 find each other by category and location, compare price/quantity/freshness, and
 contact each other directly on WhatsApp or by phone.
 
-Built to the Commerce OS product contract — a discovery platform, not an ERP:
+Built to the Duuka product contract — a discovery platform, not an ERP:
 no payments, wallets, escrow, delivery dispatch, in-app chat, or transaction
 ratings in V1.
+
+## Markets & currency
+
+Duuka launches in **Uganda** (default), with **Tanzania** and **Kenya** supported:
+
+- Country chosen at registration drives the phone format (+256/+255/+254), the
+  district/region list, and the default currency (USh/TSh/KSh)
+- Each listing stores its own currency; UGX and TZS render with zero decimals
+- **One account does everything** — being a buyer and a seller needs no second
+  sign-in. Account → "My Shop" is where a seller names their space; that name
+  appears on every listing they publish.
 
 ## Product scope (V1 contract)
 
 - OFFER and REQUEST listings — one shared listing engine
-- Search, category/county/price/unit/type filters, sorting, real pagination
+- Search, category/location/price/unit/type filters, sorting, real pagination
 - Price, quantity, unit, freshness (persisted timestamps), expiry status
 - WhatsApp (`wa.me` deep link with prefilled text) and phone (`tel:`) contact
 - Optional business profiles (no verification claims — no badges anywhere)
@@ -53,7 +64,12 @@ ratings in V1.
 
 ## Security model
 
-- Sessions: opaque random tokens in httpOnly cookies, stored server-side, 30-day expiry
+- Sessions: opaque random tokens, stored server-side, 30-day expiry, **two transport channels**:
+  an httpOnly cookie (`SameSite=None; Secure` on public hosts, `Lax` on localhost) AND an
+  `Authorization: Bearer` header backed by localStorage. The Bearer channel keeps sign-in
+  working where browsers drop cookies (e.g. cross-origin preview iframes); a stale token
+  self-heals on 401. Login accepts local-format numbers from any supported country by
+  resolving them against every dial code.
 - Passwords: scrypt with per-user salt, timing-safe comparison
 - Ownership enforced server-side on every write; foreign IDs return the same 404
   as missing IDs (existence is never leaked)
@@ -115,7 +131,7 @@ prisma/schema.prisma          data model (User, Session, BusinessProfile, Listin
 src/lib/constants.ts          categories, units, counties, business rules (active days, cooldown, transitions)
 src/lib/validation.ts         shared zod schemas + phone normalization
 src/lib/listings.ts           search, expiry sweep, refresh rules, saved-search matching
-src/lib/auth.ts               scrypt hashing, sessions, cookies
+src/lib/auth.ts               scrypt hashing, sessions, dual-channel (cookie + Bearer)
 src/lib/postgres-settings.ts  advanced-settings storage + real TCP connectivity test
 src/app/api/…                 route handlers (auth, listings, saved-searches, notifications, profile, settings, cron)
 src/components/commerce/      feature UI (browse, detail, publish, my-listings, saved, alerts, account, settings)

@@ -1,4 +1,4 @@
-// Commerce OS — listing domain service.
+// Duuka — listing domain service.
 // Search, expiry, refresh rules, saved-search matching.
 // All time-dependent logic reads persisted timestamps; nothing is faked in the UI.
 

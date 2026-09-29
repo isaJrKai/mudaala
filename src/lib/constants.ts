@@ -1,4 +1,4 @@
-// Commerce OS — shared domain constants.
+// Duuka — shared domain constants.
 // Single source of truth for both server validation and UI rendering.
 
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const
@@ -70,14 +70,81 @@ export function unitLabel(key: string): string {
   return UNITS.find((u) => u.key === key)?.label ?? key
 }
 
-// Kenyan counties — the platform's launch geography.
-export const COUNTIES = [
-  'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu', 'Kiambu', 'Machakos',
-  'Kajiado', 'Kakamega', 'Kisii', 'Meru', 'Nyeri', 'Bungoma', 'Kilifi',
-  'Trans Nzoia', 'Nandi', 'Kericho', 'Kirinyaga', 'Muranga', 'Other',
-] as const
+// Countries — Uganda is the launch market, Tanzania and Kenya supported too.
+export interface CountryDef {
+  key: 'UG' | 'TZ' | 'KE'
+  name: string
+  dialCode: string
+  currency: 'UGX' | 'TZS' | 'KES'
+  locations: readonly string[]
+}
 
-export const CURRENCY = 'KSh'
+export const COUNTRIES: CountryDef[] = [
+  {
+    key: 'UG',
+    name: 'Uganda',
+    dialCode: '256',
+    currency: 'UGX',
+    locations: [
+      'Kampala', 'Wakiso', 'Entebbe', 'Mukono', 'Jinja', 'Iganga', 'Mbale',
+      'Tororo', 'Soroti', 'Lira', 'Gulu', 'Arua', 'Masindi', 'Hoima',
+      'Fort Portal', 'Kasese', 'Mbarara', 'Masaka', 'Kabale', 'Other',
+    ],
+  },
+  {
+    key: 'TZ',
+    name: 'Tanzania',
+    dialCode: '255',
+    currency: 'TZS',
+    locations: [
+      'Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya', 'Tanga',
+      'Morogoro', 'Kilimanjaro', 'Zanzibar', 'Tabora', 'Iringa', 'Kigoma',
+      'Mtwara', 'Lindi', 'Ruvuma', 'Other',
+    ],
+  },
+  {
+    key: 'KE',
+    name: 'Kenya',
+    dialCode: '254',
+    currency: 'KES',
+    locations: [
+      'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu', 'Kiambu', 'Machakos',
+      'Kajiado', 'Kakamega', 'Kisii', 'Meru', 'Nyeri', 'Bungoma', 'Kilifi',
+      'Trans Nzoia', 'Nandi', 'Kericho', 'Kirinyaga', 'Muranga', 'Other',
+    ],
+  },
+]
+
+export const COUNTRY_KEYS = COUNTRIES.map((c) => c.key)
+export const DEFAULT_COUNTRY = 'UG'
+
+export function countryDef(key: string): CountryDef {
+  return COUNTRIES.find((c) => c.key === key) ?? COUNTRIES[0]
+}
+
+// Union of all locations — used for validating existing rows and saved searches.
+export const COUNTIES = COUNTRIES.flatMap((c) => [...c.locations]) as unknown as readonly string[]
+
+// Currencies — UGX and TZS are zero-decimal in everyday trade, so amounts are
+// whole numbers. KES allows minor decimals.
+export interface CurrencyDef {
+  key: 'UGX' | 'TZS' | 'KES'
+  symbol: string
+  zeroDecimal: boolean
+}
+
+export const CURRENCIES: CurrencyDef[] = [
+  { key: 'UGX', symbol: 'USh', zeroDecimal: true },
+  { key: 'TZS', symbol: 'TSh', zeroDecimal: true },
+  { key: 'KES', symbol: 'KSh', zeroDecimal: false },
+]
+
+export function currencyDef(key: string): CurrencyDef {
+  return CURRENCIES.find((c) => c.key === key) ?? CURRENCIES[0]
+}
+
+export const CURRENCY_KEYS = CURRENCIES.map((c) => c.key)
+export const DEFAULT_CURRENCY = 'UGX'
 
 // Time-dependent business rules (single source of truth).
 export const LISTING_ACTIVE_DAYS = 30

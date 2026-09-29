@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
 import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
-import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors } from '@/lib/validation'
+import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
 import { expireOverdueListings, getOwnedListingOr404, buildSearchText } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS } from '@/lib/constants'
+import { LISTING_ACTIVE_DAYS, countryDef } from '@/lib/constants'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -76,18 +76,44 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       throw new ApiError(409, `This listing is ${listing.status.toLowerCase()}. Reactivate it before editing.`)
     }
 
+    // Country changes re-normalize contact numbers and validate the location.
+    const country = (data.country ?? listing.country) as CountryKey
+    const def = countryDef(country)
+    const county = data.county ?? listing.county
+    if (!def.locations.includes(county)) {
+      throw new ApiError(400, `Choose a district or region in ${def.name}`, {
+        county: `Choose a district or region in ${def.name}`,
+      })
+    }
+    const rawContactPhone = data.contactPhone ?? listing.contactPhone
+    const contactPhone = normalizePhone(rawContactPhone, country)
+    if (!contactPhone) {
+      throw new ApiError(400, 'Enter a valid phone number for the selected country', {
+        contactPhone: 'Invalid phone number for the selected country',
+      })
+    }
+    const rawWhatsapp = 'contactWhatsapp' in data ? data.contactWhatsapp : listing.contactWhatsapp
+    const contactWhatsapp = rawWhatsapp ? normalizePhone(rawWhatsapp, country) : null
+    if (rawWhatsapp && !contactWhatsapp) {
+      throw new ApiError(400, 'Enter a valid WhatsApp number for the selected country', {
+        contactWhatsapp: 'Invalid WhatsApp number for the selected country',
+      })
+    }
+
     const merged = {
       title: data.title ?? listing.title,
       description: data.description ?? listing.description,
       category: data.category ?? listing.category,
       price: 'price' in data ? data.price : listing.price,
+      currency: data.currency ?? listing.currency,
       priceNegotiable: data.priceNegotiable ?? listing.priceNegotiable,
       unit: 'unit' in data ? data.unit : listing.unit,
       quantity: 'quantity' in data ? data.quantity : listing.quantity,
-      county: data.county ?? listing.county,
+      county,
+      country,
       area: 'area' in data ? data.area : listing.area,
-      contactPhone: data.contactPhone ?? listing.contactPhone,
-      contactWhatsapp: 'contactWhatsapp' in data ? data.contactWhatsapp : listing.contactWhatsapp,
+      contactPhone,
+      contactWhatsapp,
     }
 
     if (merged.price === null && !merged.priceNegotiable) {

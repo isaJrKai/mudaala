@@ -14,8 +14,9 @@ datasource db {
 
 model User {
   id           String           @id @default(cuid())
-  phone        String           @unique // normalized E.164: +2547XXXXXXXX
+  phone        String           @unique // normalized E.164: +2567XXXXXXXX / +2557XXXXXXXX / +2547XXXXXXXX
   name         String
+  country      String           @default("UG") // UG | TZ | KE
   passwordHash String
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -64,11 +65,13 @@ model Listing {
   title            String
   description      String
   category         String
-  price            Float? // KSh, null = "ask seller" / not disclosed
+  price            Float? // in the listing's currency, null = "ask seller" / not disclosed
+  currency         String    @default("UGX") // UGX | TZS | KES
   priceNegotiable  Boolean   @default(false)
   unit             String? // per kg, per bag, ... (null when price is null)
   quantity         Float?
-  county           String
+  county           String // district/region name (validated against the listing's country)
+  country          String    @default("UG") // UG | TZ | KE
   area             String?
   contactPhone     String // normalized E.164
   contactWhatsapp  String?

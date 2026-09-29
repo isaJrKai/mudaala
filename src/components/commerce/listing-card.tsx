@@ -35,12 +35,12 @@ export function ListingCard({ listing, onOpen, actions, showStatus }: ListingCar
           <h3 className="min-w-0 truncate text-[15px] font-semibold">{listing.title}</h3>
           {listing.type === 'OFFER' ? (
             <p className="shrink-0 text-[15px] font-semibold text-primary">
-              {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null)}
+              {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
               {listing.priceNegotiable && listing.price !== null ? <span className="ml-1 text-xs font-normal text-muted-foreground">neg.</span> : null}
             </p>
           ) : (
             <p className="shrink-0 text-[13px] font-medium text-muted-foreground">
-              {listing.price !== null ? `Budget: ${formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null)}` : 'Ask for price'}
+              {listing.price !== null ? `Budget: ${formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}` : 'Ask for price'}
             </p>
           )}
         </div>

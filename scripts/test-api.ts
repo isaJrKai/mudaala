@@ -1,12 +1,13 @@
 /**
- * Commerce OS — API behavior & security tests.
+ * Duuka — API behavior & security tests.
  *
  * Tests observable outcomes and permission boundaries against the running dev
- * server, not implementation details. Run: bun scripts/test-api.ts
+ * server, not implementation details. Run: npx tsx scripts/test-api.ts
  *
- * Covers: auth, ownership enforcement (positive AND negative), validation,
- * status transition rules, refresh cooldown, expiry sweep, saved-search
- * matching + permissions, notification permissions, postgres settings masking.
+ * Covers: auth (cookie AND Bearer transport, UG/TZ/KE phones), ownership
+ * enforcement (positive AND negative), validation, currency handling, status
+ * transition rules, refresh cooldown, expiry sweep, saved-search matching +
+ * permissions, notification permissions, postgres settings masking.
  */
 import { PrismaClient } from '@prisma/client'
 
@@ -30,6 +31,7 @@ function ok(name: string, condition: boolean, detail?: string) {
 
 interface Jar {
   cookie: string
+  token?: string
   user?: { id: string; name: string; phone: string }
 }
 
@@ -44,6 +46,7 @@ async function call(
     headers: {
       'Content-Type': 'application/json',
       ...(jar?.cookie ? { cookie: jar.cookie } : {}),
+      ...(jar?.token ? { authorization: `Bearer ${jar.token}` } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -70,9 +73,10 @@ function storeCookie(jar: Jar, res: { setCookie?: string }) {
   }
 }
 
-async function register(jar: Jar, phone: string, name: string, password: string) {
-  const res = await call('POST', '/api/auth/register', { phone, name, password }, jar)
+async function register(jar: Jar, phone: string, name: string, password: string, country = 'KE') {
+  const res = await call('POST', '/api/auth/register', { phone, name, password, country }, jar)
   storeCookie(jar, res)
+  if (res.json?.sessionToken) jar.token = res.json.sessionToken
   jar.user = res.json?.user
   return res
 }
@@ -85,9 +89,11 @@ const validListing = {
   description: 'Clean test copper scrap for validating the publishing pipeline end to end.',
   category: 'scrap-recyclables',
   price: 500,
+  currency: 'KES',
   priceNegotiable: false,
   unit: 'kg',
   quantity: 100,
+  country: 'KE',
   county: 'Nairobi',
   area: 'Test Area',
   contactPhone: '+254712345678',
@@ -117,13 +123,46 @@ async function main() {
     ok('login with unknown phone → same 401 message', ghost.status === 401 && ghost.json.error === wrongPw.json.error)
 
     const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
-    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('cos_session'))
+    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('duuka_session'))
+    ok('login returns sessionToken for the Bearer channel', typeof login.json?.sessionToken === 'string' && login.json.sessionToken.length > 0)
 
     const me = await call('GET', '/api/auth/me', undefined, alice)
     ok('GET /me returns session user', me.json?.user?.phone === alicePhone)
+    ok('GET /me includes account country', typeof me.json?.user?.country === 'string')
 
     const anonMe = await call('GET', '/api/auth/me')
     ok('GET /me without session → user null', anonMe.json?.user === null)
+  }
+
+  console.log('\n== 1b. Multi-country phones + Bearer transport ==')
+  {
+    // Seeded dev fixtures: same local-format numbers a real user would type.
+    const ugLogin = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
+    ok('Ugandan local number 0772123456 logs in (no country chosen)', ugLogin.status === 200 && ugLogin.json?.user?.phone === '+256772123456')
+
+    const tzLogin = await call('POST', '/api/auth/login', { phone: '0712345678', password: 'demo1234' })
+    ok('Tanzanian local number 0712345678 logs in', tzLogin.status === 200 && tzLogin.json?.user?.phone === '+255712345678')
+
+    const keLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' })
+    ok('Kenyan local number 0712000001 still logs in', keLogin.status === 200 && keLogin.json?.user?.phone === '+254712000001')
+
+    // Register a Ugandan account with country declared.
+    const ug: Jar = { cookie: '' }
+    const ugPhone = `077${String(Math.floor(1000000 + Math.random() * 8999999))}`.slice(0, 10)
+    const ugReg = await register(ug, ugPhone, 'Kampala Tester', 'password123', 'UG')
+    ok('register with country=UG creates +256 account (201)', ugReg.status === 201 && ugReg.json?.user?.phone?.startsWith('+256'))
+
+    // Bearer-only transport: session survives with the cookie completely blocked.
+    const bearer: Jar = { cookie: '', token: ugLogin.json.sessionToken }
+    const meBearer = await call('GET', '/api/auth/me', undefined, bearer)
+    ok('Bearer header authenticates without any cookie (iframe safety)', meBearer.json?.user?.phone === '+256772123456')
+
+    const anonCreate = await call('POST', '/api/listings', validListing)
+    ok('Bearer-less anon create still 401', anonCreate.status === 401)
+
+    const bearerLogout = await call('POST', '/api/auth/logout', undefined, bearer)
+    const meAfterBearerLogout = await call('GET', '/api/auth/me', undefined, bearer)
+    ok('logout revokes the Bearer-only session too', bearerLogout.status === 200 && meAfterBearerLogout.json?.user === null)
   }
 
   console.log('\n== 2. Listing creation & validation ==')
@@ -153,6 +192,15 @@ async function main() {
     ok('valid create → 201 with persisted record', created.status === 201 && created.json?.listing?.id)
     createdListingId = created.json.listing.id
     ok('server ignores client-supplied status/ownership', created.json.listing.status === 'ACTIVE' && created.json.listing.userId === alice.user!.id)
+
+    const ugListing = await call('POST', '/api/listings', { ...validListing, price: 18000, currency: 'UGX', country: 'UG', county: 'Kampala', contactPhone: '0772123456' }, alice)
+    ok('UGX listing in Kampala with local UG phone → 201', ugListing.status === 201 && ugListing.json?.listing?.currency === 'UGX' && ugListing.json?.listing?.contactPhone === '+256772123456')
+
+    const mismatch = await call('POST', '/api/listings', { ...validListing, country: 'UG', county: 'Nairobi' }, alice)
+    ok('KE location on a UG listing → 400 (country/location match enforced)', mismatch.status === 400)
+
+    const badCurrency = await call('POST', '/api/listings', { ...validListing, currency: 'USD' }, alice)
+    ok('unsupported currency → 400', badCurrency.status === 400)
   }
 
   console.log('\n== 3. Search, filters, pagination ==')
@@ -354,7 +402,7 @@ async function main() {
 
     const testRes = await call('POST', '/api/settings/postgres/test', undefined, alice)
     ok('test connection runs and reports honestly', testRes.status === 200 && typeof testRes.json?.ok === 'boolean')
-    ok('unreachable host → ok=false with a real reason', testRes.json.ok === false && typeof testRes.json.message === 'string' && testRes.json.message.length > 0)
+    ok('unreachable host → ok=false with a real reason', testRes.status === 200 && testRes.json?.ok === false && typeof testRes.json?.message === 'string' && testRes.json.message.length > 0)
 
     const bobTest = await call('POST', '/api/settings/postgres/test', undefined, bob)
     ok('deployment config is global: any signed-in user can test it', bobTest.status === 200)
