@@ -136,3 +136,20 @@ Work Log:
 Stage Summary:
 - Duuka now has a real shop space: every seller gets a public catalogue page with their identity, honest completeness badge, direct contact and discounts; every browse card carries shop + Call + WhatsApp in one tap; new sellers get a one-time guided setup. 106/106 tests, tsc + eslint clean, zero console errors.
 - Logins unchanged: 0772123456 / 0776123456 / 0758123456 (UG), 0712345678 (TZ), 0712000001..04 (KE) — password demo1234.
+
+---
+Task ID: 7-b
+Agent: main (Super Z)
+Task: Post-session-restore health verification of Task 7 delivery (user confirmed "yeah, this will work")
+
+Work Log:
+- Context was restored from a summary; verified on disk that ALL Task 7 artifacts exist: Listing.compareAtPrice in schema, /api/shops/[id]/route.ts, src/lib/shop.ts, shop-view.tsx, shop-setup-dialog.tsx.
+- dev.log tail showed a stale "Unknown argument `photos`" error — timestamped 3h earlier (historical, from pre-restart test run). Live write test on the RUNNING server: login 200 → POST /api/listings 201 with photos accepted → probe deleted. Server process has the fresh Prisma client; no restart needed.
+- Full re-verification: 106/106 API tests, tsc --noEmit clean, eslint clean.
+- Browser E2E via :81 (390x844): browse cards show shop chip + Call (verified href tel:+256776123456) + Chat (verified wa.me with listing-quoted prefill); shop page #/shop/[id] renders hero photo, "Complete shop profile" badge, hours, Call/WhatsApp, "In this shop (3)" catalogue with matooke USh 18,000 + struck-through 22,000 + −18% chip + "250 bunches" (pluralization fix live); detail page shows was-price, discount chip, "Visit Nakato Fresh Produce's shop"; Account shows 5/5 checklist progressbar + "Looking good" trust state + "View my shop". Zero console errors. Screenshot: scripts/verify-shop-space.png.
+- Found and fixed feed pollution: the test-suite run leaves "Alice Test Shop"/"Test copper scrap offering" rows — ran scripts/cleanup-test-data.ts → removed 5 users + 4 listings, back to 8 shops / 16 listings. NOTE for every future session: ALWAYS run cleanup after test-api.ts.
+- LOGIN MAPPING CORRECTION (live DB): 0776123456 = Kampalamart Scrap Dealers (tel +256776123456), 0772123456 = Nakato Fresh Produce, 0758123456 = Jinja Hardware Centre. Earlier worklog notes had 0772/0776 swapped. All passwords demo1234; all logins verified working.
+
+Stage Summary:
+- Task 7 delivery CONFIRMED healthy end-to-end after context restore: features live, tests green, zero console errors, feed clean. No code changes required in this pass.
+
