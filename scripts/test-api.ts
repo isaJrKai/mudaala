@@ -7,7 +7,9 @@
  * Covers: auth (cookie AND Bearer transport, UG/TZ/KE phones), ownership
  * enforcement (positive AND negative), validation, currency handling, status
  * transition rules, refresh cooldown, expiry sweep, saved-search matching +
- * permissions, notification permissions, postgres settings masking.
+ * permissions, notification permissions, postgres settings masking, photos +
+ * shop identity, public shop catalogue, discount (old-price) rules, shop
+ * completeness checklist.
  */
 import { PrismaClient } from '@prisma/client'
 
@@ -307,6 +309,89 @@ async function main() {
     ok('profile rejects hostile photoUrl → 400', badPhotoProfile.status === 400)
 
     await call('DELETE', `/api/listings/${withPhotos.json.listing.id}`, undefined, alice)
+  }
+
+  console.log('\n== 3c. Shop page (public catalogue), discounts & checklist ==')
+  {
+    // Alice's profile exists from 3b: photo set, description/area/hours/whatsapp empty.
+    const anonProfile = await call('GET', '/api/profile')
+    ok('profile checklist requires sign-in → 401', anonProfile.status === 401)
+
+    const profileState = await call('GET', '/api/profile', undefined, alice)
+    ok('profile returns honest checklist + complete flag', profileState.status === 200
+      && profileState.json?.checklist?.photo === true
+      && profileState.json?.checklist?.description === false
+      && profileState.json?.complete === false)
+
+    // Discount listing: valid (old price above current price).
+    const discount = await call('POST', '/api/listings', {
+      ...validListing,
+      title: 'Discounted maize beams test',
+      price: 500,
+      compareAtPrice: 800,
+    }, alice)
+    ok('create with valid old price → 201, serializer returns compareAtPrice',
+      discount.status === 201 && discount.json?.listing?.compareAtPrice === 800)
+
+    // Discount rules: old price must beat the current price, and need one.
+    const badDiscount = await call('POST', '/api/listings', {
+      ...validListing,
+      title: 'Fake discount must be rejected',
+      price: 500,
+      compareAtPrice: 400,
+    }, alice)
+    ok('old price below current price → 400 with field error',
+      badDiscount.status === 400 && Boolean(badDiscount.json?.fields?.compareAtPrice))
+
+    const orphanDiscount = await call('POST', '/api/listings', {
+      ...validListing,
+      title: 'Old price without current price',
+      price: null,
+      priceNegotiable: true,
+      compareAtPrice: 800,
+    }, alice)
+    ok('old price without a current price → 400', orphanDiscount.status === 400)
+
+    // PATCH: clear then set the discount against the merged record.
+    const cleared = await call('PATCH', `/api/listings/${discount.json.listing.id}`, { compareAtPrice: null }, alice)
+    ok('PATCH clears old price (null)', cleared.status === 200 && cleared.json?.listing?.compareAtPrice === null)
+    const reDiscount = await call('PATCH', `/api/listings/${discount.json.listing.id}`, { compareAtPrice: 900 }, alice)
+    ok('PATCH sets old price (900)', reDiscount.status === 200 && reDiscount.json?.listing?.compareAtPrice === 900)
+    const badPatch = await call('PATCH', `/api/listings/${discount.json.listing.id}`, { compareAtPrice: 100 }, alice)
+    ok('PATCH old price below price → 400', badPatch.status === 400 && Boolean(badPatch.json?.fields?.compareAtPrice))
+
+    // Public shop page: no sign-in, catalogue only from this shop, ACTIVE only.
+    const shopAnon = await call('GET', `/api/shops/${alice.user?.id ?? ''}`)
+    ok('shop page is public (no auth)', shopAnon.status === 200)
+    const shopBody = shopAnon.json
+    ok('shop name uses the seller-chosen business name', shopBody?.shop?.name === 'Alice Test Shop')
+    ok('shop exposes no password material', !JSON.stringify(shopBody).includes('passwordHash'))
+    ok('shop catalogue contains only this seller ACTIVE listings',
+      Array.isArray(shopBody?.listings)
+      && shopBody.listings.every((l: any) => l.userId === alice.user?.id && l.status === 'ACTIVE')
+      && shopBody.listings.some((l: any) => l.id === discount.json.listing.id))
+    ok('shop checklist mirrors profile truth (complete=false, photo=true)',
+      shopBody?.shop?.checklist?.photo === true && shopBody?.shop?.complete === false)
+    ok('shop contact phone present for buyers', typeof shopBody?.shop?.phone === 'string' && shopBody.shop.phone.startsWith('+'))
+
+    const shopGhost = await call('GET', '/api/shops/does-not-exist')
+    ok('unknown shop → 404', shopGhost.status === 404)
+
+    // Bob lists something; it must NOT appear in Alice's catalogue.
+    const bob: Jar = { cookie: '' }
+    await register(bob, uniquePhone(), 'Bob Stranger', 'password456')
+    const bobListing = await call('POST', '/api/listings', { ...validListing, title: 'Bob unrelated stock item' }, bob)
+    const shopAfter = await call('GET', `/api/shops/${alice.user?.id}`)
+    ok('other sellers listings never leak into a shop catalogue',
+      shopAfter.status === 200 && !shopAfter.json.listings.some((l: any) => l.id === bobListing.json?.listing?.id))
+
+    // Fulfilled listings drop out of the catalogue (only ACTIVE is shown).
+    await call('PATCH', `/api/listings/${discount.json.listing.id}`, { status: 'FULFILLED' }, alice)
+    const shopAfterFulfil = await call('GET', `/api/shops/${alice.user?.id}`)
+    ok('fulfilled listing leaves the shop catalogue',
+      shopAfterFulfil.status === 200 && !shopAfterFulfil.json.listings.some((l: any) => l.id === discount.json.listing.id))
+
+    await call('DELETE', `/api/listings/${bobListing.json.listing.id}`, undefined, bob)
   }
 
   console.log('\n== 4. Ownership & permission boundaries ==')

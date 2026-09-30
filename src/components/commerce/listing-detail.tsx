@@ -128,6 +128,19 @@ export function ListingDetail({ id }: { id: string }) {
             <p className="text-2xl font-bold text-primary">
               {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
             </p>
+            {/* A real discount: the struck-through "was" price says exactly what
+                it is — no fake crossed-out prices can render here, because the
+                API rejects old prices that are not higher than the current one. */}
+            {listing.price !== null && listing.compareAtPrice !== null && listing.compareAtPrice > listing.price ? (
+              <>
+                <span className="text-sm text-muted-foreground line-through">
+                  was {formatPrice(listing.compareAtPrice, null, listing.currency)}
+                </span>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
+                  −{Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)}%
+                </span>
+              </>
+            ) : null}
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
           </div>
 
@@ -261,6 +274,14 @@ export function ListingDetail({ id }: { id: string }) {
             </p>
           </div>
         </div>
+        <Button
+          variant="outline"
+          className="mt-3 w-full gap-1.5"
+          onClick={() => navigate({ name: 'shop', id: listing.userId })}
+          aria-label={`Visit ${shopDisplayName}'s shop`}
+        >
+          <Store className="size-4" aria-hidden /> Visit {shopDisplayName}'s shop
+        </Button>
         {listing.user.profile?.description ? (
           <p className="mt-2.5 text-sm text-muted-foreground">{listing.user.profile.description}</p>
         ) : null}

@@ -20,8 +20,9 @@ export function formatPrice(
 export function formatQuantity(quantity: number | null | undefined, unit?: string | null): string | null {
   if (quantity === null || quantity === undefined || !unit) return null
   const amount = new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(quantity)
-  // "kg" is already mass-plural; word units get an "s" above 1 ("3 crates").
-  const displayUnit = quantity === 1 || unit === 'kg' ? unit : `${unit}s`
+  // "kg" is already mass-plural. Words ending in s/x/z/ch/sh take "es"
+  // ("3 bunches"), everything else takes "s" ("300 crates").
+  const displayUnit = quantity === 1 || unit === 'kg' ? unit : /(s|x|z|ch|sh)$/.test(unit) ? `${unit}es` : `${unit}s`
   return `${amount} ${displayUnit}`
 }
 

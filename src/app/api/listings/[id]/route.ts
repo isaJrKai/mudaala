@@ -104,7 +104,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       title: data.title ?? listing.title,
       description: data.description ?? listing.description,
       category: data.category ?? listing.category,
-      price: 'price' in data ? data.price : listing.price,
+      price: 'price' in data && data.price !== undefined ? data.price : listing.price,
+      compareAtPrice: 'compareAtPrice' in data ? (data.compareAtPrice ?? null) : listing.compareAtPrice,
       currency: data.currency ?? listing.currency,
       priceNegotiable: data.priceNegotiable ?? listing.priceNegotiable,
       unit: 'unit' in data ? data.unit : listing.unit,
@@ -122,6 +123,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     if (merged.price !== null && merged.unit === null) {
       throw new ApiError(400, 'Choose the unit the price refers to', { unit: 'Choose the unit the price refers to' })
+    }
+    // Discount rules against the merged record (partials cannot be judged alone).
+    if (merged.compareAtPrice !== null && merged.price === null) {
+      throw new ApiError(400, 'Add the current price first — the old price only shows as a discount next to it', {
+        compareAtPrice: 'Add the current price first — the old price only shows as a discount next to it',
+      })
+    }
+    if (merged.compareAtPrice !== null && merged.price !== null && merged.compareAtPrice <= merged.price) {
+      throw new ApiError(400, 'The old price must be higher than the current price', {
+        compareAtPrice: 'The old price must be higher than the current price',
+      })
     }
 
     const updated = await db.listing.update({

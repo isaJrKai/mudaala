@@ -131,7 +131,12 @@ export function ListingsBrowse() {
             {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
           </p>
           {data.items.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onOpen={(id) => navigate({ name: 'listing', id })} />
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              onOpen={(id) => navigate({ name: 'listing', id })}
+              onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+            />
           ))}
 
           {data.pageCount > 1 ? (

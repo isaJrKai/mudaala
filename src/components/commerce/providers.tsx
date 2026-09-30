@@ -7,6 +7,7 @@ import { BottomNav } from './bottom-nav'
 import { AuthDialog } from './auth-dialog'
 import { ListingsBrowse } from './listings-browse'
 import { ListingDetail } from './listing-detail'
+import { ShopView } from './shop-view'
 import { PublishForm, EditListingForm } from './publish-form'
 import { MyListings } from './my-listings'
 import { SavedSearches } from './saved-searches'
@@ -37,6 +38,8 @@ function CurrentView() {
   switch (view.name) {
     case 'listing':
       return view.id ? <ListingDetail id={view.id} /> : <ListingsBrowse />
+    case 'shop':
+      return view.id ? <ShopView id={view.id} /> : <ListingsBrowse />
     case 'publish':
       return <PublishForm />
     case 'edit':

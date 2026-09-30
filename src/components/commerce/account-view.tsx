@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { User, Settings, LogOut, Store, Info } from 'lucide-react'
+import { BadgeCheck, CheckCircle2, Circle, User, Settings, LogOut, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -72,8 +72,11 @@ export function AccountView() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" className="gap-1.5" onClick={() => navigate({ name: 'shop', id: user.id })}>
+          <Store className="size-4" aria-hidden /> View my shop
+        </Button>
         <Button variant="outline" className="gap-1.5" onClick={() => navigate({ name: 'my-listings' })}>
-          <Store className="size-4" aria-hidden /> My listings
+          <User className="size-4" aria-hidden /> My listings
         </Button>
         <Button variant="outline" className="gap-1.5" onClick={() => navigate({ name: 'settings' })}>
           <Settings className="size-4" aria-hidden /> Settings
@@ -197,11 +200,11 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <p className="mt-0.5 text-sm text-muted-foreground">
           This is your space on Duuka — give it the name of your shop. Buyers see it on every listing you post.
         </p>
-        <p className="mt-1.5 flex items-start gap-1.5 rounded-md border bg-secondary/40 px-2.5 py-2 text-xs text-muted-foreground">
-          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          Verification is not offered yet, so no “verified” badge is shown to anyone.
-        </p>
       </div>
+
+      {/* Verify your shop — honest completeness. Each tick is something the
+          seller actually filled in; no platform vetting is claimed. */}
+      <ShopChecklist form={form} />
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
         <PhotoPicker value={form.photoUrl ? [form.photoUrl] : []} onChange={(photos) => set('photoUrl', photos[0] ?? '')} max={1} single />
@@ -284,5 +287,71 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         {busy ? 'Saving…' : 'Save shop'}
       </Button>
     </form>
+  )
+}
+
+// The "verify my shop" moment, told honestly: a shop is complete when its
+// photo, story, place, hours and WhatsApp are all filled in. The checklist
+// updates live as the seller types — ticks appear before they even save.
+function ShopChecklist({ form }: { form: ProfileFormState }) {
+  const items: { key: string; label: string; done: boolean }[] = [
+    { key: 'photo', label: 'Shop photo', done: form.photoUrl.trim() !== '' },
+    { key: 'description', label: 'About the shop', done: form.description.trim() !== '' },
+    { key: 'area', label: 'Location area', done: form.area.trim() !== '' },
+    { key: 'hours', label: 'Opening hours', done: form.hours.trim() !== '' },
+    { key: 'whatsapp', label: 'WhatsApp number', done: form.whatsapp.trim() !== '' },
+  ]
+  const done = items.filter((i) => i.done).length
+  const complete = done === items.length
+
+  return (
+    <div
+      className={complete ? 'rounded-lg border border-emerald-600/30 bg-emerald-50/60 p-3.5' : 'rounded-lg border bg-secondary/30 p-3.5'}
+      aria-label="Shop completeness checklist"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-semibold">
+          {complete ? (
+            <BadgeCheck className="size-4 text-emerald-700" aria-hidden />
+          ) : (
+            <CheckCircle2 className="size-4 text-muted-foreground" aria-hidden />
+          )}
+          {complete ? 'Shop details complete' : 'Complete your shop'}
+        </p>
+        <span className={complete ? 'text-sm font-bold text-emerald-800' : 'text-sm font-semibold text-muted-foreground'}>
+          {done}/{items.length}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {complete
+          ? 'Buyers see the ✓ Complete badge on your shop page.'
+          : 'Shops with complete details look real — buyers call them with confidence.'}
+      </p>
+      <div
+        className="mt-2 h-1.5 overflow-hidden rounded-full bg-border"
+        role="progressbar"
+        aria-valuenow={done}
+        aria-valuemin={0}
+        aria-valuemax={items.length}
+        aria-label={`${done} of ${items.length} shop details complete`}
+      >
+        <div
+          className={complete ? 'h-full rounded-full bg-emerald-600' : 'h-full rounded-full bg-primary'}
+          style={{ width: `${(done / items.length) * 100}%` }}
+        />
+      </div>
+      <ul className="mt-2.5 grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+        {items.map((item) => (
+          <li key={item.key} className={item.done ? 'flex items-center gap-1.5' : 'flex items-center gap-1.5 text-muted-foreground'}>
+            {item.done ? (
+              <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-label="done" />
+            ) : (
+              <Circle className="size-4 shrink-0 text-muted-foreground/50" aria-label="not done yet" />
+            )}
+            <span className={item.done ? 'font-medium' : ''}>{item.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

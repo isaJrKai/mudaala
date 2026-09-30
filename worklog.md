@@ -115,3 +115,24 @@ Work Log:
 Stage Summary:
 - CONFIRMED: tapping "Call seller" navigates to tel:+XXXXXXXXXXXX — on Android/iOS this opens the native dialer with the number pre-filled (user just presses call). Desktop preview won't dial (no dialer on desktops) — the number is also shown as plain text above the button as fallback.
 - No code changes needed; behavior was already correct. Task 6 features all verified green.
+
+---
+Task ID: 7
+Agent: main (Super Z)
+Task: "shop catalogue space + discounts + verify-my-shop + onboarding + quick-call buttons on browse cards"
+
+Work Log:
+- Schema: Listing.compareAtPrice (optional "was" price) added, db pushed, client regenerated. Had to RESTART the dev server — the running process held the stale Prisma client and every create 500'd until restart (silent lesson recorded here).
+- Discounts (honest by construction): listingCreateSchema + PATCH merged-record rules — an old price requires a current price and must be strictly higher, else 400 with a compareAtPrice field error. Browse cards + detail render struck-through was-price + −N% chip only when compareAtPrice > price, so fake crossed-out prices cannot exist. Publish + Edit forms have an "Old price (optional)" field (disabled/cleared for REQUEST). Seed: matooke 18000/22000, cement 32000/36000, sunflower oil 58000/65000 (scripts/apply-seed-discounts.ts updates live DB without wiping; seed.ts updated for future reseeds).
+- Shop page (the seller's special space): new public GET /api/shops/[id] → shop identity + checklist + complete flag + full ACTIVE catalogue (orders by freshness, includes owner identity, never leaks other sellers or non-ACTIVE rows). New lib/shop.ts (shopChecklistFor/getShopPage). New ShopView (hash #/shop/[id], store.ts + providers wired): hero (photo, name, location, hours, description), honest chips ("Complete shop profile" badge OR "Profile n/5 complete", listings count, member-since), Call/WhatsApp shop buttons (tel:/wa.me plain links), "In this shop (N)" catalogue. Entry points: browse card shop chip, detail "Visit {shop}'s shop" button, Account "View my shop".
+- Quick-call on browse cards: ListingCard restructured — main card button (photo/title/price/discount/meta) + footer bar on browse: shop chip (avatar+name → shop page), compact Call (tel:) and Chat (wa.me) links with full aria labels; owner cards (My Listings) keep the owner actions strip; shop-catalogue cards omit the bar (already inside the shop).
+- Verify-my-shop (honest): Account "My Shop" gets a live ShopChecklist card (photo/description/area/hours/whatsapp, n/5 progress bar, emerald complete state) that ticks AS the seller types; profile GET returns {checklist, complete}; public shop shows the matching badge. No fake platform-vetting claims anywhere (verified flag stays false by design).
+- Onboarding: ShopSetupDialog — one-time "Welcome to Duuka, {name}" with up to 3 friendly asks; shown only for signed-in users with an incomplete shop; "Later" persists via localStorage key duuka_shop_setup_dismissed; open state is fully DERIVED (useSyncExternalStore over localStorage + derived open boolean, zero setState-in-effect — satisfies react-hooks/set-state-in-effect, hydration-safe).
+- Real bug found in E2E: "250 bunchs" — formatQuantity pluralized every unit with +s. Fixed: s/x/z/ch/sh → es ("bunches").
+- Tests: new section 3c — profile 401/checklist, discount create/PATCH rules (valid, below-price, orphan, clear/set), shop page public/404/name/no-password-leak/catalogue purity/cross-seller isolation/FULFILLED-exclusion/phone present. 89 → 106 tests, all passing.
+- E2E via agent-browser through :81: browse card bar (shop chip navigates to #/shop/[id], Call → tel:+256…, Chat → wa.me with prefill); shop page hero + "Complete shop profile" + catalogue with −18% discount; detail "Visit shop" → shop; fresh account register → onboarding dialog appeared → "Set up my shop" → Account checklist 0/5 → filled fields → saved → 4/5 → Grace's public shop shows "Profile 4/5 complete"; "Later" dismissal persisted across reload; mobile 375px: no horizontal overflow on browse or shop, bottom nav intact; zero console errors.
+- Cleanup re-run: 8 seeded shops / 16 seed listings restored.
+
+Stage Summary:
+- Duuka now has a real shop space: every seller gets a public catalogue page with their identity, honest completeness badge, direct contact and discounts; every browse card carries shop + Call + WhatsApp in one tap; new sellers get a one-time guided setup. 106/106 tests, tsc + eslint clean, zero console errors.
+- Logins unchanged: 0772123456 / 0776123456 / 0758123456 (UG), 0712345678 (TZ), 0712000001..04 (KE) — password demo1234.

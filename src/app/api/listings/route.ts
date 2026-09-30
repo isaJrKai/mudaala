@@ -79,6 +79,7 @@ export async function POST(request: Request) {
         description: data.description,
         category: data.category,
         price: data.price,
+        compareAtPrice: data.compareAtPrice ?? null,
         currency,
         priceNegotiable: data.priceNegotiable,
         unit: data.unit,
