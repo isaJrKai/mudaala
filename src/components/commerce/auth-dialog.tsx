@@ -207,10 +207,11 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
           id="reg-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Nakato Fresh Produce"
+          placeholder="e.g. Nalongo Hardware"
           maxLength={80}
           required
         />
+        <p className="text-xs text-muted-foreground">This is the name buyers will see on your listings.</p>
         {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
       </div>
       <div className="space-y-1.5">

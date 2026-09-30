@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
 import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
-import { expireOverdueListings, getOwnedListingOr404, buildSearchText } from '@/lib/listings'
+import { expireOverdueListings, getOwnedListingOr404, buildSearchText, sanitizePhotos, serializeListing } from '@/lib/listings'
 import { LISTING_ACTIVE_DAYS, countryDef } from '@/lib/constants'
 
 type Params = { params: Promise<{ id: string }> }
@@ -20,7 +20,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     db.listing.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => undefined)
 
     const { passwordHash: _passwordHash, ...owner } = listing.user
-    return jsonOk({ listing: { ...listing, user: owner } })
+    return jsonOk({ listing: { ...serializeListing(listing), user: owner } })
   })
 }
 
@@ -114,6 +114,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       area: 'area' in data ? data.area : listing.area,
       contactPhone,
       contactWhatsapp,
+      photos: 'photos' in data ? JSON.stringify(sanitizePhotos(data.photos)) : listing.photos,
     }
 
     if (merged.price === null && !merged.priceNegotiable) {
@@ -136,7 +137,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         }),
       },
     })
-    return jsonOk({ listing: updated })
+    return jsonOk({ listing: serializeListing(updated) })
   })
 }
 

@@ -77,8 +77,63 @@ export interface SearchOptions {
   includeStatuses?: string[]
 }
 
+// The shop identity every buyer should see next to a listing: the named
+// business profile (shop name + shop photo), falling back to the account name.
+export const SHOP_OWNER_INCLUDE = {
+  user: {
+    select: {
+      id: true,
+      name: true,
+      profile: { select: { businessName: true, photoUrl: true } },
+    },
+  },
+} as const
+
+export type ListingWithShop = Prisma.ListingGetPayload<{ include: typeof SHOP_OWNER_INCLUDE }>
+
+// A listing as it leaves the API: the stored JSON photos string becomes a
+// real array.
+export type Serialized<L extends { photos: string }> = Omit<L, 'photos'> & { photos: string[] }
+
+// Stored photos are a JSON array of URL strings; corrupt data degrades to [].
+export function parsePhotos(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((v): v is string => typeof v === 'string' && v.length > 0 && v.length <= 500)
+      .slice(0, 4)
+  } catch {
+    return []
+  }
+}
+
+// Client-supplied photo lists are never trusted: keep only valid URL shapes,
+// dedupe, cap at 4. Entries come from our own upload API (/uploads/...) or
+// are pasted http(s) links.
+export function sanitizePhotos(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const out: string[] = []
+  for (const v of input) {
+    if (typeof v !== 'string') continue
+    const t = v.trim()
+    if (t.length === 0 || t.length > 500) continue
+    const allowed = t.startsWith('/uploads/') || /^https?:\/\/\S+$/i.test(t)
+    if (allowed && !out.includes(t)) out.push(t)
+    if (out.length >= 4) break
+  }
+  return out
+}
+
+// Serialize a listing for the API: photos become a real array.
+export function serializeListing<T extends { photos: string }>(listing: T): Serialized<T> {
+  const { photos, ...rest } = listing
+  return { ...rest, photos: parsePhotos(photos) }
+}
+
 export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: SearchOptions): Promise<{
-  items: Listing[]
+  items: Serialized<ListingWithShop>[]
   total: number
   page: number
   pageSize: number
@@ -106,16 +161,18 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
   const orderBy: Prisma.ListingOrderByWithRelationInput =
     query.sort === 'price_asc' ? { price: 'asc' } : query.sort === 'price_desc' ? { price: 'desc' } : { refreshedAt: 'desc' }
 
-  const [items, total] = await Promise.all([
+  const [rows, total] = await Promise.all([
     db.listing.findMany({
       where,
       orderBy: [orderBy],
       skip: (page - 1) * pageSize,
       take: pageSize,
+      include: SHOP_OWNER_INCLUDE,
     }),
     db.listing.count({ where }),
   ])
 
+  const items = rows.map(serializeListing)
   return { items, total, page, pageSize, pageCount: Math.max(1, Math.ceil(total / pageSize)) }
 }
 

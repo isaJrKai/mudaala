@@ -18,6 +18,7 @@ import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { ErrorState } from './listings-browse'
 import { ListingListSkeleton } from './skeletons'
+import { PhotoPicker } from './photo-picker'
 import { cn } from '@/lib/utils'
 
 interface FormState {
@@ -34,6 +35,7 @@ interface FormState {
   area: string
   contactPhone: string
   contactWhatsapp: string
+  photos: string[]
 }
 
 const EMPTY_FORM: FormState = {
@@ -50,6 +52,7 @@ const EMPTY_FORM: FormState = {
   area: '',
   contactPhone: '',
   contactWhatsapp: '',
+  photos: [],
 }
 
 // Publish (and edit) a listing. Required fields are validated with the SAME
@@ -125,6 +128,7 @@ export function PublishForm() {
       area: form.area.trim() === '' ? null : form.area.trim(),
       contactPhone: form.contactPhone,
       contactWhatsapp: form.contactWhatsapp.trim() === '' ? null : form.contactWhatsapp.trim(),
+      photos: form.photos,
     }
   }
 
@@ -232,6 +236,10 @@ export function PublishForm() {
           }
           required
         />
+      </Field>
+
+      <Field label="Photos" htmlFor="p-photos" hint="Real photos get more calls — buyers trust what they can see">
+        <PhotoPicker value={form.photos} onChange={(photos) => set('photos', photos)} max={4} />
       </Field>
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
@@ -420,6 +428,7 @@ export function EditListingForm({ id }: { id: string }) {
           area: listing.area ?? '',
           contactPhone: listing.contactPhone,
           contactWhatsapp: listing.contactWhatsapp ?? '',
+          photos: listing.photos ?? [],
         })
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : 'Could not load listing'))
@@ -476,6 +485,7 @@ export function EditListingForm({ id }: { id: string }) {
       area: form.area.trim() === '' ? null : form.area.trim(),
       contactPhone: form.contactPhone,
       contactWhatsapp: form.contactWhatsapp.trim() === '' ? null : form.contactWhatsapp.trim(),
+      photos: form.photos,
     }
 
     const parsed = listingCreateSchema.safeParse({ ...payload, type: current.type })
@@ -529,6 +539,10 @@ export function EditListingForm({ id }: { id: string }) {
 
       <Field label="Description" htmlFor="e-desc" error={errors.description} hint={`${form.description.length}/2000`}>
         <Textarea id="e-desc" value={form.description} onChange={(e) => set('description', e.target.value)} rows={5} maxLength={2000} required />
+      </Field>
+
+      <Field label="Photos" htmlFor="e-photos" hint="Real photos get more calls">
+        <PhotoPicker value={form.photos} onChange={(photos) => set('photos', photos)} max={4} />
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

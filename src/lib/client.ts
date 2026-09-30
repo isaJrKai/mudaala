@@ -34,7 +34,10 @@ export function clearSessionToken(): void {
 
 export async function apiFetch<T>(input: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
-  if (!headers.has('Content-Type') && init?.body) headers.set('Content-Type', 'application/json')
+  // FormData (photo uploads) must keep the browser-generated multipart
+  // boundary — never stamp a JSON content-type over it.
+  const isMultipart = typeof FormData !== 'undefined' && init?.body instanceof FormData
+  if (!headers.has('Content-Type') && init?.body && !isMultipart) headers.set('Content-Type', 'application/json')
   const token = getStoredSessionToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
@@ -85,6 +88,7 @@ export interface Listing {
   area: string | null
   contactPhone: string
   contactWhatsapp: string | null
+  photos: string[]
   status: ListingStatus
   viewCount: number
   publishedAt: string
@@ -96,6 +100,7 @@ export interface BusinessProfileT {
   id: string
   userId: string
   businessName: string
+  photoUrl: string | null
   category: string | null
   description: string | null
   county: string | null
@@ -113,6 +118,15 @@ export interface ListingOwner {
   createdAt: string
   profile: BusinessProfileT | null
 }
+
+// Shop identity attached to search/browse results — who is selling this?
+export interface ListingShopOwner {
+  id: string
+  name: string
+  profile: { businessName: string; photoUrl: string | null } | null
+}
+
+export type ListingWithShop = Listing & { user: ListingShopOwner }
 
 export interface ListingDetail extends Listing {
   user: ListingOwner

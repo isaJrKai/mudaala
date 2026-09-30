@@ -8,6 +8,8 @@ import {
   searchListings,
   buildSearchText,
   notifySavedSearchMatches,
+  sanitizePhotos,
+  serializeListing,
 } from '@/lib/listings'
 import { LISTING_ACTIVE_DAYS, countryDef, currencyDef } from '@/lib/constants'
 
@@ -86,6 +88,7 @@ export async function POST(request: Request) {
         area: data.area,
         contactPhone,
         contactWhatsapp,
+        photos: JSON.stringify(sanitizePhotos(data.photos)),
         status: 'ACTIVE',
         searchText: buildSearchText({
           title: data.title,
@@ -105,6 +108,6 @@ export async function POST(request: Request) {
       console.error('[listings] saved-search match failed:', err),
     )
 
-    return jsonOk({ listing }, 201)
+    return jsonOk({ listing: serializeListing(listing) }, 201)
   })
 }
