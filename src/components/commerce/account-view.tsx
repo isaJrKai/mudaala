@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BadgeCheck, CheckCircle2, Circle, User, Settings, LogOut, Store } from 'lucide-react'
+import { BadgeCheck, CheckCircle2, Circle, Info, User, Settings, LogOut, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,6 +31,17 @@ interface ProfileFormState {
   phone: string
   whatsapp: string
   hours: string
+}
+
+// Debounce a changing value (shop-name typing) without setState-in-effect:
+// the update happens inside the timer callback, never synchronously.
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs)
+    return () => clearTimeout(t)
+  }, [value, delayMs])
+  return debounced
 }
 
 // Account: sign-in state, optional business profile, links to settings.
@@ -143,8 +154,29 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     }
   }, [data, hydrated, user])
 
+  // Live same-name guard: while the seller types a shop name that another
+  // shop already uses, say so gently and point at the fix (add your area).
+  // Their own saved name never triggers it; the check skips while typing.
+  // Hooks stay above the early returns — they run on every render.
+  const savedName = (data?.profile?.businessName ?? '').trim()
+  const currentName = form.businessName.trim()
+  const debouncedName = useDebounced(currentName, 450)
+  const checkedName = debouncedName.length >= 2 && debouncedName !== savedName ? debouncedName : ''
+  const { data: nameCheck } = useQuery({
+    queryKey: ['check-shop-name', checkedName],
+    queryFn: () =>
+      apiGet<{ taken: boolean; matches: { area: string | null; county: string | null }[] }>(
+        `/api/shops/check-name?name=${encodeURIComponent(checkedName)}&exclude=${user.id}`,
+      ),
+    enabled: checkedName !== '',
+    staleTime: 30_000,
+  })
+
   if (isLoading) return <ListingListSkeleton count={1} />
   if (isError) return <ErrorState message={error instanceof Error ? error.message : 'Could not load profile'} onRetry={() => refetch()} />
+
+  const nameClash = checkedName !== '' && nameCheck?.taken === true
+  const clashPlace = [nameCheck?.matches?.[0]?.area, nameCheck?.matches?.[0]?.county].filter(Boolean).join(', ')
 
   function set<K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -200,6 +232,11 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <p className="mt-0.5 text-sm text-muted-foreground">
           This is your space on Duuka — give it the name of your shop. Buyers see it on every listing you post.
         </p>
+        {data?.profile?.shopCode ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your shop code is <span className="font-mono font-semibold text-foreground">{data.profile.shopCode}</span> — it never changes, so buyers and old posters can always find you.
+          </p>
+        ) : null}
       </div>
 
       {/* Verify your shop — honest completeness. Each tick is something the
@@ -214,6 +251,18 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <Label htmlFor="bp-name">Shop name</Label>
         <Input id="bp-name" value={form.businessName} onChange={(e) => set('businessName', e.target.value)} maxLength={80} required />
         {errors.businessName ? <p role="alert" className="text-sm text-destructive">{errors.businessName}</p> : null}
+        {nameClash ? (
+          <p
+            role="status"
+            className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+          >
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              Another shop already uses this name{clashPlace ? ` in ${clashPlace}` : ''}. You can still use it — buyers tell
+              shops apart by area and shop code — so add your <strong>Area / town</strong> below to make yours easy to recognise.
+            </span>
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

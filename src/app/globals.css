@@ -140,3 +140,22 @@
   .scrollbar-slim::-webkit-scrollbar-thumb { background: oklch(0.82 0.01 90); border-radius: 3px; }
   .scrollbar-slim::-webkit-scrollbar-track { background: transparent; }
 }
+
+/*
+ * Shop QR poster printing: when the seller prints from the poster overlay,
+ * ONLY the poster lands on paper — the app around it disappears. The overlay
+ * is a normal fixed layer on screen (scrollable on small screens) and a clean
+ * full page in print.
+ */
+@media print {
+  body * { visibility: hidden !important; }
+  .shop-poster, .shop-poster * { visibility: visible !important; }
+  .shop-poster {
+    position: fixed !important;
+    inset: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+    padding: 32px !important;
+  }
+  .no-print { display: none !important; }
+}

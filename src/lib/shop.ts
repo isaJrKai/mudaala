@@ -44,12 +44,31 @@ export interface ShopPageData {
     country: string
     phone: string
     whatsapp: string | null
+    // Public identity code ("DK-4821") — stable for the life of the shop.
+    shopCode: string | null
     memberSince: string
     activeCount: number
     checklist: ShopChecklist
     complete: boolean
   }
   listings: ReturnType<typeof serializeListing<ListingWithShop>>[]
+}
+
+// A shop's public identity code: "DK-" + 4 digits, like a mobile-money till
+// number. Assigned once (on profile creation or by the backfill script) and
+// NEVER regenerated — the code is how buyers and printed QR posters find the
+// exact shop even when two shops share a name.
+export async function generateShopCode(): Promise<string> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const candidate = `DK-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
+    const clash = await db.businessProfile.findUnique({
+      where: { shopCode: candidate },
+      select: { id: true },
+    })
+    if (!clash) return candidate
+  }
+  // 10,000 slots — statistically unreachable at any realistic shop count.
+  throw new Error('Could not allocate a unique shop code')
 }
 
 // Load a shop page by the owner's user id. Public — buyers never sign in.
@@ -95,6 +114,7 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       // The shop's contact numbers — the same ones buyers call from listings.
       phone: profile?.phone ?? user.phone,
       whatsapp: profile?.whatsapp ?? null,
+      shopCode: profile?.shopCode ?? null,
       memberSince: user.createdAt.toISOString(),
       activeCount: listings.length,
       checklist,

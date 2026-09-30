@@ -91,3 +91,11 @@ export function mapsSearchUrl(parts: { area?: string | null; county: string; cou
   const query = [parts.area, parts.county, parts.country].filter(Boolean).join(', ')
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
 }
+
+// Shop-name comparison key shared by the server (check-name API) and the
+// client (collision suffix on browse cards). Two names "match" when they are
+// the same after case-folding and whitespace collapse — that is the pair a
+// buyer could confuse.
+export function normalizeShopName(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, ' ').trim()
+}

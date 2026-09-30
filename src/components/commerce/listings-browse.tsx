@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -11,12 +11,43 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPost } from '@/lib/client'
 import type { ListingsPage } from '@/lib/client'
+import { normalizeShopName } from '@/lib/format'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { ListingCard } from './listing-card'
 import { ListingListSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
+
+// Two shops can legally share a name — when they appear in the SAME feed,
+// suffix each with their area so buyers tap the right one. The shop's own
+// location wins (profile area → district), falling back to the listing's.
+function computeShopLabels(items: ListingsPage['items'] | undefined): Map<string, string> {
+  const labels = new Map<string, string>()
+  if (!items) return labels
+
+  const ownerIdsByName = new Map<string, Set<string>>()
+  for (const listing of items) {
+    const owner = listing.user
+    const name = owner?.profile?.businessName?.trim() || owner?.name
+    if (!owner || !name) continue
+    const key = normalizeShopName(name)
+    const ids = ownerIdsByName.get(key) ?? new Set<string>()
+    ids.add(owner.id)
+    ownerIdsByName.set(key, ids)
+  }
+
+  for (const listing of items) {
+    const owner = listing.user
+    const name = owner?.profile?.businessName?.trim() || owner?.name
+    if (!owner || !name) continue
+    const ids = ownerIdsByName.get(normalizeShopName(name))
+    if (!ids || ids.size < 2) continue
+    const area = owner.profile?.area || owner.profile?.county || listing.county
+    labels.set(listing.id, area ? `${name} · ${area}` : name)
+  }
+  return labels
+}
 
 // Browse — the primary user task: find who buys/sells what, nearby.
 export function ListingsBrowse() {
@@ -38,6 +69,8 @@ export function ListingsBrowse() {
     queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}`),
     placeholderData: (prev) => prev,
   })
+
+  const shopLabels = useMemo(() => computeShopLabels(data?.items), [data])
 
   const activeFilterCount = [
     filters.type !== 'any' ? 1 : 0,
@@ -134,6 +167,7 @@ export function ListingsBrowse() {
             <ListingCard
               key={listing.id}
               listing={listing}
+              shopLabel={shopLabels.get(listing.id)}
               onOpen={(id) => navigate({ name: 'listing', id })}
               onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
             />

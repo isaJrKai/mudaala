@@ -97,7 +97,19 @@ async function main() {
     const user = await db.user.create({
       data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234') },
     })
-    await db.businessProfile.create({ data: { userId: user.id, phone: u.phone, whatsapp: u.phone, verified: false, ...u.profile } })
+    // Same rule as src/lib/shop.ts: a unique DK-XXXX identity code, assigned
+    // once and never changed. (Local copy — scripts stay standalone.)
+    let shopCode = ''
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const candidate = `DK-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
+      const clash = await db.businessProfile.findUnique({ where: { shopCode: candidate }, select: { id: true } })
+      if (!clash) {
+        shopCode = candidate
+        break
+      }
+    }
+    if (!shopCode) throw new Error('seed: could not allocate a shop code')
+    await db.businessProfile.create({ data: { userId: user.id, phone: u.phone, whatsapp: u.phone, verified: false, shopCode, ...u.profile } })
     createdUsers.push(user)
   }
 

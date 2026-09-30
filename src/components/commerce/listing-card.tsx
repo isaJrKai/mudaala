@@ -23,6 +23,9 @@ interface ListingCardProps {
   /** When provided (and the listing knows its owner), the buyer bar renders:
    *  shop chip (→ shop page) + Call + WhatsApp. */
   onOpenShop?: (shopId: string) => void
+  /** Overrides the shop display name — the browse feed uses it to tell
+   *  same-name shops apart ("Nakato Fresh Produce · Jinja"). */
+  shopLabel?: string
 }
 
 function ListingPhoto({ listing, className }: { listing: Listing; className?: string }) {
@@ -53,10 +56,11 @@ export function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice
   return Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)
 }
 
-export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop }: ListingCardProps) {
+export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, shopLabel }: ListingCardProps) {
   const quantity = formatQuantity(listing.quantity, listing.unit)
   const shop = listing.user
-  const shopDisplayName = shop?.profile?.businessName?.trim() || shop?.name
+  const baseShopName = shop?.profile?.businessName?.trim() || shop?.name
+  const shopDisplayName = shopLabel ?? baseShopName
   const shopPhoto = shop?.profile?.photoUrl ?? null
   const discounted = isDiscounted(listing)
   const percentOff = discountPercent(listing)

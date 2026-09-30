@@ -1,7 +1,7 @@
 import { route, jsonOk, parseBody, requireUser, ApiError } from '@/lib/api'
 import { businessProfileSchema, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
-import { shopChecklistFor, shopChecklistComplete } from '@/lib/shop'
+import { shopChecklistFor, shopChecklistComplete, generateShopCode } from '@/lib/shop'
 
 export async function GET() {
   return route(async () => {
@@ -39,7 +39,9 @@ export async function PUT(request: Request) {
 
     const profile = await db.businessProfile.upsert({
       where: { userId: user.id },
-      create: { userId: user.id, ...data, phone, whatsapp, verified: false },
+      create: { userId: user.id, ...data, phone, whatsapp, verified: false, shopCode: await generateShopCode() },
+      // On update the shop code is deliberately untouched: it is the shop's
+      // permanent identity, never recycled or re-rolled.
       update: { ...data, phone, whatsapp, verified: false },
     })
     return jsonOk({ profile })
