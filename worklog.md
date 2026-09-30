@@ -99,3 +99,19 @@ Work Log:
 Stage Summary:
 - Buyers now SEE products (photos), know WHO they buy from (shop name + photo everywhere), and can decide pickup (directions). Sellers get camera-first photo upload and shop branding.
 - Logins unchanged: 0772123456 / 0776123456 / 0758123456 (UG), 0712345678 (TZ), 0712000001..04 (KE) — password demo1234.
+
+---
+Task ID: 6-b
+Agent: main (Super Z)
+Task: "hopefully that call seller initiates a dialer" — verify the Call seller button triggers the native phone dialer
+
+Work Log:
+- Code audit: Call seller is a plain native <a href={telLink(phone)}> (no JS handler, no preventDefault, no auth gate); telLink() strips everything except digits and "+", keeping the international format.
+- Live E2E via agent-browser through :81 proxy: opened "Copper scrap" detail → Call seller anchor href = "tel:+256776123456" (verified attribute, not just rendering); WhatsApp href = "https://wa.me/256776123456?text=Hi%2C%20I%20saw%20your%20listing..." with pre-filled intro; Get directions = Google Maps URL API.
+- Pretty-print check: +256/+255/+254 numbers all match the 12-digit formatter (3-3-3-3 groups).
+- Screenshot verify-call-seller.png: shop-named contact heading ("Contact Kampalamart Scrap Dealers"), readable number as text above buttons (manual-dial fallback), big green Call seller button.
+- Zero console errors.
+
+Stage Summary:
+- CONFIRMED: tapping "Call seller" navigates to tel:+XXXXXXXXXXXX — on Android/iOS this opens the native dialer with the number pre-filled (user just presses call). Desktop preview won't dial (no dialer on desktops) — the number is also shown as plain text above the button as fallback.
+- No code changes needed; behavior was already correct. Task 6 features all verified green.
