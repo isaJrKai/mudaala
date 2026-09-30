@@ -58,3 +58,22 @@ Work Log:
 Stage Summary:
 - 78/78 API tests passing (was 66; +12 for multi-country/Bearer/currency coverage), tsc + eslint clean for src/ + scripts/.
 - Logins for the user: 0772123456 / 0776123456 / 0758123456 (Uganda), 0712345678 (Tanzania), 0712000001..04 (Kenya) — all password demo1234. One account = buyer + seller, no second sign-in anywhere.
+
+---
+Task ID: 5-b
+Agent: main (Super Z)
+Task: "yh" — approved follow-ups: (a) buyer-path sweep so no login dialog appears mid-browse, (b) full-app debug + verified logins for the user
+
+Work Log:
+- Re-verified state after lost session: Task 5 work HAD persisted (dual-channel auth, currency, rename, seeds). Login API healthy: all 8 seeded accounts → HTTP 200 with sessionToken, on :3000 AND :81 proxy, cookie + Bearer channels both OK.
+- Buyer-path sweep (code + live): triggers for auth dialog are only seller/account moments (publish, my listings, saved searches, alerts, settings, account, header Sign in). Browse/search/listing detail/contact = fully open. Listing detail contact is plain <a> links (tel: / wa.me) — no JS, no auth. The only browse-view auth prompt is the deliberate "Save this search" tap (needs identity for alerts). Buyer path confirmed clean.
+- Whole-app debug found 2 real bugs:
+  1. /api/settings/postgres/test/route.ts MISSING on disk (404 → HTML error page) → 4 suite failures. Rebuilt: requireUser → read stored config (400 if none/incomplete) → honest TCP test via testTcpConnection (200 {ok,message}).
+  2. tsconfig.json include swept workspace template folders (examples/, skills/) → tsc errors and would break production `next build`. Added both to exclude.
+- Full verification: 78/78 API tests, tsc --noEmit clean repo-wide, eslint (src+scripts) clean, agent-browser through :81 proxy: guest browse → listing detail (phone visible, Call/WhatsApp links, shop name shown, zero login walls) → typed sign-in 0772123456/demo1234 → header chip + Alerts badge → RELOAD keeps session → COOKIES CLEARED + reload still signed in (Bearer fallback, duuka_session_token in localStorage) → zero console errors.
+- Ran scripts/cleanup-test-data.ts: removed 8 test users + 6 junk listings ("Test copper scrap offering" etc.) — app now shows only the 8 seeded shops (4 UG, 1 TZ, 4 KE... note: 3 UG + 1 TZ + 4 KE).
+
+Stage Summary:
+- All green: 78/78 tests, tsc, eslint, browser E2E incl. hostile cookie-clear scenario.
+- Logins for the user (password demo1234 for ALL): Uganda 0772123456 (Kampalamart), 0776123456 (Nakato Fresh), 0758123456 (Jinja Hardware); Tanzania 0712345678 (Dodoma Agri); Kenya 0712000001..04 (Jomo Scrap Traders, Pendo Flour, Mama Amina Chapati, Kisumu Fresh).
+- Model confirmed in app + product direction agreed: sellers sign in, buyers never have to.
