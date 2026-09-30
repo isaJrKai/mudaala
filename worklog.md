@@ -232,3 +232,21 @@ Work Log:
 
 Stage Summary:
 - The DK code is now a REAL till number: see it on a poster, hear it from a seller, or read it off a WhatsApp broadcast — then type it into the one search box everyone already knows, land on the exact shop. QR for camera-comfortable buyers, code for everyone else, share turns every seller into distribution. Claim-your-shop consciously deferred. 136/136 tests, tsc + eslint clean, browser-verified, fixtures clean.
+
+---
+Task ID: 12
+Agent: main (Super Z)
+Task: Convert product listings from list rows to photo-first blocks (user: "i dont want them listed, better as blocks") + restore two lost API routes discovered during verification.
+
+Work Log:
+- Buyer-facing surfaces converted to blocks; My Listings deliberately kept as rows (seller control panel: up to 6 action buttons per item would wrap unusably inside a 165px block).
+- NEW ListingBlock (listing-card.tsx, same file as the untouched row ListingCard): photo top full-width aspect-[4/3] with TypeBadge overlay + "+N" count, 2-line-clamped title (min-h-10 keeps row heights even), bold price with discount strike/percent, quantity · location line, freshness-dot + timeAgo + distance line, and mt-auto buyer bar (shop chip row + Call | Chat split h-8 buttons) so contact never requires opening the listing. Shop catalogues omit the bar (already inside the shop).
+- Grid: grid-cols-2 gap-2 / sm:grid-cols-3 sm:gap-3 / lg:grid-cols-4 in both listings-browse.tsx feed and shop-view.tsx catalogue; new ListingGridSkeleton mirrors exact column template; ListingListSkeleton kept for non-grid consumers (publish, saved-searches, notifications, account, detail).
+- TWO ROUTES RESTORED — root cause: src/app/api/upload/route.ts and src/app/api/settings/postgres/test/route.ts were created in earlier sessions but NEVER git-committed (worklog Task 4 documents building /api/upload; audit grep even listed it). Untracked files were wiped between sessions. tsc/eslint/130-tests all stayed green because route files are discovered by path, not imported — silent 404s, 11 test failures. public/uploads/ still held real uploads, proving the route once worked. Fixtures pollution confirmed the outage history: 40 stale test users had accumulated ("Alice Test Shop" x3 broke check-name exclude test).
+- Restored /api/upload: requireUser, 8MB cap → 413, magic-byte sniff (jpeg FF D8 FF / png 89 50 4E 47 / webp RIFF…WEBP) → 400 on mismatch, random hex-hex name into public/uploads/, 201 { url: '/uploads/<name>' }. Restored /api/settings/postgres/test: requireUser, no saved config → 400, resolveTarget → real testTcpConnection → 200 { ok, message }. UI impact: PhotoPicker posts /api/upload, so shop/listing photo upload was DOWN until this restore.
+- LESSON: after any session, `git status --short` untracked source files = next session's silent outage. Route files must be committed or re-verifiable. LESSON 2: run cleanup-test-data.ts even after FAILED suite runs — 11 failures masked 40 stale users.
+- Tests: 136/136 passing after restore + fresh cleanup (8 seed users / 16 listings restored). tsc clean, eslint clean.
+- E2E via :81 (390×844): feed = 2 cols × 175px, photo ratio 1.33, tel:+256… and wa.me/?text=Hi%2C… hrefs correct per card; Nakato shop catalogue = 2-col blocks, 0 visit-shop chips (redundancy correctly dropped), 3 cards; login 0772123456 → owner poster + "Share on WhatsApp" intact (also re-confirms 0772123456 = Nakato Fresh Produce, contradicting the older Task 9/10 summary mapping); My Listings = 0 grids, 3 action strips with Edit buttons (row regression clean); 0 console errors, 0 page errors. Screenshots: scripts/verify-blocks-feed.png, scripts/verify-blocks-shop.png.
+
+Stage Summary:
+- Products are now blocks: photo-first 2/3/4-column grid on browse + shop catalogue, contact actions still on every card without opening anything. Seller dashboard stays rows on purpose. Two lost routes (upload, postgres test) restored from documented behavior — the suite is honestly green again at 136/136. Fixtures clean.

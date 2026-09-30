@@ -18,8 +18,8 @@ import type { ShopPage as ShopPageT, ListingShopOwner } from '@/lib/client'
 import { telLink, whatsappLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
-import { ListingCard } from './listing-card'
-import { ListingListSkeleton } from './skeletons'
+import { ListingBlock } from './listing-card'
+import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
 import { EmptyState } from './empty-state'
 
@@ -52,7 +52,7 @@ export function ShopView({ id }: { id: string }) {
         <Button variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
           <ArrowLeft className="size-4" aria-hidden /> Back to browse
         </Button>
-        <ListingListSkeleton count={3} />
+        <ListingGridSkeleton count={6} />
       </div>
     )
   }
@@ -233,9 +233,11 @@ export function ShopView({ id }: { id: string }) {
             }
           />
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {/* Same blocks as the browse feed — a shop's catalogue should feel
+                like a market table: every item's face visible at once. */}
             {listings.map((listing) => (
-              <ListingCard
+              <ListingBlock
                 key={listing.id}
                 listing={{ ...listing, user: shopOwnerFrom(shop) }}
                 onOpen={(lid) => navigate({ name: 'listing', id: lid })}
