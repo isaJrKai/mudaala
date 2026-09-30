@@ -542,6 +542,51 @@ async function main() {
     await call('DELETE', `/api/listings/${nelaListing.json.listing.id}`, undefined, nela)
   }
 
+  console.log('\n== 3f. Shop code lookup (the till-number path) ==')
+  {
+    // The lookup is public — no jar, no cookie: buyers never sign in.
+    const meProf = await call('GET', '/api/profile', undefined, alice)
+    const realCode: string = meProf.json?.profile?.shopCode ?? ''
+    ok('profile exposes the seller shop code for the lookup tests', /^DK-\d{4}$/.test(realCode))
+
+    const hit = await call('GET', `/api/shops/lookup?code=${encodeURIComponent(realCode)}`)
+    ok('exact code resolves the right shop, anonymously',
+      hit.status === 200 && hit.json?.shop?.id === alice.user!.id && hit.json?.shop?.shopCode === realCode)
+
+    // Forgiving input: case, spaces and dashes never break a real code —
+    // buyers copy codes off posters and out of voice calls.
+    const sloppy = await call('GET', `/api/shops/lookup?code=${encodeURIComponent('dk ' + realCode.slice(3))}`)
+    ok('sloppy variant ("dk 4821" style) finds the same shop',
+      sloppy.status === 200 && sloppy.json?.shop?.id === alice.user!.id)
+
+    // A well-formed but wrong number must never open a shop. The unknown code
+    // is picked from the DB itself so the negative test never depends on luck.
+    const taken = await db.businessProfile.findMany({ where: { shopCode: { not: null } }, select: { shopCode: true } })
+    const used = new Set(taken.map((r) => r.shopCode as string))
+    let unknown = ''
+    for (let n = 0; n < 10_000; n++) {
+      const candidate = `DK-${String(n).padStart(4, '0')}`
+      if (!used.has(candidate)) {
+        unknown = candidate
+        break
+      }
+    }
+    const miss = await call('GET', `/api/shops/lookup?code=${unknown}`)
+    ok('well-formed but unknown code → 404 naming the code back',
+      miss.status === 404 && typeof miss.json?.error === 'string' && miss.json.error.includes(unknown))
+
+    const malformed = await call('GET', '/api/shops/lookup?code=AB-12')
+    ok('malformed code → 400 with an honest hint',
+      malformed.status === 400 && typeof malformed.json?.error === 'string' && malformed.json.error.includes('DK-'))
+
+    // Card-slim payload: contact details come later, from the shop page.
+    ok('lookup payload carries no phone/whatsapp/password',
+      hit.status === 200 &&
+        !('phone' in (hit.json?.shop ?? {})) &&
+        !('whatsapp' in (hit.json?.shop ?? {})) &&
+        !JSON.stringify(hit.json).toLowerCase().includes('password'))
+  }
+
   console.log('\n== 4. Ownership & permission boundaries ==')
   const bob: Jar = { cookie: '' }
   const bobPhone = uniquePhone()

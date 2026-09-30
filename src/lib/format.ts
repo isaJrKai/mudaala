@@ -99,3 +99,15 @@ export function mapsSearchUrl(parts: { area?: string | null; county: string; cou
 export function normalizeShopName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, ' ').trim()
 }
+
+// Shop-code canonicalizer, shared by the server (lookup API) and the client
+// (browse search detection). Buyers punch in a code like a mobile-money till
+// number — forgiving about case, spaces and dashes ("dk 2623", "DK-2623",
+// "dk2623" all work), but the match against the stored code stays EXACT, so
+// a mistyped number never lands on a stranger's shop. Lives in format.ts
+// because the client imports it and format.ts must stay server-free.
+export function normalizeShopCode(raw: string): string | null {
+  const compact = raw.replace(/[\s-]+/g, '').toUpperCase()
+  const match = /^DK(\d{4})$/.exec(compact)
+  return match ? `DK-${match[1]}` : null
+}

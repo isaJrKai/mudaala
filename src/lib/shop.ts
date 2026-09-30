@@ -9,6 +9,7 @@ import type { BusinessProfile, User } from '@prisma/client'
 import { SHOP_OWNER_INCLUDE, serializeListing, expireOverdueListings } from '@/lib/listings'
 import type { ListingWithShop } from '@/lib/listings'
 import { countryDef, categoryLabel } from '@/lib/constants'
+import { normalizeShopCode } from '@/lib/format'
 
 export interface ShopChecklist {
   photo: boolean
@@ -69,6 +70,50 @@ export async function generateShopCode(): Promise<string> {
   }
   // 10,000 slots — statistically unreachable at any realistic shop count.
   throw new Error('Could not allocate a unique shop code')
+}
+
+// Buyers punch in a code like a mobile-money till number (normalizeShopCode
+// in lib/format.ts canonicalizes the typed text) — the match against the
+// stored code stays EXACT, so a mistyped number never lands on a stranger's
+// shop.
+
+export interface ShopLookupResult {
+  id: string
+  name: string
+  photoUrl: string | null
+  area: string | null
+  county: string | null
+  country: string
+  shopCode: string
+}
+
+// Public code lookup: type a till number, get that shop. Returns only what a
+// result card needs (no phone, no contact details) — the full page comes
+// from /api/shops/[id] once the buyer taps through.
+export async function lookupShopByCode(raw: string): Promise<ShopLookupResult | null> {
+  const code = normalizeShopCode(raw)
+  if (!code) return null
+  const row = await db.businessProfile.findUnique({
+    where: { shopCode: code },
+    select: {
+      businessName: true,
+      photoUrl: true,
+      area: true,
+      county: true,
+      shopCode: true,
+      user: { select: { id: true, name: true, country: true } },
+    },
+  })
+  if (!row) return null
+  return {
+    id: row.user.id,
+    name: row.businessName?.trim() || row.user.name,
+    photoUrl: row.photoUrl ?? null,
+    area: row.area ?? null,
+    county: row.county ?? null,
+    country: row.user.country ?? 'UG',
+    shopCode: row.shopCode as string,
+  }
 }
 
 // Load a shop page by the owner's user id. Public — buyers never sign in.

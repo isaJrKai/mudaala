@@ -223,6 +223,22 @@ export interface ShopPage {
   listings: Listing[]
 }
 
+/** Result of punching a DK-XXXX code into /api/shops/lookup — card-slim on
+ * purpose: no phone/contact details, the shop page has those after a tap. */
+export interface ShopLookupResult {
+  id: string
+  name: string
+  photoUrl: string | null
+  area: string | null
+  county: string | null
+  country: string
+  shopCode: string
+}
+
+export interface ShopLookupResponse {
+  shop: ShopLookupResult
+}
+
 export interface ApiErrorShape {
   error: string
   fields?: Record<string, string>
