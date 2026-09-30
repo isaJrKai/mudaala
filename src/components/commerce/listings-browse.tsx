@@ -16,8 +16,8 @@ import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
-import { ListingCard } from './listing-card'
-import { ListingListSkeleton } from './skeletons'
+import { ListingBlock } from './listing-card'
+import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
 
 // Two shops can legally share a name — when they appear in the SAME feed,
@@ -258,7 +258,7 @@ export function ListingsBrowse() {
           </div>
         ) : null
       ) : isLoading ? (
-        <ListingListSkeleton />
+        <ListingGridSkeleton />
       ) : isError ? (
         <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
       ) : data && data.items.length === 0 ? (
@@ -286,16 +286,20 @@ export function ListingsBrowse() {
             {data.total} {data.total === 1 ? 'listing' : 'listings'} found
             {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
           </p>
-          {data.items.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              shopLabel={shopLabels.get(listing.id)}
-              distanceLabel={distanceLabels.get(listing.id)}
-              onOpen={(id) => navigate({ name: 'listing', id })}
-              onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
-            />
-          ))}
+          {/* Blocks, not rows: photo-first cards in a grid are how a market
+              feed should scan — four pictures beat four paragraphs. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {data.items.map((listing) => (
+              <ListingBlock
+                key={listing.id}
+                listing={listing}
+                shopLabel={shopLabels.get(listing.id)}
+                distanceLabel={distanceLabels.get(listing.id)}
+                onOpen={(id) => navigate({ name: 'listing', id })}
+                onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+              />
+            ))}
+          </div>
 
           {data.pageCount > 1 ? (
             <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />

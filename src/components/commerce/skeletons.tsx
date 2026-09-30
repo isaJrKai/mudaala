@@ -29,3 +29,30 @@ export function ListingListSkeleton({ count = 5 }: { count?: number }) {
     </div>
   )
 }
+
+// Block skeleton mirrors the grid card: photo area on top, three text lines
+// under it — same proportions so loading never shifts the layout.
+export function ListingBlockSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card">
+      <Skeleton className="aspect-[4/3] w-full rounded-none" />
+      <div className="space-y-2 p-2.5">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-3 w-3/4" />
+      </div>
+    </div>
+  )
+}
+
+// Same columns as the real grid (2 / 3 / 4) so the skeleton occupies exactly
+// the space the loaded blocks will.
+export function ListingGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4" aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <ListingBlockSkeleton key={i} />
+      ))}
+    </div>
+  )
+}

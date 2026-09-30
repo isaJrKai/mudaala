@@ -192,3 +192,153 @@ export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, 
     </div>
   )
 }
+
+interface ListingBlockProps {
+  listing: Listing & { user?: ListingShopOwner }
+  onOpen: (id: string) => void
+  /** When provided (and the listing knows its owner), the buyer bar renders:
+   *  shop chip (→ shop page) above Call + WhatsApp. Shop catalogues omit it —
+   *  the buyer is already inside that shop. */
+  onOpenShop?: (shopId: string) => void
+  /** Same-name shop disambiguation, fed by the browse feed. */
+  shopLabel?: string
+  /** Buyer-facing distance ("850 m", "2.3 km") shown while "Near me" is on. */
+  distanceLabel?: string
+}
+
+// The same listing as a photo-first BLOCK for grid surfaces (browse feed,
+// shop catalogue). Pictures sell: the photo gets the card's full width and
+// what/how much/where stack under it. Contact stays on the card — Call and
+// WhatsApp are reachable without ever opening the listing.
+export function ListingBlock({ listing, onOpen, onOpenShop, shopLabel, distanceLabel }: ListingBlockProps) {
+  const quantity = formatQuantity(listing.quantity, listing.unit)
+  const shop = listing.user
+  const shopDisplayName = shopLabel ?? (shop?.profile?.businessName?.trim() || shop?.name)
+  const shopPhoto = shop?.profile?.photoUrl ?? null
+  const discounted = isDiscounted(listing)
+  const percentOff = discountPercent(listing)
+  const whatsappNumber = listing.contactWhatsapp ?? (listing.type === 'OFFER' ? listing.contactPhone : null)
+  const place = [listing.area, listing.county].filter(Boolean).join(', ')
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:border-input/80">
+      <button
+        type="button"
+        onClick={() => onOpen(listing.id)}
+        className="w-full text-left"
+        aria-label={`Open listing: ${listing.title}`}
+      >
+        {/* Photo — the whole reason this is a block */}
+        <div className="relative aspect-[4/3] w-full overflow-hidden border-b bg-secondary/30">
+          <ListingPhoto listing={listing} />
+          <span className="absolute left-1.5 top-1.5">
+            <TypeBadge type={listing.type} />
+          </span>
+          {listing.photos.length > 1 ? (
+            <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+              +{listing.photos.length - 1}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="p-2.5">
+          {/* Exactly two lines of title keep every card in a row the same
+              height — a 1-line title leaves room, a 5-line one gets cut. */}
+          <h3 className="line-clamp-2 min-h-10 text-sm font-medium leading-snug">{listing.title}</h3>
+
+          {listing.type === 'OFFER' ? (
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+              <p className="text-base font-bold leading-tight text-primary">
+                {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
+                {listing.priceNegotiable && listing.price !== null ? <span className="ml-1 text-[10px] font-normal text-muted-foreground">neg.</span> : null}
+              </p>
+              {discounted ? (
+                <>
+                  <span className="text-[11px] text-muted-foreground line-through">
+                    {formatPrice(listing.compareAtPrice, null, listing.currency)}
+                  </span>
+                  <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
+                    −{percentOff}%
+                  </span>
+                </>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm font-semibold leading-tight text-foreground/80">
+              {listing.price !== null ? `Budget: ${formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}` : 'Ask for price'}
+            </p>
+          )}
+
+          <p className="mt-1 flex min-w-0 items-center gap-1 truncate text-[11px] text-muted-foreground">
+            {quantity ? (
+              <>
+                <Package className="size-3 shrink-0" aria-hidden /> {quantity}
+              </>
+            ) : null}
+            {place ? (
+              <>
+                {quantity ? <span aria-hidden>·</span> : null}
+                <MapPin className="size-3 shrink-0" aria-hidden />
+                <span className="truncate">{place}</span>
+              </>
+            ) : null}
+          </p>
+          <p className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <FreshnessDot refreshedAt={listing.refreshedAt} /> {timeAgo(listing.refreshedAt)}
+            </span>
+            {distanceLabel ? (
+              <span className="inline-flex items-center gap-0.5 font-medium text-foreground/70">
+                <Navigation className="size-3" aria-hidden /> {distanceLabel}
+              </span>
+            ) : null}
+          </p>
+        </div>
+      </button>
+
+      {onOpenShop && shop && shopDisplayName ? (
+        // Buyer bar, stacked for the narrow block: who sells it on top, then
+        // Call | WhatsApp sharing the row. mt-auto pins it to the card bottom
+        // so unequal titles never leave a ragged edge in the grid.
+        <div className="mt-auto border-t px-2 py-2">
+          <button
+            type="button"
+            onClick={() => onOpenShop(shop.id)}
+            className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-secondary/60"
+            aria-label={`Visit shop: ${shopDisplayName}`}
+          >
+            {shopPhoto ? (
+              <img src={shopPhoto} alt="" className="size-5 shrink-0 rounded-full border object-cover" />
+            ) : (
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground">
+                {shopDisplayName.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground/80">{shopDisplayName}</span>
+            <Store className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+          </button>
+          <div className="mt-1.5 flex gap-1.5">
+            <a
+              href={telLink(listing.contactPhone)}
+              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border bg-card text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+              aria-label={`Call ${shopDisplayName} about ${listing.title}`}
+            >
+              <Phone className="size-3.5 text-primary" aria-hidden /> Call
+            </a>
+            {whatsappNumber ? (
+              <a
+                href={whatsappLink(whatsappNumber, listing.title, listing.type)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-50 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                aria-label={`WhatsApp ${shopDisplayName} about ${listing.title}`}
+              >
+                <MessageCircle className="size-3.5" aria-hidden /> Chat
+              </a>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
