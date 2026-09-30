@@ -107,6 +107,9 @@ const listingBaseSchema = z.object({
   description: z.string().trim().min(20, 'Describe what you offer or need (at least 20 characters)').max(2000, 'Description must be 2000 characters or fewer'),
   category: z.enum(CATEGORY_KEYS as [string, ...string[]], { message: 'Choose a category' }),
   price: priceSchema.nullable(),
+  // Optional "was" price for discounts. Only meaningful alongside a current
+  // price — the create schema and the PATCH handler enforce that pairing.
+  compareAtPrice: priceSchema.nullable().optional(),
   currency: z.enum(CURRENCY_KEYS as [string, ...string[]]).optional(),
   priceNegotiable: z.boolean().default(false),
   unit: z.enum(UNIT_KEYS as [string, ...string[]]).nullable(),
@@ -127,6 +130,14 @@ export const listingCreateSchema = listingBaseSchema
   .refine((v) => v.price === null || v.unit !== null, {
     message: 'Choose the unit the price refers to',
     path: ['unit'],
+  })
+  .refine((v) => v.compareAtPrice == null || v.price !== null, {
+    message: 'Add the current price first — the old price only shows as a discount next to it',
+    path: ['compareAtPrice'],
+  })
+  .refine((v) => v.compareAtPrice == null || v.price == null || v.compareAtPrice > v.price, {
+    message: 'The old price must be higher than the current price',
+    path: ['compareAtPrice'],
   })
 
 // Edits: same fields minus type (type is fixed at publish time).

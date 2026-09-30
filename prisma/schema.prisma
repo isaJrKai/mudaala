@@ -67,6 +67,7 @@ model Listing {
   description      String
   category         String
   price            Float? // in the listing's currency, null = "ask seller" / not disclosed
+  compareAtPrice   Float? // optional "was" price — shown struck-through as a discount when higher than price
   currency         String    @default("UGX") // UGX | TZS | KES
   priceNegotiable  Boolean   @default(false)
   unit             String? // per kg, per bag, ... (null when price is null)

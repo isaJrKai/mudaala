@@ -5,6 +5,7 @@ import { Providers, CurrentView, HashSync } from '@/components/commerce/provider
 import { AppHeader } from '@/components/commerce/app-header'
 import { BottomNav } from '@/components/commerce/bottom-nav'
 import { AuthDialog } from '@/components/commerce/auth-dialog'
+import { ShopSetupDialog } from '@/components/commerce/shop-setup-dialog'
 
 export default function Home() {
   return (
@@ -29,6 +30,7 @@ export default function Home() {
 
       <BottomNav />
       <AuthDialog />
+      <ShopSetupDialog />
     </Providers>
   )
 }

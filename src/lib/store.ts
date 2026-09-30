@@ -8,6 +8,7 @@ import type { ListingQuery } from '@/lib/validation'
 export type ViewName =
   | 'browse'
   | 'listing'
+  | 'shop'
   | 'publish'
   | 'edit'
   | 'my-listings'
@@ -62,6 +63,8 @@ export function viewToHash(view: View): string {
       return '#/browse'
     case 'listing':
       return view.id ? `#/listing/${view.id}` : '#/browse'
+    case 'shop':
+      return view.id ? `#/shop/${view.id}` : '#/browse'
     case 'publish':
       return '#/publish'
     case 'edit':
@@ -82,9 +85,9 @@ export function viewToHash(view: View): string {
 export function hashToView(hash: string): View {
   const parts = hash.replace(/^#\/?/, '').split('/')
   const [name, id] = parts
-  const valid: ViewName[] = ['browse', 'listing', 'publish', 'edit', 'my-listings', 'saved', 'notifications', 'account', 'settings']
+  const valid: ViewName[] = ['browse', 'listing', 'shop', 'publish', 'edit', 'my-listings', 'saved', 'notifications', 'account', 'settings']
   if (valid.includes(name as ViewName)) {
-    if ((name === 'listing' || name === 'edit') && !id) return { name: 'browse' }
+    if ((name === 'listing' || name === 'edit' || name === 'shop') && !id) return { name: 'browse' }
     return { name: name as ViewName, id }
   }
   return { name: 'browse' }

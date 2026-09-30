@@ -27,6 +27,7 @@ interface SeedListing {
   description: string
   category: string
   price: number | null
+  compareAtPrice?: number | null // optional "was" price — renders as a discount
   currency?: string
   priceNegotiable?: boolean
   unit: string | null
@@ -57,15 +58,15 @@ const users = [
 
 const listings: SeedListing[] = [
   // Uganda (UGX).
-  { ownerIdx: 0, type: 'OFFER', title: 'Fresh matooke, wholesale bunches', photo: '/uploads/seed/listing-matooke.png', description: 'Green matooke straight from Mpigi farms, hand-picked this morning. Bunches from 8kg up. Bring your own transport or we arrange delivery within Kampala.', category: 'farm-produce', price: 18000, currency: 'UGX', unit: 'bunch', quantity: 250, county: 'Kampala', country: 'UG', area: 'Nakasero', refreshedHoursAgo: 3, views: 41 },
+  { ownerIdx: 0, type: 'OFFER', title: 'Fresh matooke, wholesale bunches', photo: '/uploads/seed/listing-matooke.png', description: 'Green matooke straight from Mpigi farms, hand-picked this morning. Bunches from 8kg up. Bring your own transport or we arrange delivery within Kampala.', category: 'farm-produce', price: 18000, compareAtPrice: 22000, currency: 'UGX', unit: 'bunch', quantity: 250, county: 'Kampala', country: 'UG', area: 'Nakasero', refreshedHoursAgo: 3, views: 41 },
   { ownerIdx: 0, type: 'OFFER', title: 'Grade A eggs in crates of 30', photo: '/uploads/seed/listing-eggs-ug.png', description: 'Fresh grade A eggs collected daily from our layers in Mukono. Sold per crate of 30. Bring your own crates or buy ours at cost.', category: 'farm-produce', price: 12000, currency: 'UGX', unit: 'crate', quantity: 180, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 6, views: 27 },
   { ownerIdx: 1, type: 'OFFER', title: 'Copper scrap, 99.5% clean', photo: '/uploads/seed/listing-copper.png', description: 'Clean copper wire scrap, no insulation, sorted and ready. Weighing done on a certified platform scale in front of the seller. Collection from our Kisenyi yard.', category: 'scrap-recyclables', price: 20000, currency: 'UGX', unit: 'kg', quantity: 600, county: 'Kampala', country: 'UG', area: 'Kisenyi', refreshedHoursAgo: 2, views: 55 },
   { ownerIdx: 1, type: 'REQUEST', title: 'Aluminium scrap wanted — monthly bulk', photo: '/uploads/seed/listing-aluminium.png', description: 'Buying aluminium scrap monthly: ingots, sheets, castings. Pay per kg on graded weight, same-day mobile money payment. Contact with your available quantity and location.', category: 'scrap-recyclables', price: 6500, currency: 'UGX', unit: 'kg', quantity: 1500, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 20, views: 14 },
-  { ownerIdx: 2, type: 'OFFER', title: 'Cement 42.5N, 50kg bags', photo: '/uploads/seed/listing-cement.png', description: 'Tororo cement 42.5N in 50kg bags, stored dry in our Kimaka godown. Discount above 100 bags, delivery around Jinja town available.', category: 'hardware-building', price: 32000, currency: 'UGX', priceNegotiable: true, unit: 'bag', quantity: 900, county: 'Jinja', country: 'UG', area: 'Kimaka', refreshedHoursAgo: 30, views: 33 },
+  { ownerIdx: 2, type: 'OFFER', title: 'Cement 42.5N, 50kg bags', photo: '/uploads/seed/listing-cement.png', description: 'Tororo cement 42.5N in 50kg bags, stored dry in our Kimaka godown. Discount above 100 bags, delivery around Jinja town available.', category: 'hardware-building', price: 32000, compareAtPrice: 36000, currency: 'UGX', priceNegotiable: true, unit: 'bag', quantity: 900, county: 'Jinja', country: 'UG', area: 'Kimaka', refreshedHoursAgo: 30, views: 33 },
   { ownerIdx: 2, type: 'OFFER', title: 'Iron sheets 30 gauge, 3m', photo: '/uploads/seed/listing-iron-sheets.png', description: 'Pre-painted 30 gauge iron sheets, box profile, various colours in stock. Per piece price for 3 metre lengths. Delivery within Jinja and Iganga.', category: 'hardware-building', price: 38000, currency: 'UGX', unit: 'piece', quantity: 320, county: 'Jinja', country: 'UG', area: null, refreshedHoursAgo: 96, views: 19 },
   { ownerIdx: 0, type: 'REQUEST', title: 'Red onions wanted — weekly supply', photo: '/uploads/seed/listing-red-onions.png', description: 'Looking for a steady weekly supplier of red onions for our market stall, at least 300kg per week. Payment on delivery, Kampala Nakasero.', category: 'farm-produce', price: 5200, currency: 'UGX', unit: 'kg', quantity: 300, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 50, views: 9 },
   // Tanzania (TZS).
-  { ownerIdx: 3, type: 'OFFER', title: 'Sunflower cooking oil, 20L', photo: '/uploads/seed/listing-sunflower-oil.png', description: 'Pure sunflower cooking oil in 20L jerricans, pressed in Dodoma. Ideal for vendors and institutions. Delivery around Dodoma municipality.', category: 'food-groceries', price: 58000, currency: 'TZS', unit: 'piece', quantity: 120, county: 'Dodoma', country: 'TZ', area: 'Chang’ombe', refreshedHoursAgo: 8, views: 22 },
+  { ownerIdx: 3, type: 'OFFER', title: 'Sunflower cooking oil, 20L', photo: '/uploads/seed/listing-sunflower-oil.png', description: 'Pure sunflower cooking oil in 20L jerricans, pressed in Dodoma. Ideal for vendors and institutions. Delivery around Dodoma municipality.', category: 'food-groceries', price: 58000, compareAtPrice: 65000, currency: 'TZS', unit: 'piece', quantity: 120, county: 'Dodoma', country: 'TZ', area: 'Chang’ombe', refreshedHoursAgo: 8, views: 22 },
   { ownerIdx: 3, type: 'OFFER', title: 'Dry maize grade 1, per kg', photo: '/uploads/seed/listing-maize.png', description: 'Grade 1 dry maize, moisture 13%, from this season harvest in Kongwa. Sold per kg or per tonne with weighing at our Chang’ombe store.', category: 'farm-produce', price: 950, currency: 'TZS', unit: 'kg', quantity: 15000, county: 'Dodoma', country: 'TZ', area: null, refreshedHoursAgo: 60, views: 47 },
   // Kenya (KES).
   { ownerIdx: 4, type: 'OFFER', title: 'Wheat flour premium, 50kg bags', photo: '/uploads/seed/listing-wheat-flour.png', description: 'Baking-grade wheat flour, milled this week. Packed in 50kg bags on pallets. Delivery within Nakuru town free for orders above 20 bags.', category: 'food-groceries', price: 4800, currency: 'KES', priceNegotiable: true, unit: 'bag', quantity: 120, county: 'Nakuru', country: 'KE', area: 'Free Area', refreshedHoursAgo: 24, views: 21 },
@@ -112,6 +113,7 @@ async function main() {
         description: l.description,
         category: l.category,
         price: l.price,
+        compareAtPrice: l.compareAtPrice ?? null,
         currency: l.currency ?? 'UGX',
         priceNegotiable: l.priceNegotiable ?? false,
         unit: l.unit,

@@ -27,6 +27,7 @@ interface FormState {
   description: string
   category: string
   price: string
+  compareAtPrice: string
   currency: string
   priceNegotiable: boolean
   unit: string
@@ -44,6 +45,7 @@ const EMPTY_FORM: FormState = {
   description: '',
   category: 'none',
   price: '',
+  compareAtPrice: '',
   currency: 'UGX',
   priceNegotiable: false,
   unit: 'none',
@@ -112,6 +114,7 @@ export function PublishForm() {
 
   function buildPayload() {
     const priceRaw = form.price.trim()
+    const oldPriceRaw = form.compareAtPrice.trim()
     const quantityRaw = form.quantity.trim()
     return {
       type: form.type,
@@ -119,6 +122,7 @@ export function PublishForm() {
       description: form.description,
       category: form.category === 'none' ? undefined : form.category,
       price: priceRaw === '' ? null : Number(priceRaw),
+      compareAtPrice: oldPriceRaw === '' ? null : Number(oldPriceRaw),
       currency: form.currency,
       country: user?.country ?? 'UG',
       priceNegotiable: form.priceNegotiable,
@@ -183,7 +187,12 @@ export function PublishForm() {
               key={t}
               type="button"
               aria-pressed={form.type === t}
-              onClick={() => set('type', t)}
+              onClick={() => {
+                set('type', t)
+                // Discounts belong to offers; clear the disabled field so a
+                // stale old price never rides along with a REQUEST.
+                if (t === 'REQUEST') set('compareAtPrice', '')
+              }}
               className={cn(
                 'rounded-md border px-3 py-2.5 text-sm font-medium transition-colors',
                 form.type === t ? 'border-primary bg-accent text-accent-foreground' : 'bg-card text-muted-foreground hover:bg-secondary',
@@ -271,6 +280,24 @@ export function PublishForm() {
                 ))}
               </select>
             </div>
+          </Field>
+          <Field
+            label="Old price (optional)"
+            htmlFor="p-compare"
+            error={errors.compareAtPrice}
+            hint={form.type === 'OFFER' ? 'shows as a discount' : undefined}
+          >
+            <Input
+              id="p-compare"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={currencyDef(form.currency).zeroDecimal ? '1' : '0.01'}
+              value={form.compareAtPrice}
+              onChange={(e) => set('compareAtPrice', e.target.value)}
+              placeholder="e.g. 30000"
+              disabled={form.type === 'REQUEST'}
+            />
           </Field>
           <Field label="Per" htmlFor="p-unit" error={errors.unit}>
             <Select value={form.unit} onValueChange={(v) => set('unit', v)}>
@@ -420,6 +447,7 @@ export function EditListingForm({ id }: { id: string }) {
           description: listing.description,
           category: listing.category,
           price: listing.price === null ? '' : String(listing.price),
+          compareAtPrice: listing.compareAtPrice === null || listing.compareAtPrice === undefined ? '' : String(listing.compareAtPrice),
           currency: listing.currency ?? 'UGX',
           priceNegotiable: listing.priceNegotiable,
           unit: listing.unit ?? 'none',
@@ -471,12 +499,14 @@ export function EditListingForm({ id }: { id: string }) {
     if (!current) return
 
     const priceRaw = form.price.trim()
+    const oldPriceRaw = form.compareAtPrice.trim()
     const quantityRaw = form.quantity.trim()
     const payload = {
       title: form.title,
       description: form.description,
       category: form.category === 'none' ? undefined : form.category,
       price: priceRaw === '' ? null : Number(priceRaw),
+      compareAtPrice: oldPriceRaw === '' ? null : Number(oldPriceRaw),
       currency: form.currency,
       priceNegotiable: form.priceNegotiable,
       unit: form.unit === 'none' ? null : form.unit,
@@ -571,6 +601,18 @@ export function EditListingForm({ id }: { id: string }) {
               ))}
             </select>
           </div>
+        </Field>
+        <Field label="Old price (optional)" htmlFor="e-compare" error={errors.compareAtPrice} hint="shows as a discount">
+          <Input
+            id="e-compare"
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step={currencyDef(form.currency).zeroDecimal ? '1' : '0.01'}
+            value={form.compareAtPrice}
+            onChange={(e) => set('compareAtPrice', e.target.value)}
+            placeholder="e.g. 30000"
+          />
         </Field>
         <Field label="Per" htmlFor="e-unit" error={errors.unit}>
           <Select value={form.unit} onValueChange={(v) => set('unit', v)}>

@@ -79,6 +79,7 @@ export interface Listing {
   description: string
   category: string
   price: number | null
+  compareAtPrice: number | null
   currency: string
   priceNegotiable: boolean
   unit: string | null
@@ -171,6 +172,37 @@ export interface ListingsPage {
   page: number
   pageSize: number
   pageCount: number
+}
+
+// ---- Shop page (public catalogue) ----
+export interface ShopChecklistT {
+  photo: boolean
+  description: boolean
+  area: boolean
+  hours: boolean
+  whatsapp: boolean
+}
+
+export interface ShopInfo {
+  id: string
+  name: string
+  photoUrl: string | null
+  description: string | null
+  hours: string | null
+  area: string | null
+  county: string | null
+  country: string
+  phone: string
+  whatsapp: string | null
+  memberSince: string
+  activeCount: number
+  checklist: ShopChecklistT
+  complete: boolean
+}
+
+export interface ShopPage {
+  shop: ShopInfo
+  listings: Listing[]
 }
 
 export interface ApiErrorShape {

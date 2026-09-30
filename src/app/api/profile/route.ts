@@ -1,12 +1,16 @@
 import { route, jsonOk, parseBody, requireUser, ApiError } from '@/lib/api'
 import { businessProfileSchema, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
+import { shopChecklistFor, shopChecklistComplete } from '@/lib/shop'
 
 export async function GET() {
   return route(async () => {
     const user = await requireUser()
     const profile = await db.businessProfile.findUnique({ where: { userId: user.id } })
-    return jsonOk({ profile })
+    // The honest "verify your shop" state: what the seller has actually filled
+    // in. No platform vetting is claimed — completeness is the whole story.
+    const checklist = shopChecklistFor(profile)
+    return jsonOk({ profile, checklist, complete: shopChecklistComplete(checklist) })
   })
 }
 
