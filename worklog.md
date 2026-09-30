@@ -267,3 +267,28 @@ Work Log:
 
 Stage Summary:
 - Buyers can now collect across the whole market and send each seller a clean, complete list on WhatsApp — the closest thing to a cart that stays true to Duuka: no login, no checkout, no in-app chat, just a better message. Per-shop lists mirror real market behavior; stale-item flags keep the honesty bar. 136/136, browser-verified, fixtures clean.
+
+---
+Task ID: 14
+Agent: Super Z (main)
+Task: Motion layer — make the app feel alive (user brief: basket fills up as you shop but never fully, photo hover zoom, press feedback, "retouch so it feels alive and artsy"). Plus confirm double-tap add increments qty.
+
+Work Log:
+- Confirmed the user's core ask was already true: addToBasket() increments qty on repeat taps (qty+1, cap 99). E2E-verified live: double-tap matooke add → basket view shows "Quantity: 2", subtotal 36,000 estimate.
+- basket.ts: added basketUnits() (sum of all line qty across shops) — distinct from basketCount (lines). Badge = how many DIFFERENT things; fill = how MUCH stuff, so re-adds visibly fill.
+- NEW src/components/commerce/basket-icon.tsx: BasketGlyph — lucide ShoppingBasket paths with a fill rect clipped to the basket body, moved by transform only (translateY in viewBox units). fill prop = fraction of body; header caps at 0.85 → never reaches the brim. useId for the clipPath.
+- app-header.tsx: fill level = min(0.85, sqrt(units/14)) (first item ≈ 27% of body, visible immediately; 14 units = as full as it gets). Pop on add = WAAPI one-shot scale 1→1.14→1 220ms + badge bump via badgeRef.animate — refs only, NO setState in effect (eslint react-hooks/set-state-in-effect caught the first attempt; WAAPI-on-refs is the compliant pattern). Pop/bump fire only on units GROWTH during the visit — initial ref seeding prevents reload-with-saved-basket from faking an add.
+- globals.css motion layer: .basket-fill (transition transform 600ms cubic-bezier(0.23,1,0.32,1) — a TRANSITION so rapid adds retarget mid-flight; 600ms is the deliberate exception the user explicitly asked for), .press (transform+colors exact properties, :active scale(0.97) 160ms), reduced-motion block (fill jumps instantly, press keeps colors only).
+- ListingBlock: group/photo on the photo container + group-hover/photo:scale-[1.04] 300ms ease-out on ListingPhoto (className passthrough hits img AND glyph fallback); add button = press + useAddedFlash (Plus→Check 150ms zoom-in-75, emerald-300, 1.2s); buyer bar chip/Call/Chat → press. onAdd type now boolean | void so the flash only fires on REAL success (addToBasket reports back).
+- listing-detail.tsx: gallery imgs wrapped in per-photo overflow-hidden divs (zoom can't spill onto neighbors in the rail) with hover:scale-[1.03]; Add-to-basket flashes Check + "Added to basket" (press); Call/WhatsApp/directions/visit-shop → press.
+- basket-view.tsx: useAddToBasket returns boolean; NEW useAddedFlash() hook (timer-cleaned); shop sections enter with animate-in fade-in slide-in-from-bottom-2 300ms + 40ms stagger (inline animationDuration/Delay/FillMode both — avoids depending on tw-animate-css duration utilities); steppers/CTAs/clear → press.
+- tsc clean, eslint clean, test-api 136/136, cleanup-test-data run (8 users/16 listings seed state).
+
+E2E via :81 (guest, 390×844 then desktop):
+- Double-tap → qty 2 ✓; badge line-count semantics intact (1 line = "1 item") ✓; fill transform exactly matches the sqrt curve (units 2 → translateY 16.78px; units 3 → 15.99px — fill ROSE live between adds) ✓
+- Press: held mouse down on add button → computed transform matrix(0.97...) ✓; released → Check flash rendered ✓ (screenshot caught ✓ + toast + badge 2 together)
+- Hover zoom: compiled rule verified as @media (hover: hover) { ...group-hover/photo:scale-[1.04]... scale: 1.04 } — headless env reports hover:none (touch emulation) so the gate SUPPRESSES it, exactly as it will on real phones. Interactive-hover proof requires a pointer device; structural + gating proof done. NOTE: Tailwind v4 compiles scale utilities to the standalone `scale` property, not transform — computed transform reads "none" even when hovered.
+- wa.me hrefs carry per-shop order text to correct digits; reload on #/basket keeps basket + qty; two shop sections render; localStorage cleared after test. Zero console errors in final session. Screenshots: scripts/verify-motion-header-fill.png, verify-motion-basket-view.png, verify-motion-added-flash.png.
+
+Stage Summary:
+- The basket now answers every tap three ways: the button flashes Check, the toast confirms, and the header basket's green goods-layer visibly RISES (never to the brim). Photos lean in under a real cursor, every pressable answers the finger at 0.97, the basket view enters with a gentle stagger. All transform/opacity, all reduced-motion-guarded, zero API changes. 136/136.

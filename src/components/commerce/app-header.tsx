@@ -1,6 +1,7 @@
 'use client'
 
-import { Store, Search, ShoppingBasket, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { Store, Search, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { apiGet } from '@/lib/client'
@@ -16,7 +17,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { basketCount, useBasket } from '@/lib/basket'
+import { basketCount, basketUnits, useBasket } from '@/lib/basket'
+import { BasketGlyph } from './basket-icon'
+
+// How full the basket icon looks, as a fraction of the basket body. A sqrt
+// curve so the FIRST item is already clearly visible (~27% of the body) and
+// each later add still nudges it; capped at 0.85 — the basket never quite
+// reaches the brim, per the brief. 14 units = "as full as it gets".
+function basketFillLevel(units: number): number {
+  if (units <= 0) return 0
+  return Math.min(0.85, Math.sqrt(units / 14))
+}
 
 export function AppHeader() {
   const { view, navigate, setAuthOpen } = useAppStore()
@@ -33,6 +44,45 @@ export function AppHeader() {
   const unread = user ? (notificationsQuery.data?.unreadCount ?? 0) : 0
   const basket = useBasket()
   const basketItems = basketCount(basket)
+  const units = basketUnits(basket)
+
+  // Pop + badge bump fire only when the count GROWS during this visit —
+  // never on first render (a page reload with a saved basket must not look
+  // like an add). Both are WAAPI one-shots on DOM refs: external-system
+  // mutations from an effect, no React state, no cascading render. Reduced
+  // motion skips the pop and leaves the badge to simply appear.
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const badgeRef = useRef<HTMLSpanElement>(null)
+  const unitsRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (unitsRef.current === null) {
+      unitsRef.current = units
+      return
+    }
+    const prev = unitsRef.current
+    unitsRef.current = units
+    if (units <= prev) return
+    if (
+      typeof window !== 'undefined' &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      iconRef.current?.animate(
+        [
+          { transform: 'scale(1)' },
+          { transform: 'scale(1.14)', offset: 0.4 },
+          { transform: 'scale(1)' },
+        ],
+        { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+      )
+      badgeRef.current?.animate(
+        [
+          { transform: 'scale(0.9)', opacity: 0.4 },
+          { transform: 'scale(1)', opacity: 1 },
+        ],
+        { duration: 200, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+      )
+    }
+  }, [units])
 
   const links: Array<{ name: 'browse' | 'publish' | 'my-listings' | 'saved' | 'notifications'; label: string; icon: React.ReactNode; badge?: number }> = [
     { name: 'browse', label: 'Browse', icon: <Search className="size-4" aria-hidden /> },
@@ -84,13 +134,18 @@ export function AppHeader() {
             aria-label={`Basket — ${basketItems} ${basketItems === 1 ? 'item' : 'items'}`}
             aria-current={view.name === 'basket' ? 'page' : undefined}
             className={cn(
-              'relative inline-flex size-9 items-center justify-center rounded-md transition-colors',
+              'press relative inline-flex size-9 items-center justify-center rounded-md',
               view.name === 'basket' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
             )}
           >
-            <ShoppingBasket className="size-5" aria-hidden />
+            <span ref={iconRef} className="inline-flex">
+              <BasketGlyph fill={basketFillLevel(units)} />
+            </span>
             {basketItems > 0 ? (
-              <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+              <span
+                ref={badgeRef}
+                className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+              >
                 {basketItems > 9 ? '9+' : basketItems}
               </span>
             ) : null}
