@@ -18,6 +18,7 @@ import type { ShopPage as ShopPageT, ListingShopOwner } from '@/lib/client'
 import { telLink, whatsappLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { useAddToBasket } from './basket-view'
 import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -26,6 +27,7 @@ import { EmptyState } from './empty-state'
 export function ShopView({ id }: { id: string }) {
   const { navigate } = useAppStore()
   const { user, isLoading: sessionLoading } = useSession()
+  const addToBasket = useAddToBasket()
   const [posterOpen, setPosterOpen] = useState(false)
   // The QR encodes an absolute URL, which only exists in the browser.
   // useSyncExternalStore gives '' during SSR/hydration and the real origin
@@ -241,6 +243,7 @@ export function ShopView({ id }: { id: string }) {
                 key={listing.id}
                 listing={{ ...listing, user: shopOwnerFrom(shop) }}
                 onOpen={(lid) => navigate({ name: 'listing', id: lid })}
+                onAdd={addToBasket}
               />
             ))}
           </div>
