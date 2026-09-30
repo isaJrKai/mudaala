@@ -79,12 +79,14 @@ export interface SearchOptions {
 
 // The shop identity every buyer should see next to a listing: the named
 // business profile (shop name + shop photo), falling back to the account name.
+// area/county ride along so the browse feed can disambiguate same-name shops
+// ("Nakato · Nakasero" vs "Nakato · Jinja").
 export const SHOP_OWNER_INCLUDE = {
   user: {
     select: {
       id: true,
       name: true,
-      profile: { select: { businessName: true, photoUrl: true } },
+      profile: { select: { businessName: true, photoUrl: true, area: true, county: true } },
     },
   },
 } as const

@@ -110,6 +110,8 @@ export interface BusinessProfileT {
   whatsapp: string | null
   hours: string | null
   verified: boolean
+  /** Public identity code ("DK-4821") — assigned once, never changes. */
+  shopCode: string | null
 }
 
 export interface ListingOwner {
@@ -121,10 +123,11 @@ export interface ListingOwner {
 }
 
 // Shop identity attached to search/browse results — who is selling this?
+// profile.area/county let the browse feed disambiguate same-name shops.
 export interface ListingShopOwner {
   id: string
   name: string
-  profile: { businessName: string; photoUrl: string | null } | null
+  profile: { businessName: string; photoUrl: string | null; area: string | null; county: string | null } | null
 }
 
 export type ListingWithShop = Listing & { user: ListingShopOwner }
@@ -167,7 +170,9 @@ export interface SessionUser {
 }
 
 export interface ListingsPage {
-  items: Listing[]
+  // Search/browse results carry the seller identity (shop name, photo, area)
+  // so buyers can see WHO sells on every card.
+  items: (Listing & { user?: ListingShopOwner })[]
   total: number
   page: number
   pageSize: number
@@ -194,6 +199,8 @@ export interface ShopInfo {
   country: string
   phone: string
   whatsapp: string | null
+  /** Public identity code ("DK-4821") — stable for the life of the shop. */
+  shopCode: string | null
   memberSince: string
   activeCount: number
   checklist: ShopChecklistT

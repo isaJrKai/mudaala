@@ -394,6 +394,82 @@ async function main() {
     await call('DELETE', `/api/listings/${bobListing.json.listing.id}`, undefined, bob)
   }
 
+  console.log('\n== 3d. Shop identity codes & same-name guard ==')
+  {
+    // Alice's profile was created in 3b, so it already carries a code.
+    const profileState = await call('GET', '/api/profile', undefined, alice)
+    const aliceCode = profileState.json?.profile?.shopCode
+    ok('profile exposes a DK-XXXX shop code', typeof aliceCode === 'string' && /^DK-\d{4}$/.test(aliceCode))
+
+    // The code is a permanent identity: profile updates must never re-roll it.
+    const update = await call('PUT', '/api/profile', {
+      businessName: 'Alice Test Shop',
+      photoUrl: null,
+      category: 'other',
+      description: 'Updated description for code stability check.',
+      county: 'Nairobi',
+      area: 'Test Area',
+      phone: alicePhone,
+      whatsapp: null,
+      hours: null,
+    }, alice)
+    ok('profile update keeps the same shop code', update.status === 200 && update.json?.profile?.shopCode === aliceCode)
+
+    const shopAnon = await call('GET', `/api/shops/${alice.user?.id}`)
+    ok('shop page shows the same code to buyers', shopAnon.status === 200 && shopAnon.json?.shop?.shopCode === aliceCode)
+
+    // check-name: public availability check behind the live "suggest area" hint.
+    const takenCheck = await call('GET', '/api/shops/check-name?name=alice%20test%20shop')
+    ok('check-name flags an existing name case-insensitively',
+      takenCheck.status === 200 && takenCheck.json?.taken === true && takenCheck.json.matches.length >= 1)
+    const ownCheck = await call('GET', `/api/shops/check-name?name=Alice%20Test%20Shop&exclude=${alice.user?.id}`)
+    ok('check-name ignores the seller’s own shop (exclude works)',
+      ownCheck.status === 200 && ownCheck.json?.taken === false)
+    const freeCheck = await call('GET', '/api/shops/check-name?name=Brand%20New%20Name%20Shop')
+    ok('check-name passes an unused name', freeCheck.status === 200 && freeCheck.json?.taken === false)
+    const shortCheck = await call('GET', '/api/shops/check-name?name=A')
+    ok('check-name rejects too-short input → 400', shortCheck.status === 400)
+
+    // Two new shops: codes must be distinct and both valid.
+    const cara: Jar = { cookie: '' }
+    const dora: Jar = { cookie: '' }
+    await register(cara, uniquePhone(), 'Cara Twinname', 'password789')
+    await register(dora, uniquePhone(), 'Dora Twinname', 'password789')
+    const caraProfile = await call('PUT', '/api/profile', {
+      businessName: 'Twin Name Market',
+      photoUrl: null, category: 'other', description: null, county: 'Nairobi',
+      area: 'Westlands', phone: uniquePhone(),
+      whatsapp: null, hours: null,
+    }, cara)
+    ok('new profile gets a code at creation', caraProfile.status === 200 && /^DK-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
+    const doraProfile = await call('PUT', '/api/profile', {
+      businessName: 'Twin Name Market',
+      photoUrl: null, category: 'other', description: null, county: 'Nairobi',
+      area: 'Karen', phone: uniquePhone(),
+      whatsapp: null, hours: null,
+    }, dora)
+    ok('same-name shop gets a DIFFERENT code',
+      doraProfile.status === 200 && doraProfile.json?.profile?.shopCode !== caraProfile.json?.profile?.shopCode)
+
+    // Same-name shops in one feed: owner area must ride along so the browse
+    // feed can render "Twin Name Market · Westlands" vs "· Karen".
+    const caraListing = await call('POST', '/api/listings', { ...validListing, title: 'Twin market greens offer' }, cara)
+    const doraListing = await call('POST', '/api/listings', { ...validListing, title: 'Twin market greens offer two' }, dora)
+    const browse = await call('GET', '/api/listings?q=twin%20market%20greens')
+    const both = browse.json?.items ?? []
+    const caraItem = both.find((l: any) => l.id === caraListing.json?.listing?.id)
+    const doraItem = both.find((l: any) => l.id === doraListing.json?.listing?.id)
+    ok('browse returns both same-name shops with their areas',
+      caraItem?.user?.profile?.area === 'Westlands' && doraItem?.user?.profile?.area === 'Karen')
+
+    // check-name now flags the twin name for a third party.
+    const twinCheck = await call('GET', '/api/shops/check-name?name=Twin%20Name%20Market')
+    ok('check-name sees the duplicated name', twinCheck.json?.taken === true && twinCheck.json.matches.length >= 2)
+
+    await call('DELETE', `/api/listings/${caraListing.json.listing.id}`, undefined, cara)
+    await call('DELETE', `/api/listings/${doraListing.json.listing.id}`, undefined, dora)
+  }
+
   console.log('\n== 4. Ownership & permission boundaries ==')
   const bob: Jar = { cookie: '' }
   const bobPhone = uniquePhone()
