@@ -200,3 +200,17 @@ Work Log:
 Stage Summary:
 - Buyers can tap "Near me" (permission only on their own tap, denial never blocks) and the feed reorders NEAREST-FIRST with honest per-card distances; same-name shops now also disambiguate physically (the nearest Twin Name Market is simply on top). Sellers share their spot with one tap at the shop — stored blurred to ~100 m, removable, and unreachable by regular form saves. Everything degrades gracefully: no coords → area suffix + DK code still carry identity.
 - 130/130 tests, tsc + eslint clean, browser-verified end to end, fixtures clean (14 ACTIVE seed listings). Logins unchanged (all demo1234): 0772123456 = Kampalamart, 0776123456 = Nakato Fresh, 0758123456 = Jinja Hardware, 0712345678 = Dodoma Agri, 0712000001..04 = KE shops.
+
+---
+Task ID: 10
+Agent: main (Super Z)
+Task: "audit recent build and report against the commands i set" — full audit of Tasks 7/8/9 build against the user's standing constraints
+
+Work Log:
+- Static battery: 130/130 test-api.ts (incl. sections 3c/3d/3e), tsc --noEmit exit 0, eslint exit 0. cleanup-test-data.ts run after the suite → 8 shops / 16 listings restored; live feed reports "14 listings found" (no status drift recurrence).
+- Constraint grep-audits across src/: (1) ZERO mailto:/sms:/chat/inbox mechanisms — contact surfaces are exclusively telLink()/whatsappLink() from lib/format.ts; (2) PostgresSection exists ONLY in settings-view.tsx under "Advanced settings — PostgreSQL connection"; (3) every write endpoint (listings POST/PATCH/DELETE, refresh, profile, profile/location, upload, saved-searches, notifications, settings/postgres) is behind requireUser, while GET listings / GET shops/[id] / check-name are public by design ("No sign-in for buyers, ever" in code); (4) design tokens in globals.css: primary oklch(0.40 0.075 155) dark green on background oklch(0.977 0.004 85) warm off-white + warm stone secondary — anti-AI palette intact.
+- Permission-rule audit: navigator.geolocation has exactly 2 call sites — listings-browse toggleNearMe() and account-view capture() — both plain click handlers, never effects. Confirmed live: guest page load fires NO permission; first tap in headless → denial → amber role=status fallback "Location is off — allow it when the browser asks…", feed fully usable.
+- E2E via :81 (390×844): granted path via geo stub (headless `set geo` alone does NOT grant permission — harness nuance, not an app bug) → "Near me ✓", sort "Nearest first", per-card distance chips, order strictly ascending 3.7×5 → 74 → 266 → 393 → 507 → 806 km; guest shop page shows DK-2623 + "Complete shop profile" and NO poster section; hrefs verified: tel:+256776123456 / wa.me prefill / shop tel:+256772123456; zero page errors (console shows only HMR logs).
+
+Stage Summary:
+- AUDIT CLEAN on all six standing commands: buyer never needs an account; seller actions all gated; contact is pure tel:/wa.me; PostgreSQL only in Settings→Advanced; deep-green/warm-neutral design intact; location permission strictly tap-triggered with graceful denial. Build health green: 130/130, tsc/eslint clean, fixtures clean. No code changes made in this pass.
