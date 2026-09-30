@@ -6,11 +6,12 @@
 // buyer actions: WHO sells it (tap → their shop), CALL, and WHATSAPP — all
 // reachable without opening the listing at all.
 
-import { MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { Check, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
 import { formatPrice, formatQuantity, timeAgo, telLink, whatsappLink } from '@/lib/format'
 import { categoryLabel, unitLabel } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { TypeBadge, StatusBadge, FreshnessDot } from './badges'
+import { useAddedFlash } from './basket-view'
 import type { Listing, ListingShopOwner } from '@/lib/client'
 import { cn } from '@/lib/utils'
 
@@ -200,8 +201,11 @@ interface ListingBlockProps {
    *  shop chip (→ shop page) above Call + WhatsApp. Shop catalogues omit it —
    *  the buyer is already inside that shop. */
   onOpenShop?: (shopId: string) => void
-  /** When provided, OFFER blocks get an add-to-basket button on the photo. */
-  onAdd?: (listing: Listing & { user?: ListingShopOwner }) => void
+  /** When provided (and the listing knows its owner), OFFER blocks get an
+   *  add-to-basket button on the photo. Returns whether the add really
+   *  happened (useAddToBasket does) so the button only flashes success
+   *  honestly — void is treated as success for loose callers. */
+  onAdd?: (listing: Listing & { user?: ListingShopOwner }) => boolean | void
   /** Same-name shop disambiguation, fed by the browse feed. */
   shopLabel?: string
   /** Buyer-facing distance ("850 m", "2.3 km") shown while "Near me" is on. */
@@ -221,14 +225,20 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
   const percentOff = discountPercent(listing)
   const whatsappNumber = listing.contactWhatsapp ?? (listing.type === 'OFFER' ? listing.contactPhone : null)
   const place = [listing.area, listing.county].filter(Boolean).join(', ')
+  const [added, flashAdded] = useAddedFlash()
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:border-input/80">
       {/* Photo — the whole reason this is a block. The open affordance is a
           click LAYER under the overlays, so the basket button can be a real
-          sibling button (nested buttons are invalid HTML and break taps). */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden border-b bg-secondary/30">
-        <ListingPhoto listing={listing} />
+          sibling button (nested buttons are invalid HTML and break taps).
+          On pointer devices the photo leans in a touch under the cursor —
+          an invitation, not a show (4%, 300ms, hover-gated). */}
+      <div className="group/photo relative aspect-[4/3] w-full overflow-hidden border-b bg-secondary/30">
+        <ListingPhoto
+          listing={listing}
+          className="transition-transform duration-300 ease-out group-hover/photo:scale-[1.04] motion-reduce:transition-none motion-reduce:transform-none"
+        />
         <button
           type="button"
           onClick={() => onOpen(listing.id)}
@@ -246,11 +256,19 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
         {onAdd && listing.type === 'OFFER' ? (
           <button
             type="button"
-            onClick={() => onAdd(listing)}
-            className="absolute bottom-1.5 left-1.5 z-20 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/75"
+            onClick={() => flashAdded(onAdd(listing) !== false)}
+            className="press absolute bottom-1.5 left-1.5 z-20 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm hover:bg-black/75"
             aria-label={`Add ${listing.title} to basket`}
           >
-            <Plus className="size-4" aria-hidden />
+            {added ? (
+              <Check
+                className="size-4 animate-in fade-in zoom-in-75 text-emerald-300 motion-reduce:animate-none"
+                style={{ animationDuration: '150ms' }}
+                aria-hidden
+              />
+            ) : (
+              <Plus className="size-4" aria-hidden />
+            )}
           </button>
         ) : null}
       </div>
@@ -324,7 +342,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
           <button
             type="button"
             onClick={() => onOpenShop(shop.id)}
-            className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-secondary/60"
+            className="press flex w-full min-w-0 items-center gap-1.5 rounded-md px-0.5 py-0.5 text-left hover:bg-secondary/60"
             aria-label={`Visit shop: ${shopDisplayName}`}
           >
             {shopPhoto ? (
@@ -340,7 +358,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
           <div className="mt-1.5 flex gap-1.5">
             <a
               href={telLink(listing.contactPhone)}
-              className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border bg-card text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+              className="press inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border bg-card text-xs font-semibold text-foreground hover:bg-secondary"
               aria-label={`Call ${shopDisplayName} about ${listing.title}`}
             >
               <Phone className="size-3.5 text-primary" aria-hidden /> Call
@@ -350,7 +368,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
                 href={whatsappLink(whatsappNumber, listing.title, listing.type)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-50 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                className="press inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-50 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                 aria-label={`WhatsApp ${shopDisplayName} about ${listing.title}`}
               >
                 <MessageCircle className="size-3.5" aria-hidden /> Chat

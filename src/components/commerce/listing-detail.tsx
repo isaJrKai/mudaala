@@ -5,7 +5,7 @@
 // pickup), and direct contact. No login needed for any of it.
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { ArrowLeft, Check, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { apiGet } from '@/lib/client'
@@ -24,7 +24,7 @@ import {
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { useAppStore } from '@/lib/store'
-import { useAddToBasket } from './basket-view'
+import { useAddToBasket, useAddedFlash } from './basket-view'
 import { TypeBadge, StatusBadge } from './badges'
 import { ListingListSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -48,13 +48,16 @@ function PhotoGallery({ listing }: { listing: ListingDetailT }) {
         aria-label={`Photos of ${listing.title}`}
       >
         {listing.photos.map((photo, i) => (
-          <img
-            key={photo}
-            src={photo}
-            alt={`${listing.title} — photo ${i + 1} of ${listing.photos.length}`}
-            loading={i === 0 ? 'eager' : 'lazy'}
-            className="h-56 w-[88%] shrink-0 snap-center rounded-md border object-cover sm:h-80"
-          />
+          // Each photo clips its own zoom so the lean-in never spills onto
+          // its neighbors in the rail.
+          <div key={photo} className="relative h-56 w-[88%] shrink-0 snap-center overflow-hidden rounded-md border sm:h-80">
+            <img
+              src={photo}
+              alt={`${listing.title} — photo ${i + 1} of ${listing.photos.length}`}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              className="size-full object-cover transition-transform duration-300 ease-out hover:scale-[1.03] motion-reduce:transition-none motion-reduce:transform-none"
+            />
+          </div>
         ))}
       </div>
       {listing.photos.length > 1 ? (
@@ -69,6 +72,7 @@ function PhotoGallery({ listing }: { listing: ListingDetailT }) {
 export function ListingDetail({ id }: { id: string }) {
   const { navigate } = useAppStore()
   const addToBasket = useAddToBasket()
+  const [added, flashAdded] = useAddedFlash()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['listing', id],
@@ -147,10 +151,29 @@ export function ListingDetail({ id }: { id: string }) {
           </div>
 
           {/* The buy action, next to the price where buy intent lives.
-              OFFERs only: a REQUEST is someone offering to sell to YOU. */}
+              OFFERs only: a REQUEST is someone offering to sell to YOU.
+              The flash only plays when the basket really took the item —
+              addToBasket reports back. */}
           {listing.type === 'OFFER' ? (
-            <Button variant="secondary" className="mt-3 h-10 w-full gap-1.5 text-[15px]" onClick={() => addToBasket(listing)}>
-              <Plus className="size-4" aria-hidden /> Add to basket
+            <Button
+              variant="secondary"
+              className="press mt-3 h-10 w-full gap-1.5 text-[15px]"
+              onClick={() => flashAdded(addToBasket(listing))}
+            >
+              {added ? (
+                <>
+                  <Check
+                    className="size-4 animate-in fade-in zoom-in-75 text-emerald-700 motion-reduce:animate-none"
+                    style={{ animationDuration: '150ms' }}
+                    aria-hidden
+                  />
+                  Added to basket
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4" aria-hidden /> Add to basket
+                </>
+              )}
             </Button>
           ) : null}
 
@@ -228,7 +251,7 @@ export function ListingDetail({ id }: { id: string }) {
           <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Button asChild className="h-11 flex-1 text-[15px]">
+            <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
                 <Phone className="size-4" aria-hidden /> Call seller
               </a>
@@ -237,7 +260,7 @@ export function ListingDetail({ id }: { id: string }) {
               <Button
                 asChild
                 variant="outline"
-                className="h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
+                className="press h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
               >
                 <a href={whatsappLink(whatsapp, listing.title, listing.type)} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="size-4" aria-hidden /> WhatsApp
@@ -245,7 +268,7 @@ export function ListingDetail({ id }: { id: string }) {
               </Button>
             ) : null}
           </div>
-          <Button asChild variant="outline" className="mt-2 h-11 w-full gap-1.5 text-[15px]">
+          <Button asChild variant="outline" className="press mt-2 h-11 w-full gap-1.5 text-[15px]">
             <a
               href={directionsUrl}
               target="_blank"
@@ -286,7 +309,7 @@ export function ListingDetail({ id }: { id: string }) {
         </div>
         <Button
           variant="outline"
-          className="mt-3 w-full gap-1.5"
+          className="press mt-3 w-full gap-1.5"
           onClick={() => navigate({ name: 'shop', id: listing.userId })}
           aria-label={`Visit ${shopDisplayName}'s shop`}
         >

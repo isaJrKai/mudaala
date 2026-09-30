@@ -93,6 +93,17 @@ export function basketCount(basket: StoredBasket): number {
   return Object.values(basket.lines).reduce((total, shop) => total + Object.keys(shop).length, 0)
 }
 
+// Total UNITS (quantities summed) — what the header basket's liquid fill
+// responds to. Deliberately different from the badge: the badge says how
+// many DIFFERENT things are waiting; the fill says how much stuff there is,
+// so tapping add twice visibly fills the basket twice.
+export function basketUnits(basket: StoredBasket): number {
+  return Object.values(basket.lines).reduce(
+    (total, shop) => total + Object.values(shop).reduce((sum, line) => sum + line.qty, 0),
+    0,
+  )
+}
+
 // The minimum the caller must hand over. Feed blocks carry Listing & { user },
 // detail pages carry ListingDetail — both satisfy this shape.
 export interface BasketAddListing {
