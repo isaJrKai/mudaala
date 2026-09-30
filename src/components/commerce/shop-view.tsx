@@ -267,10 +267,11 @@ export function ShopView({ id }: { id: string }) {
 
 // Catalogue cards already sit inside the shop, so the per-card shop chip is
 // redundant — attach the owner identity for the record, not for navigation.
+// (The shop page has no use for coordinates; nulls keep the shape honest.)
 function shopOwnerFrom(shop: ShopPageT['shop']): ListingShopOwner {
   return {
     id: shop.id,
     name: shop.name,
-    profile: { businessName: shop.name, photoUrl: shop.photoUrl, area: shop.area, county: shop.county },
+    profile: { businessName: shop.name, photoUrl: shop.photoUrl, area: shop.area, county: shop.county, lat: null, lng: null },
   }
 }

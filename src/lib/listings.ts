@@ -6,6 +6,7 @@ import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api'
 import { isTransitionAllowed } from '@/lib/validation'
 import { LISTING_ACTIVE_DAYS, REFRESH_COOLDOWN_HOURS, EXPIRING_SOON_DAYS } from '@/lib/constants'
+import { haversineMeters } from '@/lib/geo'
 import type { Listing, Prisma } from '@prisma/client'
 import type { ListingQuery } from '@/lib/validation'
 
@@ -86,7 +87,9 @@ export const SHOP_OWNER_INCLUDE = {
     select: {
       id: true,
       name: true,
-      profile: { select: { businessName: true, photoUrl: true, area: true, county: true } },
+      // profile.lat/lng arrive PRE-ROUNDED to ~100 m (see profile/location
+      // route) — enough to order and label distances, never a precise spot.
+      profile: { select: { businessName: true, photoUrl: true, area: true, county: true, lat: true, lng: true } },
     },
   },
 } as const
@@ -162,6 +165,45 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
 
   const orderBy: Prisma.ListingOrderByWithRelationInput =
     query.sort === 'price_asc' ? { price: 'asc' } : query.sort === 'price_desc' ? { price: 'desc' } : { refreshedAt: 'desc' }
+
+  // "Near me": order by real walking-sense distance to the buyer. SQLite has
+  // no geo index, so we scan the matching rows (capped), compute haversine
+  // from the buyer's position to each SHOP's blurred spot, and paginate in
+  // memory. Sorting on the server (not per browser page) keeps page 2 honest:
+  // the nearest shop is always on page 1. Shops without a spot fall in
+  // after the located ones, in freshness order.
+  if (query.sort === 'nearest' && query.lat !== undefined && query.lng !== undefined) {
+    const NEAREST_SCAN_CAP = 500
+    const [all, total] = await Promise.all([
+      db.listing.findMany({
+        where,
+        orderBy: [orderBy],
+        take: NEAREST_SCAN_CAP,
+        include: SHOP_OWNER_INCLUDE,
+      }),
+      db.listing.count({ where }),
+    ])
+    const buyer = { lat: query.lat, lng: query.lng }
+    const ranked = all.map((row, index) => {
+      const spot = row.user.profile
+      const meters = spot && spot.lat !== null && spot.lng !== null ? haversineMeters(buyer, { lat: spot.lat, lng: spot.lng }) : null
+      return { row, meters, index }
+    })
+    ranked.sort((a, b) => {
+      if (a.meters === null && b.meters === null) return a.index - b.index
+      if (a.meters === null) return 1
+      if (b.meters === null) return -1
+      return a.meters - b.meters || a.index - b.index
+    })
+    const pageRows = ranked.slice((page - 1) * pageSize, page * pageSize).map((entry) => entry.row)
+    return {
+      items: pageRows.map(serializeListing),
+      total,
+      page,
+      pageSize,
+      pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    }
+  }
 
   const [rows, total] = await Promise.all([
     db.listing.findMany({

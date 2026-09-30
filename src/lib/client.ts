@@ -112,6 +112,9 @@ export interface BusinessProfileT {
   verified: boolean
   /** Public identity code ("DK-4821") — assigned once, never changes. */
   shopCode: string | null
+  /** Shop spot, pre-rounded to ~100 m server-side. Null when not shared. */
+  lat: number | null
+  lng: number | null
 }
 
 export interface ListingOwner {
@@ -123,11 +126,19 @@ export interface ListingOwner {
 }
 
 // Shop identity attached to search/browse results — who is selling this?
-// profile.area/county let the browse feed disambiguate same-name shops.
+// profile.area/county let the browse feed disambiguate same-name shops;
+// profile.lat/lng (blurred to ~100 m) power "Near me" distance chips.
 export interface ListingShopOwner {
   id: string
   name: string
-  profile: { businessName: string; photoUrl: string | null; area: string | null; county: string | null } | null
+  profile: {
+    businessName: string
+    photoUrl: string | null
+    area: string | null
+    county: string | null
+    lat: number | null
+    lng: number | null
+  } | null
 }
 
 export type ListingWithShop = Listing & { user: ListingShopOwner }

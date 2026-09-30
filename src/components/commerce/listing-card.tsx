@@ -6,7 +6,7 @@
 // buyer actions: WHO sells it (tap → their shop), CALL, and WHATSAPP — all
 // reachable without opening the listing at all.
 
-import { MapPin, MessageCircle, Package, Phone, Store } from 'lucide-react'
+import { MapPin, MessageCircle, Navigation, Package, Phone, Store } from 'lucide-react'
 import { formatPrice, formatQuantity, timeAgo, telLink, whatsappLink } from '@/lib/format'
 import { categoryLabel, unitLabel } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
@@ -26,6 +26,8 @@ interface ListingCardProps {
   /** Overrides the shop display name — the browse feed uses it to tell
    *  same-name shops apart ("Nakato Fresh Produce · Jinja"). */
   shopLabel?: string
+  /** Buyer-facing distance ("850 m", "2.3 km") shown while "Near me" is on. */
+  distanceLabel?: string
 }
 
 function ListingPhoto({ listing, className }: { listing: Listing; className?: string }) {
@@ -56,7 +58,7 @@ export function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice
   return Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)
 }
 
-export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, shopLabel }: ListingCardProps) {
+export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, shopLabel, distanceLabel }: ListingCardProps) {
   const quantity = formatQuantity(listing.quantity, listing.unit)
   const shop = listing.user
   const baseShopName = shop?.profile?.businessName?.trim() || shop?.name
@@ -131,6 +133,11 @@ export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, 
               {listing.area || listing.county ? (
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="size-3.5" aria-hidden /> {[listing.area, listing.county].filter(Boolean).join(', ')}
+                </span>
+              ) : null}
+              {distanceLabel ? (
+                <span className="inline-flex items-center gap-1 font-medium text-foreground/70">
+                  <Navigation className="size-3.5" aria-hidden /> {distanceLabel}
                 </span>
               ) : null}
               <span className="inline-flex items-center gap-1">

@@ -57,6 +57,12 @@ model BusinessProfile {
   // Public shop identity code (e.g. "DK-4821"). Auto-assigned once, then
   // NEVER changed — buyers and printed QR posters rely on its stability.
   shopCode     String? @unique
+  // Optional shop spot. The seller taps "Add my shop location" while standing
+  // AT the shop; the API rounds to 3 decimals (~100 m) BEFORE storing, so a
+  // precise home/private position can never exist server-side. Buyers only
+  // ever receive this blurred pair — enough to order "nearest" results.
+  lat          Float?
+  lng          Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
