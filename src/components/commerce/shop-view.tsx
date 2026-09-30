@@ -10,7 +10,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, Clock, Hash, MapPin, MessageCircle, Package, Phone, Printer, QrCode, Store, X } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Clock, Hash, MapPin, MessageCircle, Package, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
@@ -72,6 +72,13 @@ export function ShopView({ id }: { id: string }) {
   const whatsappNumber = shop.whatsapp ?? shop.phone
   const doneCount = Object.values(shop.checklist).filter(Boolean).length
   const isOwner = !sessionLoading && user?.id === shop.id
+  // Owner's WhatsApp broadcast: opens WhatsApp with the message pre-written
+  // (wa.me with no recipient → the seller picks the chat or status). The code
+  // rides in the text so the shop stays findable even after forwarding.
+  const shareHref =
+    shopUrl && shop.shopCode
+      ? `https://wa.me/?text=${encodeURIComponent(`Find ${shop.name} on Duuka — our code is ${shop.shopCode} — ${shopUrl}`)}`
+      : null
 
   return (
     <div className="space-y-4">
@@ -184,12 +191,26 @@ export function ShopView({ id }: { id: string }) {
                 Print it and put it where customers stand. Anyone who scans lands right here — no typing, no searching.
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your code is <span className="font-mono font-semibold text-foreground">{shop.shopCode}</span> — it never changes, so old posters keep working.
+                Your code is <span className="font-mono font-semibold text-foreground">{shop.shopCode}</span> — it never changes, so old posters keep working. Customers can type it into the Duuka search, too.
               </p>
             </div>
-            <Button variant="outline" className="shrink-0 gap-1.5" onClick={() => setPosterOpen(true)}>
-              <QrCode className="size-4" aria-hidden /> Show poster & print
-            </Button>
+            <div className="flex shrink-0 flex-col gap-2">
+              <Button variant="outline" className="gap-1.5" onClick={() => setPosterOpen(true)}>
+                <QrCode className="size-4" aria-hidden /> Show poster &amp; print
+              </Button>
+              {shareHref ? (
+                <Button asChild variant="outline" className="gap-1.5 border-emerald-600 text-emerald-800 hover:bg-emerald-50">
+                  <a
+                    href={shareHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Share ${shop.name} on WhatsApp`}
+                  >
+                    <Share2 className="size-4" aria-hidden /> Share on WhatsApp
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           </div>
         </section>
       ) : null}
@@ -252,6 +273,7 @@ export function ShopView({ id }: { id: string }) {
             <p className="mt-5 text-base font-semibold text-neutral-900">Scan to see our shop on Duuka</p>
             <p className="mt-3 font-mono text-3xl font-bold tracking-widest text-neutral-900">{shop.shopCode}</p>
             <p className="mt-1 text-xs uppercase tracking-wider text-neutral-500">Shop code</p>
+            <p className="mt-2 text-sm text-neutral-600">Can't scan? Type the code in Duuka search.</p>
             <p className="mt-6 text-sm text-neutral-600">Or call us: {shop.phone}</p>
           </div>
           <div className="no-print mx-auto max-w-md pt-4">

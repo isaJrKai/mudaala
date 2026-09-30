@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, MapPin, Info } from 'lucide-react'
+import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, MapPin, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPost } from '@/lib/client'
-import type { ListingsPage } from '@/lib/client'
-import { normalizeShopName } from '@/lib/format'
+import type { ListingsPage, ShopLookupResponse } from '@/lib/client'
+import { normalizeShopName, normalizeShopCode } from '@/lib/format'
 import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
@@ -106,6 +106,10 @@ export function ListingsBrowse() {
   }
 
   const query = filtersToQuery(filters)
+  // A code-shaped query ("dk 2623", "DK-2623") is a till-number punch, not a
+  // text search — canonicalize it and look the shop up directly. Anything
+  // else keeps flowing through the normal listing search.
+  const codeQuery = useMemo(() => (filters.q ? (normalizeShopCode(filters.q) ?? '') : ''), [filters.q])
   // Buyer coordinates ride on the URL (never persisted anywhere) and are part
   // of the cache key so toggling Near me refetches in the new order.
   const nearParams =
@@ -115,6 +119,15 @@ export function ListingsBrowse() {
     queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}${nearParams}`),
     placeholderData: (prev) => prev,
   })
+
+  const codeLookup = useQuery({
+    queryKey: ['shop-code', codeQuery],
+    queryFn: () => apiGet<ShopLookupResponse>(`/api/shops/lookup?code=${encodeURIComponent(codeQuery)}`),
+    enabled: codeQuery !== '',
+    // A code either exists or it doesn't — the first honest answer is final.
+    retry: false,
+  })
+  const codeShop = codeQuery !== '' && codeLookup.data ? codeLookup.data.shop : null
 
   const shopLabels = useMemo(() => computeShopLabels(data?.items), [data])
 
@@ -216,7 +229,35 @@ export function ListingsBrowse() {
 
       <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
 
-      {isLoading ? (
+      {/* A typed DK code replaces the whole feed: the buyer is asking for ONE
+          shop, exactly like dialing a till number — show that shop, or say
+          plainly that the number didn't match. */}
+      {codeQuery !== '' ? (
+        codeLookup.isLoading ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            Finding the shop for {codeQuery}…
+          </p>
+        ) : codeLookup.isError ? (
+          <p
+            role="status"
+            className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+          >
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              {codeLookup.error instanceof Error
+                ? codeLookup.error.message
+                : 'Could not check that code — check the number with the shop.'}
+            </span>
+          </p>
+        ) : codeShop ? (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground" role="status">
+              Shop for code {codeQuery}
+            </p>
+            <ShopCodeCard shop={codeShop} onOpen={() => navigate({ name: 'shop', id: codeShop.id })} />
+          </div>
+        ) : null
+      ) : isLoading ? (
         <ListingListSkeleton />
       ) : isError ? (
         <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
@@ -262,6 +303,39 @@ export function ListingsBrowse() {
         </div>
       ) : null}
     </div>
+  )
+}
+
+// The result of punching a DK code into search — one shop, whole card taps
+// through, same affordance as a listing card. The code chip repeats so the
+// buyer can confirm the number they typed matches the shop they got.
+function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+      aria-label={`Open shop: ${shop.name}`}
+    >
+      {shop.photoUrl ? (
+        <img src={shop.photoUrl} alt="" className="size-14 shrink-0 rounded-lg border object-cover" />
+      ) : (
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-lg border bg-accent text-xl font-bold text-accent-foreground">
+          {shop.name.charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{shop.name}</span>
+        <span className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" aria-hidden />
+          {[shop.area, shop.county].filter(Boolean).join(', ') || 'Shop on Duuka'}
+        </span>
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+          <Hash className="size-3" aria-hidden /> <span className="font-mono tracking-wide">{shop.shopCode}</span>
+        </span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    </button>
   )
 }
 
