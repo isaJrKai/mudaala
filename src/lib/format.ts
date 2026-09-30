@@ -82,3 +82,11 @@ export function whatsappLink(phone: string, listingTitle: string, listingType: '
 export function telLink(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
 }
+
+// Google Maps search for the listing's area — lets a buyer decide "can I pick
+// this up myself?" No API key, no fabricated coordinates: we search by place
+// name (area → district → country), which is exactly what the seller typed.
+export function mapsSearchUrl(parts: { area?: string | null; county: string; country?: string | null }): string {
+  const query = [parts.area, parts.county, parts.country].filter(Boolean).join(', ')
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+}

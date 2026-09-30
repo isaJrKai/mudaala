@@ -1,6 +1,6 @@
 import { route, jsonOk, requireUser } from '@/lib/api'
 import { db } from '@/lib/db'
-import { expireOverdueListings } from '@/lib/listings'
+import { expireOverdueListings, serializeListing } from '@/lib/listings'
 
 // The signed-in user's own listings — every status, expiry truthfully shown.
 export async function GET() {
@@ -11,6 +11,6 @@ export async function GET() {
       where: { userId: user.id },
       orderBy: { refreshedAt: 'desc' },
     })
-    return jsonOk({ listings })
+    return jsonOk({ listings: listings.map(serializeListing) })
   })
 }

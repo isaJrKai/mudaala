@@ -17,11 +17,13 @@ import { CATEGORIES, countryDef } from '@/lib/constants'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { formatPhonePretty } from '@/lib/format'
+import { PhotoPicker } from './photo-picker'
 import { ListingListSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
 
 interface ProfileFormState {
   businessName: string
+  photoUrl: string
   category: string
   description: string
   county: string
@@ -107,6 +109,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
 
   const [form, setForm] = useState<ProfileFormState>({
     businessName: '',
+    photoUrl: '',
     category: 'none',
     description: '',
     county: 'none',
@@ -124,6 +127,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       const p = data.profile
       setForm({
         businessName: p?.businessName ?? user.name,
+        photoUrl: p?.photoUrl ?? '',
         category: p?.category ?? 'none',
         description: p?.description ?? '',
         county: p?.county ?? 'none',
@@ -155,6 +159,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
 
     const payload = {
       businessName: form.businessName,
+      photoUrl: form.photoUrl.trim() === '' ? null : form.photoUrl.trim(),
       category: !form.category || form.category === 'none' ? null : form.category,
       description: form.description.trim() === '' ? null : form.description.trim(),
       county: !form.county || form.county === 'none' ? null : form.county,
@@ -196,6 +201,10 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
           Verification is not offered yet, so no “verified” badge is shown to anyone.
         </p>
+      </div>
+
+      <div className="rounded-lg border bg-secondary/30 p-3.5">
+        <PhotoPicker value={form.photoUrl ? [form.photoUrl] : []} onChange={(photos) => set('photoUrl', photos[0] ?? '')} max={1} single />
       </div>
 
       <div className="space-y-1.5">

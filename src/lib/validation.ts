@@ -79,6 +79,19 @@ const priceSchema = z
   .max(100_000_000, 'Price is too large')
   .refine((v) => Number.isFinite(v) && Math.round(v * 100) === v * 100, 'Price can have at most 2 decimal places')
 
+// Photo URLs — the upload API returns /uploads/<file>; external https URLs are
+// allowed so sellers can paste a link instead of uploading. The API route
+// sanitizes entries again (never trust the client array shape).
+export const photoUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500, 'Photo link is too long')
+  .refine((v) => v.startsWith('/uploads/') || /^https:\/\/\S+$/i.test(v) || /^http:\/\/\S+$/i.test(v), {
+    message: 'Invalid photo link',
+  })
+export const listingPhotosSchema = z.array(photoUrlSchema).max(4, 'Up to 4 photos per listing')
+
 const quantitySchema = z
   .number({ message: 'Quantity must be a number' })
   .min(0.001, 'Quantity must be greater than zero')
@@ -99,10 +112,11 @@ const listingBaseSchema = z.object({
   unit: z.enum(UNIT_KEYS as [string, ...string[]]).nullable(),
   quantity: quantitySchema.nullable(),
   country: z.enum(COUNTRY_KEYS as [string, ...string[]]).optional(),
-  county: z.string().trim().min(1, 'Choose your district or region').max(30),
+  county: z.string({ message: 'Choose your district or region' }).trim().min(1, 'Choose your district or region').max(30),
   area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
   contactPhone: rawPhone,
   contactWhatsapp: rawPhone.nullable(),
+  photos: z.array(z.string().trim().max(500)).max(4).optional(),
 })
 
 export const listingCreateSchema = listingBaseSchema
@@ -155,6 +169,7 @@ export const savedSearchCreateSchema = z.object({
 
 export const businessProfileSchema = z.object({
   businessName: z.string().trim().min(2, 'Business name must be at least 2 characters').max(80, 'Business name is too long'),
+  photoUrl: photoUrlSchema.nullable(),
   category: z.enum(CATEGORY_KEYS as [string, ...string[]]).nullable(),
   description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullable(),
   county: z.string().trim().min(1, 'Choose your district or region').max(30).nullable(),

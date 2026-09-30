@@ -77,3 +77,25 @@ Stage Summary:
 - All green: 78/78 tests, tsc, eslint, browser E2E incl. hostile cookie-clear scenario.
 - Logins for the user (password demo1234 for ALL): Uganda 0772123456 (Kampalamart), 0776123456 (Nakato Fresh), 0758123456 (Jinja Hardware); Tanzania 0712345678 (Dodoma Agri); Kenya 0712000001..04 (Jomo Scrap Traders, Pendo Flour, Mama Amina Chapati, Kisumu Fresh).
 - Model confirmed in app + product direction agreed: sellers sign in, buyers never have to.
+
+---
+Task ID: 6
+Agent: main (Super Z)
+Task: "options hiding in another panel" + detail-design polish for low-literacy users + product photos + shop identity (photo/name) + map directions
+
+Work Log:
+- ROOT-CAUSED "options hide in another panel": ui/dialog.tsx DialogContent is fixed-centered with NO max-height/overflow — on short viewports (preview iframe, mobile) the auth dialog's Sign in button + demo accounts rendered below the fold, unreachable. Fixed globally: max-h-[calc(100dvh-2rem)] overflow-y-auto on the primitive. Verified at 520px viewport: Sign in button visible + clickable.
+- SECOND REAL BUG found during E2E: apiFetch stamped Content-Type: application/json over FormData bodies → every UI photo upload 400'd (curl/API tests bypassed it). Fixed: skip content-type when body instanceof FormData. UI upload now 201.
+- THIRD BUG: raw zod message leaked for missing county ("Invalid input: expected string, received undefined") → z.string({ message: 'Choose your district or region' }).
+- Photos end-to-end: Listing.photos (JSON string in SQLite) + BusinessProfile.photoUrl; POST /api/upload (requireUser, 8MB cap, magic-byte sniffing jpeg/png/webp, random names, public/uploads); photos validated/sanitized server-side (sanitizePhotos: URL-shape allowlist, dedupe, cap 4) on create+PATCH; serializeListing returns photos array on search/detail/my-listings.
+- UI: PhotoPicker (camera-first capture="environment" + gallery, per-photo remove, single mode for shop avatar); publish + edit forms with Photos field; photo-first ListingCard (photo or category-tinted glyph placeholder, shop avatar + shop name line, bold price, TypeBadge overlay, +N count); detail PhotoGallery (scroll-snap swipe, counter chip, category-glyph empty state), "You would be buying from {shop}" identity card, Contact {shop} heading, Get directions button (Google Maps URL API, place-name query — no fake coordinates); Account → My Shop photo upload; register placeholder "e.g. Nalongo Hardware" + "name buyers will see" helper.
+- Shop identity on browse: searchListings includes user{name, profile{businessName, photoUrl}} — buyers see WHO sells on every card.
+- category-icons.tsx: module-level glyph element map (React-compiler lint safe) + warm tints per category.
+- 24 AI-generated seed photos (16 listings + 8 shop storefronts) via scripts/generate-seed-images.mjs (concurrency pool, retries) → public/uploads/seed/; seed.ts wired.
+- Tests: new section 3b — upload 401/201/magic-byte 400, photo sanitization, PATCH photos, browse shop identity, profile photoUrl round-trip + hostile URL 400. 89/89 passing (was 78). tsc + eslint clean.
+- Browser E2E through :81: guest browse w/ photos + shop names; detail gallery + directions href verified (google.com/maps/search/?api=1&query=Nakasero%2C+Kampala%2C+Uganda); seller flow: sign in → publish form → real UI upload 201 → thumbnail → published → detail gallery; mobile 375px: no h-overflow, bottom nav intact; 0 console errors; auth dialog at 520px viewport fully usable.
+- Cleanup: test data removed (kept 8 seeded shops + 16 fixtures).
+
+Stage Summary:
+- Buyers now SEE products (photos), know WHO they buy from (shop name + photo everywhere), and can decide pickup (directions). Sellers get camera-first photo upload and shop branding.
+- Logins unchanged: 0772123456 / 0776123456 / 0758123456 (UG), 0712345678 (TZ), 0712000001..04 (KE) — password demo1234.

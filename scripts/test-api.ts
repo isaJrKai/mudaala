@@ -232,6 +232,83 @@ async function main() {
     ok('invalid query params → 400', badParams.status === 400)
   }
 
+  console.log('\n== 3b. Photos, upload & shop identity ==')
+  {
+    // 1x1 transparent PNG (valid magic bytes) and a fake "png" that is text.
+    const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    const pngBytes = Buffer.from(PNG_B64, 'base64')
+
+    const anonUpload = await fetch(`${BASE}/api/upload`, { method: 'POST', body: (() => { const f = new FormData(); f.append('file', new Blob([pngBytes], { type: 'image/png' }), 'a.png'); return f })() })
+    ok('unauthenticated upload → 401', anonUpload.status === 401)
+
+    const upload = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: alice.cookie, authorization: `Bearer ${alice.token}` },
+      body: (() => { const f = new FormData(); f.append('file', new Blob([pngBytes], { type: 'image/png' }), 'a.png'); return f })(),
+    })
+    const uploadJson = await upload.json().catch(() => null)
+    ok('signed-in PNG upload → 201 with /uploads/ url', upload.status === 201 && typeof uploadJson?.url === 'string' && uploadJson.url.startsWith('/uploads/'))
+    const photoUrl: string | undefined = uploadJson?.url
+
+    const fakePng = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: alice.cookie, authorization: `Bearer ${alice.token}` },
+      body: (() => { const f = new FormData(); f.append('file', new Blob(['definitely not an image'], { type: 'image/png' }), 'fake.png'); return f })(),
+    })
+    ok('renamed non-image rejected by magic bytes → 400', fakePng.status === 400)
+
+    // Photos flow through create (with sanitization), detail, browse.
+    const withPhotos = await call('POST', '/api/listings', {
+      ...validListing,
+      title: 'Photo listing with hostile link',
+      photos: photoUrl ? [photoUrl, 'javascript:alert(1)', '  ', photoUrl] : ['javascript:alert(1)'],
+    }, alice)
+    ok('create with photos → 201', withPhotos.status === 201)
+    ok('photos sanitized: hostile/duplicate entries dropped, cap respected', Array.isArray(withPhotos.json?.listing?.photos) && withPhotos.json.listing.photos.length === (photoUrl ? 1 : 0) && (photoUrl ? withPhotos.json.listing.photos[0] === photoUrl : true))
+
+    const detailWithPhotos = await call('GET', `/api/listings/${withPhotos.json.listing.id}`)
+    ok('detail returns photos array', JSON.stringify(detailWithPhotos.json?.listing?.photos) === JSON.stringify(withPhotos.json.listing.photos))
+
+    const patchedPhotos = await call('PATCH', `/api/listings/${withPhotos.json.listing.id}`, { photos: [photoUrl ?? '/uploads/x.png', '/uploads/y.png'] }, alice)
+    ok('PATCH replaces photos (sanitized)', patchedPhotos.status === 200 && patchedPhotos.json?.listing?.photos?.length === (photoUrl ? 2 : 1))
+
+    // Browse results carry the shop identity (who is selling).
+    const browse = await call('GET', '/api/listings?pageSize=50')
+    const withShop = browse.json.items.find((l: any) => l.user?.name)
+    ok('browse items include seller identity', Boolean(withShop))
+    const seededWithShop = browse.json.items.find((l: any) => l.user?.profile?.businessName)
+    ok('named shop (businessName) surfaces on browse', Boolean(seededWithShop))
+
+    // Shop profile photo round-trip.
+    const profilePut = await call('PUT', '/api/profile', {
+      businessName: 'Alice Test Shop',
+      photoUrl: photoUrl ?? null,
+      category: 'other',
+      description: null,
+      county: 'Nairobi',
+      area: null,
+      phone: alicePhone,
+      whatsapp: null,
+      hours: null,
+    }, alice)
+    ok('profile PUT with shop photo (200)', profilePut.status === 200 && profilePut.json?.profile?.photoUrl === (photoUrl ?? null))
+
+    const badPhotoProfile = await call('PUT', '/api/profile', {
+      businessName: 'Alice Test Shop',
+      photoUrl: 'javascript:alert(1)',
+      category: 'other',
+      description: null,
+      county: 'Nairobi',
+      area: null,
+      phone: alicePhone,
+      whatsapp: null,
+      hours: null,
+    }, alice)
+    ok('profile rejects hostile photoUrl → 400', badPhotoProfile.status === 400)
+
+    await call('DELETE', `/api/listings/${withPhotos.json.listing.id}`, undefined, alice)
+  }
+
   console.log('\n== 4. Ownership & permission boundaries ==')
   const bob: Jar = { cookie: '' }
   const bobPhone = uniquePhone()
