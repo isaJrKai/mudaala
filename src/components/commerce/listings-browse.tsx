@@ -16,6 +16,7 @@ import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { useAddToBasket } from './basket-view'
 import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
@@ -65,6 +66,7 @@ const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
 // Browse — the primary user task: find who buys/sells what, nearby.
 export function ListingsBrowse() {
   const { filters, setFilters, resetFilters, navigate } = useAppStore()
+  const addToBasket = useAddToBasket()
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState(filters.q)
   const [nearMe, setNearMe] = useState<NearMeState>(NEARME_IDLE)
@@ -297,6 +299,7 @@ export function ListingsBrowse() {
                 distanceLabel={distanceLabels.get(listing.id)}
                 onOpen={(id) => navigate({ name: 'listing', id })}
                 onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+                onAdd={addToBasket}
               />
             ))}
           </div>

@@ -6,7 +6,7 @@
 // buyer actions: WHO sells it (tap → their shop), CALL, and WHATSAPP — all
 // reachable without opening the listing at all.
 
-import { MapPin, MessageCircle, Navigation, Package, Phone, Store } from 'lucide-react'
+import { MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
 import { formatPrice, formatQuantity, timeAgo, telLink, whatsappLink } from '@/lib/format'
 import { categoryLabel, unitLabel } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
@@ -200,6 +200,8 @@ interface ListingBlockProps {
    *  shop chip (→ shop page) above Call + WhatsApp. Shop catalogues omit it —
    *  the buyer is already inside that shop. */
   onOpenShop?: (shopId: string) => void
+  /** When provided, OFFER blocks get an add-to-basket button on the photo. */
+  onAdd?: (listing: Listing & { user?: ListingShopOwner }) => void
   /** Same-name shop disambiguation, fed by the browse feed. */
   shopLabel?: string
   /** Buyer-facing distance ("850 m", "2.3 km") shown while "Near me" is on. */
@@ -210,7 +212,7 @@ interface ListingBlockProps {
 // shop catalogue). Pictures sell: the photo gets the card's full width and
 // what/how much/where stack under it. Contact stays on the card — Call and
 // WhatsApp are reachable without ever opening the listing.
-export function ListingBlock({ listing, onOpen, onOpenShop, shopLabel, distanceLabel }: ListingBlockProps) {
+export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, distanceLabel }: ListingBlockProps) {
   const quantity = formatQuantity(listing.quantity, listing.unit)
   const shop = listing.user
   const shopDisplayName = shopLabel ?? (shop?.profile?.businessName?.trim() || shop?.name)
@@ -222,25 +224,43 @@ export function ListingBlock({ listing, onOpen, onOpenShop, shopLabel, distanceL
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card transition-colors hover:border-input/80">
+      {/* Photo — the whole reason this is a block. The open affordance is a
+          click LAYER under the overlays, so the basket button can be a real
+          sibling button (nested buttons are invalid HTML and break taps). */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden border-b bg-secondary/30">
+        <ListingPhoto listing={listing} />
+        <button
+          type="button"
+          onClick={() => onOpen(listing.id)}
+          className="absolute inset-0 z-0"
+          aria-label={`Open listing: ${listing.title}`}
+        />
+        <span className="pointer-events-none absolute left-1.5 top-1.5 z-10">
+          <TypeBadge type={listing.type} />
+        </span>
+        {listing.photos.length > 1 ? (
+          <span className="pointer-events-none absolute bottom-1.5 right-1.5 z-10 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            +{listing.photos.length - 1}
+          </span>
+        ) : null}
+        {onAdd && listing.type === 'OFFER' ? (
+          <button
+            type="button"
+            onClick={() => onAdd(listing)}
+            className="absolute bottom-1.5 left-1.5 z-20 inline-flex size-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/75"
+            aria-label={`Add ${listing.title} to basket`}
+          >
+            <Plus className="size-4" aria-hidden />
+          </button>
+        ) : null}
+      </div>
+
       <button
         type="button"
         onClick={() => onOpen(listing.id)}
-        className="w-full text-left"
+        className="w-full flex-1 text-left"
         aria-label={`Open listing: ${listing.title}`}
       >
-        {/* Photo — the whole reason this is a block */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden border-b bg-secondary/30">
-          <ListingPhoto listing={listing} />
-          <span className="absolute left-1.5 top-1.5">
-            <TypeBadge type={listing.type} />
-          </span>
-          {listing.photos.length > 1 ? (
-            <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-              +{listing.photos.length - 1}
-            </span>
-          ) : null}
-        </div>
-
         <div className="p-2.5">
           {/* Exactly two lines of title keep every card in a row the same
               height — a 1-line title leaves room, a 5-line one gets cut. */}

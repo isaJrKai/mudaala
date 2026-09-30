@@ -5,7 +5,7 @@
 // pickup), and direct contact. No login needed for any of it.
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, MapPin, MessageCircle, Navigation, Package, Phone, Store } from 'lucide-react'
+import { ArrowLeft, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { apiGet } from '@/lib/client'
@@ -24,6 +24,7 @@ import {
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { useAppStore } from '@/lib/store'
+import { useAddToBasket } from './basket-view'
 import { TypeBadge, StatusBadge } from './badges'
 import { ListingListSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -67,6 +68,7 @@ function PhotoGallery({ listing }: { listing: ListingDetailT }) {
 
 export function ListingDetail({ id }: { id: string }) {
   const { navigate } = useAppStore()
+  const addToBasket = useAddToBasket()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['listing', id],
@@ -143,6 +145,14 @@ export function ListingDetail({ id }: { id: string }) {
             ) : null}
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
           </div>
+
+          {/* The buy action, next to the price where buy intent lives.
+              OFFERs only: a REQUEST is someone offering to sell to YOU. */}
+          {listing.type === 'OFFER' ? (
+            <Button variant="secondary" className="mt-3 h-10 w-full gap-1.5 text-[15px]" onClick={() => addToBasket(listing)}>
+              <Plus className="size-4" aria-hidden /> Add to basket
+            </Button>
+          ) : null}
 
           {/* Who you would be buying from — the seller's own shop name, said
               back to the buyer in plain words. */}

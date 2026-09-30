@@ -1,6 +1,6 @@
 'use client'
 
-import { Store, Search, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
+import { Store, Search, ShoppingBasket, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { apiGet } from '@/lib/client'
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { basketCount, useBasket } from '@/lib/basket'
 
 export function AppHeader() {
   const { view, navigate, setAuthOpen } = useAppStore()
@@ -30,6 +31,8 @@ export function AppHeader() {
     refetchInterval: 60_000,
   })
   const unread = user ? (notificationsQuery.data?.unreadCount ?? 0) : 0
+  const basket = useBasket()
+  const basketItems = basketCount(basket)
 
   const links: Array<{ name: 'browse' | 'publish' | 'my-listings' | 'saved' | 'notifications'; label: string; icon: React.ReactNode; badge?: number }> = [
     { name: 'browse', label: 'Browse', icon: <Search className="size-4" aria-hidden /> },
@@ -73,6 +76,25 @@ export function AppHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* The basket — buyer-side, always visible, signed in or not. Green
+              badge: items waiting, not an alarm like unread alerts. */}
+          <button
+            type="button"
+            onClick={() => navigate({ name: 'basket' })}
+            aria-label={`Basket — ${basketItems} ${basketItems === 1 ? 'item' : 'items'}`}
+            aria-current={view.name === 'basket' ? 'page' : undefined}
+            className={cn(
+              'relative inline-flex size-9 items-center justify-center rounded-md transition-colors',
+              view.name === 'basket' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            <ShoppingBasket className="size-5" aria-hidden />
+            {basketItems > 0 ? (
+              <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                {basketItems > 9 ? '9+' : basketItems}
+              </span>
+            ) : null}
+          </button>
           {sessionLoading ? (
             // Skeleton — never flash "Sign in" while the session is still
             // being checked; that fake-logged-out blink is what made refresh
