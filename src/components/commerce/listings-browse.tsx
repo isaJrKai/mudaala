@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, MapPin, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPost } from '@/lib/client'
 import type { ListingsPage } from '@/lib/client'
 import { normalizeShopName } from '@/lib/format'
+import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
@@ -49,11 +50,25 @@ function computeShopLabels(items: ListingsPage['items'] | undefined): Map<string
   return labels
 }
 
+// "Near me" state machine: idle → locating → on. Denied/unsupported falls
+// back to idle with a gentle hint — browsing works fully without location.
+type NearMeStatus = 'idle' | 'locating' | 'on' | 'denied'
+
+interface NearMeState {
+  status: NearMeStatus
+  lat: number | null
+  lng: number | null
+}
+
+const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
+
 // Browse — the primary user task: find who buys/sells what, nearby.
 export function ListingsBrowse() {
   const { filters, setFilters, resetFilters, navigate } = useAppStore()
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState(filters.q)
+  const [nearMe, setNearMe] = useState<NearMeState>(NEARME_IDLE)
+  const nearOn = nearMe.status === 'on' && nearMe.lat !== null && nearMe.lng !== null
 
   // Debounced search input → store
   useEffect(() => {
@@ -63,14 +78,58 @@ export function ListingsBrowse() {
     return () => clearTimeout(t)
   }, [searchInput, filters.q, setFilters])
 
+  // Location is requested ONLY on this tap — never on app open, so nobody is
+  // greeted by a permission wall. Denial keeps the whole feed usable.
+  function toggleNearMe() {
+    if (nearMe.status === 'locating') return
+    if (nearOn) {
+      setNearMe(NEARME_IDLE)
+      if (filters.sort === 'nearest') setFilters({ sort: 'newest' })
+      return
+    }
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setNearMe({ status: 'denied', lat: null, lng: null })
+      return
+    }
+    setNearMe({ status: 'locating', lat: null, lng: null })
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNearMe({ status: 'on', lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setFilters({ sort: 'nearest' })
+      },
+      () => setNearMe({ status: 'denied', lat: null, lng: null }),
+      // Low accuracy is a feature: network positioning is faster and kinder
+      // to cheap-phone batteries than GPS, and market-level blur is all the
+      // "nearest first" ordering needs.
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
+
   const query = filtersToQuery(filters)
+  // Buyer coordinates ride on the URL (never persisted anywhere) and are part
+  // of the cache key so toggling Near me refetches in the new order.
+  const nearParams =
+    nearOn && nearMe.lat !== null && nearMe.lng !== null ? `&lat=${nearMe.lat}&lng=${nearMe.lng}` : ''
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['listings', query],
-    queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}`),
+    queryKey: ['listings', query, nearParams],
+    queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}${nearParams}`),
     placeholderData: (prev) => prev,
   })
 
   const shopLabels = useMemo(() => computeShopLabels(data?.items), [data])
+
+  // Distance chips — computed from the same blurred coords the server used,
+  // so the label a buyer reads always matches the order they see.
+  const distanceLabels = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!data || nearMe.lat === null || nearMe.lng === null) return map
+    for (const listing of data.items) {
+      const spot = listing.user?.profile
+      if (!spot || spot.lat === null || spot.lng === null) continue
+      map.set(listing.id, formatDistance(haversineMeters({ lat: nearMe.lat, lng: nearMe.lng }, { lat: spot.lat, lng: spot.lng })))
+    }
+    return map
+  }, [data, nearMe.lat, nearMe.lng])
 
   const activeFilterCount = [
     filters.type !== 'any' ? 1 : 0,
@@ -120,10 +179,23 @@ export function ListingsBrowse() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="newest">Newest first</SelectItem>
+            {nearOn ? <SelectItem value="nearest">Nearest first</SelectItem> : null}
             <SelectItem value="price_asc">Price: low to high</SelectItem>
             <SelectItem value="price_desc">Price: high to low</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          size="sm"
+          variant={nearOn ? 'default' : 'outline'}
+          className="shrink-0 gap-1.5"
+          onClick={toggleNearMe}
+          disabled={nearMe.status === 'locating'}
+          aria-pressed={nearOn}
+        >
+          <MapPin className="size-3.5" aria-hidden />
+          {nearMe.status === 'locating' ? 'Finding you…' : nearOn ? 'Near me ✓' : 'Near me'}
+        </Button>
         <SaveSearchButton />
         {activeFilterCount > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
@@ -131,6 +203,16 @@ export function ListingsBrowse() {
           </Button>
         ) : null}
       </div>
+
+      {nearMe.status === 'denied' ? (
+        <p
+          role="status"
+          className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+        >
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>Location is off — allow it when the browser asks and shops closest to you come first. You can still browse everything.</span>
+        </p>
+      ) : null}
 
       <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
 
@@ -168,6 +250,7 @@ export function ListingsBrowse() {
               key={listing.id}
               listing={listing}
               shopLabel={shopLabels.get(listing.id)}
+              distanceLabel={distanceLabels.get(listing.id)}
               onOpen={(id) => navigate({ name: 'listing', id })}
               onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
             />

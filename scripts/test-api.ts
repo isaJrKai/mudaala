@@ -470,6 +470,78 @@ async function main() {
     await call('DELETE', `/api/listings/${doraListing.json.listing.id}`, undefined, dora)
   }
 
+  console.log('\n== 3e. Shop location & nearest sort ==')
+  {
+    // Permission + validation boundaries.
+    const anonLoc = await call('PUT', '/api/profile/location', { lat: 0.335, lng: 32.586 })
+    ok('location save without a session → 401', anonLoc.status === 401)
+
+    const badLat = await call('PUT', '/api/profile/location', { lat: 999, lng: 32.586 }, alice)
+    ok('out-of-range latitude → 400', badLat.status === 400)
+    const halfLoc = await call('PUT', '/api/profile/location', { lat: 0.335, lng: null }, alice)
+    ok('half a coordinate pair → 400', halfLoc.status === 400)
+
+    // Save + the privacy blur: coordinates are rounded to ~100 m BEFORE they
+    // are stored, so a precise spot never exists server-side.
+    const setLoc = await call('PUT', '/api/profile/location', { lat: -1.2881234, lng: 36.8412345 }, alice)
+    ok('location save works → 200', setLoc.status === 200 && setLoc.json?.profile?.lat !== null)
+    ok('stored coordinates are blurred to ~100 m',
+      setLoc.json?.profile?.lat === -1.288 && setLoc.json?.profile?.lng === 36.841)
+
+    // The regular "Save shop" form write must NEVER clobber the spot: its
+    // schema strips unknown keys, so lat/lng keys never reach Prisma.
+    const formSave = await call('PUT', '/api/profile', {
+      businessName: 'Alice Test Shop',
+      photoUrl: null,
+      category: 'other',
+      description: 'Location preservation check.',
+      county: 'Nairobi',
+      area: 'Test Area',
+      phone: alicePhone,
+      whatsapp: null,
+      hours: null,
+    }, alice)
+    ok('regular profile update preserves the saved location',
+      formSave.status === 200 && formSave.json?.profile?.lat === -1.288)
+
+    // A seller WITHOUT a profile who shares their spot still gets a shop
+    // (create branch): account name as the shop name + a fresh DK code.
+    const nela: Jar = { cookie: '' }
+    await register(nela, uniquePhone(), 'Nela Nearby', 'password789')
+    const nelaLoc = await call('PUT', '/api/profile/location', { lat: 0.335, lng: 32.586 }, nela)
+    ok('sharing a spot creates a minimal shop with a code',
+      nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^DK-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
+
+    // Nearest sort — two shops ~570 km apart; the buyer's side of the story
+    // must decide who comes first. Nairobi buyer → Alice; Kampala buyer → Nela.
+    const aliceListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe alpha' }, alice)
+    const nelaListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe beta' }, nela)
+    const fromNairobi = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=-1.288&lng=36.841')
+    const nairobiItems = fromNairobi.json?.items ?? []
+    ok('nearest sort puts the Nairobi shop first for a Nairobi buyer',
+      fromNairobi.status === 200 && nairobiItems[0]?.id === aliceListing.json?.listing?.id)
+    ok('browse cards carry the blurred shop spot for distance chips',
+      nairobiItems[0]?.user?.profile?.lat === -1.288 && nairobiItems[0]?.user?.profile?.lng === 36.841)
+    const fromKampala = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=0.335&lng=32.586')
+    ok('nearest sort flips for a Kampala buyer',
+      fromKampala.json?.items?.[0]?.id === nelaListing.json?.listing?.id)
+
+    // Graceful degradation: nearest without a buyer position, and shops
+    // without a spot landing AFTER located shops instead of vanishing.
+    const noCoords = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest')
+    ok('sort=nearest without coordinates degrades gracefully (200)', noCoords.status === 200)
+
+    await call('PUT', '/api/profile/location', { lat: null, lng: null }, alice)
+    const afterRemove = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=-1.288&lng=36.841')
+    const afterItems = afterRemove.json?.items ?? []
+    ok('location can be removed → 200 + null coords', afterRemove.status === 200)
+    ok('shops without a spot drop to the end of nearest results',
+      afterItems[afterItems.length - 1]?.id === aliceListing.json?.listing?.id && afterItems[0]?.id === nelaListing.json?.listing?.id)
+
+    await call('DELETE', `/api/listings/${aliceListing.json.listing.id}`, undefined, alice)
+    await call('DELETE', `/api/listings/${nelaListing.json.listing.id}`, undefined, nela)
+  }
+
   console.log('\n== 4. Ownership & permission boundaries ==')
   const bob: Jar = { cookie: '' }
   const bobPhone = uniquePhone()

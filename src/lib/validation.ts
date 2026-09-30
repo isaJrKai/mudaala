@@ -166,10 +166,26 @@ export const listingQuerySchema = z.object({
   minPrice: z.number().min(0).max(100_000_000).optional(),
   maxPrice: z.number().min(0).max(100_000_000).optional(),
   unit: z.string().trim().max(20).optional(),
-  sort: z.enum(['newest', 'price_asc', 'price_desc']).default('newest').optional(),
+  sort: z.enum(['newest', 'price_asc', 'price_desc', 'nearest']).default('newest').optional(),
+  // Buyer's position for sort=nearest ("Near me"). Never persisted — it only
+  // shapes the ordering of one response.
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
   page: z.number().int().min(1).max(1000).default(1).optional(),
   pageSize: z.number().int().min(1).max(50).default(20).optional(),
 })
+
+// Seller sharing their shop's spot. Both keys travel together: two numbers to
+// save, two nulls to remove. The API rounds to ~100 m before storing.
+export const profileLocationSchema = z
+  .object({
+    lat: z.number().min(-90).max(90).nullable(),
+    lng: z.number().min(-180).max(180).nullable(),
+  })
+  .refine((d) => (d.lat === null) === (d.lng === null), {
+    message: 'Send both coordinates, or both null to remove',
+    path: ['lat'],
+  })
 
 export type ListingQuery = z.infer<typeof listingQuerySchema>
 

@@ -30,7 +30,8 @@ export interface BrowseFilters {
   unit: string
   minPrice: string
   maxPrice: string
-  sort: 'newest' | 'price_asc' | 'price_desc'
+  // 'nearest' only appears while the buyer's "Near me" position is on.
+  sort: 'newest' | 'price_asc' | 'price_desc' | 'nearest'
   page: number
 }
 

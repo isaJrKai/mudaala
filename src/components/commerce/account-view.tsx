@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BadgeCheck, CheckCircle2, Circle, Info, User, Settings, LogOut, Store } from 'lucide-react'
+import { BadgeCheck, CheckCircle2, Circle, Info, User, Settings, LogOut, Store, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -243,6 +243,10 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           seller actually filled in; no platform vetting is claimed. */}
       <ShopChecklist form={form} />
 
+      {/* Optional shop spot — captured at the shop with one tap, so buyers
+          nearby see the shop first. Stored blurred to ~100 m; removable. */}
+      <ShopLocationBlock profile={data?.profile ?? null} />
+
       <div className="rounded-lg border bg-secondary/30 p-3.5">
         <PhotoPicker value={form.photoUrl ? [form.photoUrl] : []} onChange={(photos) => set('photoUrl', photos[0] ?? '')} max={1} single />
       </div>
@@ -336,6 +340,95 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         {busy ? 'Saving…' : 'Save shop'}
       </Button>
     </form>
+  )
+}
+
+// The seller's shop spot. The browser's permission prompt only ever appears
+// because of an explicit tap — and the copy tells the seller to stand at the
+// shop first. Everything degrades softly: denial and removal both leave the
+// rest of the shop exactly as it was.
+function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [phase, setPhase] = useState<'idle' | 'locating' | 'saving'>('idle')
+  const [locError, setLocError] = useState(false)
+
+  const saved = profile?.lat != null && profile?.lng != null
+  const busy = phase !== 'idle'
+
+  async function persist(lat: number | null, lng: number | null) {
+    setPhase('saving')
+    try {
+      await apiPut('/api/profile/location', { lat, lng })
+      await queryClient.invalidateQueries({ queryKey: ['profile'] })
+      toast({
+        title: lat === null ? 'Location removed' : 'Shop location saved',
+        description: lat === null ? 'Buyers can still find you by your area and shop code.' : 'Buyers near your shop will see it first.',
+      })
+      setLocError(false)
+    } catch (err) {
+      toast({ title: 'Could not save location', description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+    } finally {
+      setPhase('idle')
+    }
+  }
+
+  function capture() {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setLocError(true)
+      return
+    }
+    setLocError(false)
+    setPhase('locating')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => persist(pos.coords.latitude, pos.coords.longitude),
+      () => {
+        setPhase('idle')
+        setLocError(true)
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
+
+  return (
+    <div className="rounded-lg border bg-secondary/30 p-3.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            <MapPin className="size-4 text-primary" aria-hidden /> Shop location
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {saved
+              ? 'Saved ✓ — buyers nearby see your shop first. Your exact spot is never shown; distances stay approximate.'
+              : 'Stand at your shop, then tap. The browser asks for permission once — say yes and we save the spot. Nothing is tracked.'}
+          </p>
+        </div>
+        {saved ? (
+          <div className="flex shrink-0 gap-1.5">
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={capture}>
+              {phase === 'locating' ? 'Finding…' : 'Update'}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={busy} onClick={() => persist(null, null)}>
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={busy} onClick={capture}>
+            <MapPin className="size-3.5" aria-hidden />
+            {phase === 'locating' ? 'Finding you…' : phase === 'saving' ? 'Saving…' : 'Add my shop location'}
+          </Button>
+        )}
+      </div>
+      {locError ? (
+        <p
+          role="status"
+          className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+        >
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>We could not get your location. You can try again later — your Area / town still helps buyers find you.</span>
+        </p>
+      ) : null}
+    </div>
   )
 }
 

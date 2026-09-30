@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     )
     // Numeric coercion for query params arriving as strings.
     const coerced: Record<string, unknown> = { ...cleaned }
-    for (const key of ['minPrice', 'maxPrice', 'page', 'pageSize']) {
+    for (const key of ['minPrice', 'maxPrice', 'page', 'pageSize', 'lat', 'lng']) {
       if (typeof coerced[key] === 'string' && (coerced[key] as string) !== '') {
         coerced[key] = Number(coerced[key])
       }
