@@ -412,3 +412,20 @@ Work Log:
 
 Stage Summary:
 - The curve is no longer an easter egg. The browse front door is now the poster: a green ribbon that rises and flows through the same sweeping stroke twice, carrying the market's thesis in serif. The header mark is the curve itself. One path, one direction, four doorway surfaces (browse ribbon, cover seam, lettermark, printed poster) and nowhere else. Zero API/schema changes; 142/142; fixtures clean; committed cfcb7ad.
+
+---
+Task ID: 21
+Agent: main (Super Z)
+Task: Mudaala rename + hero photo + category pills + shop avatar + featured rail (user's five-task brief; app's real name is Mudaala, mockups in /upload used for layout/curve/colors/type only)
+
+Work Log:
+- RENAME: git mv duka-curve.tsx -> mudaala-curve.tsx (component MudaalaCurve); sed across 27 src files + README + prisma schema comment + scripts for Duuka/Duka/duuka -> Mudaala/mudaala. Storage/cookie keys renamed too (duuka_session -> mudaala_session, duuka_session_token, duuka.basket.v1, duuka.loved.v1, duuka_shop_setup_dismissed) — old browser sessions/baskets reset, accepted at dev stage. Header wordmark: lucide Leaf (fill-primary/15) + "mudaala" font-display bold lowercase text-primary; icon chip removed. layout.tsx title/description/keywords, footer, poster ("Scan to see our shop on Mudaala"), share texts, all comments.
+- SHOP CODES: scripts/backfill-shop-codes.ts rewritten — job 1 migrates DK-XXXX -> MD-XXXX preserving digits (posters keep working), job 2 assigns MD- to nulls; run on dev DB, all 8 shops migrated (Nakato DK-2623 -> MD-2623 etc.). generateShopCode (lib/shop.ts) emits MD-; normalizeShopCode (lib/format.ts) accepts (?:DK|MD) and canonicalizes to MD- (digits ARE the identity); lookup 400 message updated; test-api MD- assertions + mudaala_session cookie. Verified via curl: DK-2623 and md-2623 both resolve to Nakato (stored MD-2623).
+- BROWSE HERO: curves h-6 sm:h-9 top+bottom (bigger sweep); desktop grid text | 42% photo (public/uploads/seed/shop-nakato.png — matooke/tomatoes/onions stall, loading=lazy) with a MudaalaCurve overlay (-left-24, w+6rem, h-10 sm:h-14) sweeping across the photo's bottom edge out of the green field; chips Real shops / Call direct / No middleman (honest set — no verified-seller or delivery claims) sm+ only; mobile one-line copy "Real shops, direct calls — no middleman." keeps ribbon at 164px.
+- CATEGORY PILLS: scrollable row under search (role=group aria-label), All ('any') + CATEGORIES (11), active filled bg-primary, aria-pressed, press class, setFilters({category}) (auto page reset). Verified live: Farm Produce -> 5 listings (from 14).
+- SHOP AVATAR: square img (size-14/sm:size-16, rounded-lg, thin border, lazy, alt="") absolute -bottom-4/-sm:-bottom-5 left-4/left-5 z-10 over the cover's curve seam; signboard block (eyebrow/h1/stroke) wrapped with pl-[4.5rem] sm:pl-[5.5rem] when photo present. Lettermark branch unchanged.
+- FEATURED RAIL: FeaturedShopPanel in listings-browse — desktop lg:grid-cols-[1fr_240px], aside hidden lg:block; first result with a named shop -> GET /api/shops/:id (staleTime 60s); photo or lettermark, serif name, QR (react-qr-code, origin via the shop-view useSyncExternalStore pattern), mono MD code, tel: call link. Feed lg:grid-cols-3 beside it. Rectangle — restraint rule keeps the curve off cards.
+- Verification: tsc clean, eslint clean, 142/142 test-api, cleanup-test-data (8 users / 16 listings); fresh-document browser check 0 errors; screenshots scripts/verify-mudaala-browse-mobile.png, -browse-desktop.png, -pills-filtered.png, -shop-mobile.png. Playwright text-locator missed pills in the horizontal scroller (tool artifact) — JS click proved the handler works.
+
+Stage Summary:
+- The app is Mudaala end to end: leaf+serif wordmark, MD- codes with DK- legacy acceptance, mockup-faithful sweep-masked hero photo, aisle-sign pills, avatar-over-seam shop page, and a desktop featured-shop rail. Zero schema/API shape changes (lookup copy only); storage keys renamed (one-time session/basket reset); 142/142, fixtures clean, committed a2c7bc9.
