@@ -642,3 +642,18 @@ Work Log:
 
 Stage Summary:
 - CI on main is green again and the workflow can no longer drift from the Uganda-only reality silently: the admin env value, its documented meaning, and .env.example now agree. Lesson recorded: when replaying CI locally, anchor rsync excludes, and restart the server between suite runs to reset the login limiter.
+
+---
+Task ID: 31
+Agent: main (Super Z)
+Task: Audit Jiji Uganda as the real local incumbent (user approved; research only, no build).
+
+Work Log:
+- Live reads of jiji.ug blocked: page_reader hit Cloudflare "Just a moment" and agent-browser (headless Chromium) got "Attention Required! Cloudflare" from the datacenter IP. Same constraint as the Gumtree audit, so the audit is built from search-index snippets of jiji.ug's own FAQ/about pages, analytics firms (Semrush, Similarweb, AppsFlyer, Wikipedia, TechCrunch), plus URL structures visible in result links. Research JSONs kept in research/.
+- Extracted: URL architecture (category x location landing pages like /287-maize and /kampala/287-maize/white; ad URLs slug+id like /central-division/farm-animal-feed-supplements/maize-and-bean-seeds-wholesalers-34E4WJBrkP), contact model (in-app chat + Show contact phone reveal + Contact on WhatsApp), trust stack (KYC Verified ID badge, Offline Store Verification via agent visit, seller tenure "3+ years on Jiji" on cards), monetization (TOP ads 7/30 days, Boost package tiers with auto-renew, Pro Sales pay-per-click from USh 10,000/day with USh 5,000 minimum Balance), scale (founded UG 2019; jiji.ug ~400K monthly web visits; ~46 percent of desktop traffic from organic search; Jiji Africa claims 10M monthly visits, 90M annual users; UG marketing claims 3M buyers), and complaint themes (Reddit: premium packages feel like resold Meta ads; scam threads persist despite badges).
+- Key strategic reads: Jiji is an SEO machine (organic search is its top traffic source), which validates per-listing/category landing pages as item one; Jiji already wraps WhatsApp inside its platform, so Mudaala's direct WhatsApp advantage is about frictionlessness, not uniqueness; Jiji has real agriculture depth (maize, shellers, feed supplements as categories) but weak trade economics (no per-unit pricing, no REQUEST-first, no honest price trends, no shop QR poster).
+- Produced refined spec for item one (ad pages) in chat: slug+id URL with canonical redirect, metadata template, Product/Offer structured data, OG image tags for WhatsApp link previews, WhatsApp share + copy link, seller/shop block with shop code and Active since, safety tip line. Sitemap of active listings.
+- No build performed (user said one item at a time; ad pages approved as next).
+
+Stage Summary:
+- Jiji audit delivered in chat with sources; item one (per-listing ad pages) spec is sharpened by evidence: slug+id URLs, WhatsApp preview tags, and honest trust signals. Awaiting user go signal for the build.
