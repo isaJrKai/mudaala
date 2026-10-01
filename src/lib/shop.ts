@@ -1,4 +1,4 @@
-// Duuka — shop domain service.
+// Mudaala — shop domain service.
 // The shop is the seller's own space: identity (name/photo/location/hours)
 // plus their public catalogue (ACTIVE listings). Trust is earned honestly:
 // we never claim platform vetting — the checklist reflects what the seller
@@ -10,6 +10,7 @@ import { SHOP_OWNER_INCLUDE, serializeListing, expireOverdueListings } from '@/l
 import type { ListingWithShop } from '@/lib/listings'
 import { countryDef, categoryLabel } from '@/lib/constants'
 import { normalizeShopCode } from '@/lib/format'
+import { phoneCandidates } from '@/lib/validation'
 
 export interface ShopChecklist {
   photo: boolean
@@ -45,7 +46,12 @@ export interface ShopPageData {
     country: string
     phone: string
     whatsapp: string | null
-    // Public identity code ("DK-4821") — stable for the life of the shop.
+    // True only when the phone shown on the page IS the seller's registered
+    // login line (no override, or the override resolves to the same line).
+    // The "Phone confirmed" chip renders ONLY when this is true — a trust
+    // badge that can be true by construction or not shown at all.
+    phoneConfirmed: boolean
+    // Public identity code ("MD-4821") — stable for the life of the shop.
     shopCode: string | null
     memberSince: string
     activeCount: number
@@ -55,13 +61,13 @@ export interface ShopPageData {
   listings: ReturnType<typeof serializeListing<ListingWithShop>>[]
 }
 
-// A shop's public identity code: "DK-" + 4 digits, like a mobile-money till
+// A shop's public identity code: "MD-" + 4 digits, like a mobile-money till
 // number. Assigned once (on profile creation or by the backfill script) and
 // NEVER regenerated — the code is how buyers and printed QR posters find the
 // exact shop even when two shops share a name.
 export async function generateShopCode(): Promise<string> {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const candidate = `DK-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
+    const candidate = `MD-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
     const clash = await db.businessProfile.findUnique({
       where: { shopCode: candidate },
       select: { id: true },
@@ -116,6 +122,13 @@ export async function lookupShopByCode(raw: string): Promise<ShopLookupResult | 
   }
 }
 
+// Two raw numbers name the same phone line when their normalized candidate
+// sets overlap — no format guessing (local 07…, dial-code 2567…, spaced).
+function samePhoneLine(a: string, b: string): boolean {
+  const aCandidates = phoneCandidates(a)
+  return phoneCandidates(b).some((n) => aCandidates.includes(n))
+}
+
 // Load a shop page by the owner's user id. Public — buyers never sign in.
 // Overdue listings are expired first so the catalogue only shows real stock.
 export async function getShopPage(userId: string): Promise<ShopPageData | null> {
@@ -159,6 +172,7 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       // The shop's contact numbers — the same ones buyers call from listings.
       phone: profile?.phone ?? user.phone,
       whatsapp: profile?.whatsapp ?? null,
+      phoneConfirmed: !profile?.phone || samePhoneLine(profile.phone, user.phone),
       shopCode: profile?.shopCode ?? null,
       memberSince: user.createdAt.toISOString(),
       activeCount: listings.length,

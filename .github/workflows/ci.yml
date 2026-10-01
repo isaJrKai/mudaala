@@ -1,0 +1,64 @@
+# Mudaala CI — types, lint, and the API behavior suite on every push.
+#
+# The test suite (scripts/test-api.ts) talks to a RUNNING dev server over
+# HTTP, so the job boots one against a fresh SQLite database, seeds the
+# development fixtures, and runs the suite against it. The env block mirrors
+# .env.example: AUTH_BEARER_FALLBACK=1 stands in for the preview/sandbox
+# environment the Bearer channel exists for; ADMIN_PHONES picks a seeded
+# fixture phone as the deployment admin.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./db/custom.db
+      AUTH_BEARER_FALLBACK: "1"
+      CRON_SECRET: ci-cron-secret
+      SETTINGS_ENC_KEY: ci-settings-enc-key
+      ADMIN_PHONES: "+254712000001"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Create database schema
+        run: bunx prisma db push --skip-generate --accept-data-loss
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+
+      - name: Seed development fixtures
+        run: bunx tsx scripts/seed.ts
+
+      - name: TypeScript
+        run: bunx tsc --noEmit
+
+      - name: ESLint
+        run: bun run lint
+
+      - name: Start dev server
+        run: |
+          bun run dev &
+          for i in $(seq 1 60); do
+            sleep 2
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/listings || true)
+            if [ "$code" = "200" ]; then echo "server up"; exit 0; fi
+          done
+          echo "server did not come up"; exit 1
+
+      - name: API behavior suite
+        run: bunx tsx scripts/test-api.ts
+
+      - name: Clean test data
+        if: always()
+        run: bunx tsx scripts/cleanup-test-data.ts

@@ -20,6 +20,7 @@ import { REFRESH_COOLDOWN_HOURS, LISTING_ACTIVE_DAYS } from '@/lib/constants'
 import { expiryLabel, timeAgo } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { cn } from '@/lib/utils'
 import { ListingCard } from './listing-card'
 import { ListingListSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
@@ -33,6 +34,14 @@ export function MyListings() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
+  // Which row is running which action, so one seller's Refresh never greys
+  // out the buttons on every OTHER listing (the old shared isPending did
+  // exactly that). Same-row buttons pause together — one listing shouldn't
+  // race two status changes against itself.
+  const [activeAction, setActiveAction] = useState<{ id: string; key: string } | null>(null)
+  // The expiry label of the just-refreshed listing flashes green (remounted
+  // via key so the CSS animation replays on every refresh).
+  const [expiryFlash, setExpiryFlash] = useState<{ id: string; tick: number } | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['my-listings'],
@@ -47,30 +56,37 @@ export function MyListings() {
 
   const refreshMutation = useMutation({
     mutationFn: (id: string) => apiPost<{ listing: Listing }>(`/api/listings/${id}/refresh`),
-    onSuccess: () => {
+    onMutate: (id: string) => setActiveAction({ id, key: 'refresh' }),
+    onSuccess: (_data, id: string) => {
       void invalidate()
+      setExpiryFlash({ id, tick: Date.now() })
       toast({ title: 'Listing refreshed', description: `It now appears as fresh and expires in ${LISTING_ACTIVE_DAYS} days.` })
     },
     onError: (err: Error) => toast({ title: 'Could not refresh', description: err.message, variant: 'destructive' }),
+    onSettled: () => setActiveAction(null),
   })
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => apiPatch<{ listing: Listing }>(`/api/listings/${id}`, { status }),
+    onMutate: ({ id, status }) => setActiveAction({ id, key: `status:${status}` }),
     onSuccess: (_data, vars) => {
       void invalidate()
       toast({ title: vars.status === 'FULFILLED' ? 'Marked as fulfilled' : vars.status === 'ACTIVE' ? 'Listing is active again' : 'Listing archived' })
     },
     onError: (err: Error) => toast({ title: 'Could not update listing', description: err.message, variant: 'destructive' }),
+    onSettled: () => setActiveAction(null),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiDelete<{ ok: boolean }>(`/api/listings/${id}`),
+    onMutate: (id: string) => setActiveAction({ id, key: 'delete' }),
     onSuccess: () => {
       void invalidate()
       setDeleteTarget(null)
       toast({ title: 'Listing deleted' })
     },
     onError: (err: Error) => toast({ title: 'Could not delete', description: err.message, variant: 'destructive' }),
+    onSettled: () => setActiveAction(null),
   })
 
   if (sessionLoading) return <ListingListSkeleton count={3} />
@@ -116,6 +132,8 @@ export function MyListings() {
           const canRefresh = listing.status === 'ACTIVE' && cooldownEnds.getTime() <= Date.now()
           const nextRefreshIn = cooldownEnds.getTime() - Date.now()
           const hours = Math.ceil(nextRefreshIn / 3_600_000)
+          const rowBusy = activeAction?.id === listing.id
+          const refreshing = rowBusy && activeAction?.key === 'refresh'
 
           return (
             <ListingCard
@@ -125,7 +143,10 @@ export function MyListings() {
               showStatus
               actions={
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-auto text-xs text-muted-foreground">
+                  <span
+                    key={expiryFlash?.id === listing.id ? `flash-${expiryFlash.tick}` : 'static'}
+                    className={cn('mr-auto text-xs text-muted-foreground', expiryFlash?.id === listing.id && 'flash-good')}
+                  >
                     {listing.status === 'ACTIVE' ? expiryLabel(listing.expiresAt) : '—'}
                   </span>
 
@@ -133,18 +154,18 @@ export function MyListings() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 gap-1.5"
-                      disabled={!canRefresh || refreshMutation.isPending}
+                      className="h-8 gap-1.5 press"
+                      disabled={rowBusy || !canRefresh}
                       onClick={() => refreshMutation.mutate(listing.id)}
                       title={canRefresh ? 'Refresh now' : `Available in ${hours}h (24h cooldown)`}
                     >
-                      <RefreshCw className="size-3.5" aria-hidden />
+                      <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} aria-hidden />
                       {canRefresh ? 'Refresh' : `Refresh in ${hours}h`}
                     </Button>
                   ) : null}
 
                   {listing.status === 'ACTIVE' ? (
-                    <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => navigate({ name: 'edit', id: listing.id })}>
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5 press" disabled={rowBusy} onClick={() => navigate({ name: 'edit', id: listing.id })}>
                       <Pencil className="size-3.5" aria-hidden /> Edit
                     </Button>
                   ) : null}
@@ -153,9 +174,9 @@ export function MyListings() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 gap-1.5"
+                      className="h-8 gap-1.5 press"
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'FULFILLED' })}
-                      disabled={statusMutation.isPending}
+                      disabled={rowBusy}
                     >
                       <CheckCircle2 className="size-3.5" aria-hidden /> Mark fulfilled
                     </Button>
@@ -165,9 +186,9 @@ export function MyListings() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 gap-1.5"
+                      className="h-8 gap-1.5 press"
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'ACTIVE' })}
-                      disabled={statusMutation.isPending}
+                      disabled={rowBusy}
                       title="Repost: restarts freshness and expiry"
                     >
                       <RotateCcw className="size-3.5" aria-hidden /> Repost
@@ -178,9 +199,9 @@ export function MyListings() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 gap-1.5 text-muted-foreground"
+                      className="h-8 gap-1.5 text-muted-foreground press"
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'ARCHIVED' })}
-                      disabled={statusMutation.isPending}
+                      disabled={rowBusy}
                     >
                       <Archive className="size-3.5" aria-hidden /> Archive
                     </Button>
@@ -189,8 +210,9 @@ export function MyListings() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 gap-1.5 text-destructive hover:text-destructive"
+                    className="h-8 gap-1.5 text-destructive hover:text-destructive press"
                     onClick={() => setDeleteTarget(listing)}
+                    disabled={rowBusy}
                   >
                     <Trash2 className="size-3.5" aria-hidden /> Delete
                   </Button>

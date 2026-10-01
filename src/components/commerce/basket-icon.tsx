@@ -1,6 +1,6 @@
 'use client'
 
-// Duuka's basket glyph — the lucide ShoppingBasket shape with one addition:
+// Mudaala's basket glyph — the lucide ShoppingBasket shape with one addition:
 // a "goods" layer that rises inside the basket as the buyer's list grows.
 //
 //   • The fill is a rect clipped to the basket body, moved with transform

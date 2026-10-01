@@ -1,4 +1,4 @@
-// Duuka — the buyer's basket: per-shop lists that end as ONE WhatsApp
+// Mudaala — the buyer's basket: per-shop lists that end as ONE WhatsApp
 // message per seller. Not a supermarket cart: there is no checkout, no
 // payment, no delivery — the message IS the order request, exactly like
 // texting a market seller your list.
@@ -20,7 +20,7 @@
 import { useSyncExternalStore } from 'react'
 import { formatPrice, formatQuantity } from './format'
 
-const STORAGE_KEY = 'duuka.basket.v1'
+const STORAGE_KEY = 'mudaala.basket.v1'
 const MAX_LINES_PER_SHOP = 20
 const MAX_QTY = 99
 
@@ -191,7 +191,7 @@ export function orderMessage(shopName: string, lines: BasketLineInfo[]): string 
     const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'
     return `• ${line.title} — ${qty} @ ${price}`
   })
-  return `Hi ${shopName}! I'd like to order from your Duuka shop:\n${rows.join('\n')}\nIs everything available?`
+  return `Hi ${shopName}! I'd like to order from your Mudaala shop:\n${rows.join('\n')}\nIs everything available?`
 }
 
 export function orderWhatsAppHref(shop: BasketShopInfo, lines: BasketLineInfo[]): string {

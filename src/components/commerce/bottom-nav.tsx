@@ -1,8 +1,9 @@
 'use client'
 
-import { Search, PlusCircle, Tag, Bell, User } from 'lucide-react'
+import { Home, Search, PlusCircle, Tag, Bell } from 'lucide-react'
 import { useAppStore, type ViewName } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { useBellShake } from '@/hooks/use-bell-shake'
 import { apiGet } from '@/lib/client'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -20,13 +21,16 @@ export function BottomNav() {
     refetchIntervalInBackground: false,
   })
   const unread = user ? (notificationsQuery.data?.unreadCount ?? 0) : 0
+  // Mobile bell swings exactly like the desktop one — the bottom nav is the
+  // primary nav on the phones this app is built for.
+  const bellRef = useBellShake(unread)
 
   const items: Array<{ name: ViewName; label: string; icon: React.ReactNode; badge?: number }> = [
+    { name: 'home', label: 'Home', icon: <Home aria-hidden /> },
     { name: 'browse', label: 'Browse', icon: <Search aria-hidden /> },
     { name: 'publish', label: 'Post', icon: <PlusCircle aria-hidden /> },
     { name: 'my-listings', label: 'Listings', icon: <Tag aria-hidden /> },
     { name: 'notifications', label: 'Alerts', icon: <Bell aria-hidden />, badge: unread },
-    { name: 'account', label: 'Account', icon: <User aria-hidden /> },
   ]
 
   return (
@@ -48,7 +52,15 @@ export function BottomNav() {
                 active ? 'text-primary' : 'text-muted-foreground',
               )}
             >
-              <span className="[&_svg]:size-5">{item.icon}</span>
+              <span className="[&_svg]:size-5">
+                {item.name === 'notifications' ? (
+                  <span ref={bellRef} className="inline-flex" style={{ transformOrigin: '50% 18%' }}>
+                    {item.icon}
+                  </span>
+                ) : (
+                  item.icon
+                )}
+              </span>
               {item.label}
               {item.badge ? (
                 <span className="absolute right-[22%] top-2 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-semibold text-white">

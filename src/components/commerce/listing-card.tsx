@@ -6,12 +6,15 @@
 // buyer actions: WHO sells it (tap → their shop), CALL, and WHATSAPP — all
 // reachable without opening the listing at all.
 
-import { Check, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { Check, Heart, MapPin, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { formatPrice, formatQuantity, timeAgo, telLink, whatsappLink } from '@/lib/format'
 import { categoryLabel, unitLabel } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { TypeBadge, StatusBadge, FreshnessDot } from './badges'
 import { useAddedFlash } from './basket-view'
+import { LOVED_CAP, isLoved, toggleLoved, useLovedIds } from '@/lib/loved'
+import { useToast } from '@/hooks/use-toast'
 import type { Listing, ListingShopOwner } from '@/lib/client'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +55,64 @@ function ListingPhoto({ listing, className }: { listing: Listing; className?: st
 // A real discount exists only when the "was" price beats the current one.
 export function isDiscounted(listing: Pick<Listing, 'price' | 'compareAtPrice'>): boolean {
   return listing.price !== null && listing.compareAtPrice !== null && listing.compareAtPrice > listing.price
+}
+
+// The heart — "I want to find this again". Stored on this phone like the
+// basket (buyers never sign in). The pop plays ONLY on a real love: the
+// store reports back, a full shortlist says so instead of animating a lie.
+// Remounting the icon via key replays the CSS bounce every single time.
+export function HeartButton({
+  listingId,
+  title,
+  onPhoto,
+  className,
+}: {
+  listingId: string
+  title: string
+  /** Dark-photo variant (block cards) vs light-surface variant (detail). */
+  onPhoto?: boolean
+  className?: string
+}) {
+  const lovedIds = useLovedIds()
+  const loved = isLoved(lovedIds, listingId)
+  const { toast } = useToast()
+
+  function handleToggle() {
+    const result = toggleLoved(listingId)
+    if (result === 'full') {
+      toast({
+        title: 'Your shortlist is full',
+        description: `You can keep up to ${LOVED_CAP} loved items — take one off to make room for this.`,
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      aria-pressed={loved}
+      aria-label={loved ? `Remove ${title} from your loved items` : `Love ${title}`}
+      className={cn(
+        'press inline-flex items-center justify-center rounded-full',
+        onPhoto
+          ? 'size-8 bg-black/60 text-white backdrop-blur-sm hover:bg-black/75'
+          : 'size-10 border bg-card text-muted-foreground hover:border-destructive/40 hover:text-destructive',
+        className,
+      )}
+    >
+      {loved ? (
+        <Heart
+          key="loved"
+          className="heart-pop size-4 fill-destructive text-destructive motion-reduce:animate-none"
+          aria-hidden
+        />
+      ) : (
+        <Heart key="plain" className="size-4" aria-hidden />
+      )}
+    </button>
+  )
 }
 
 export function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice'>): number | null {
@@ -185,7 +246,7 @@ export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, 
               className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
               aria-label={`WhatsApp ${shopDisplayName} about ${listing.title}`}
             >
-              <MessageCircle className="size-3.5" aria-hidden /> Chat
+              <WhatsAppIcon className="size-3.5" aria-hidden /> Chat
             </a>
           ) : null}
         </div>
@@ -248,6 +309,14 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
         <span className="pointer-events-none absolute left-1.5 top-1.5 z-10">
           <TypeBadge type={listing.type} />
         </span>
+        {listing.type === 'OFFER' ? (
+          <HeartButton
+            listingId={listing.id}
+            title={listing.title}
+            onPhoto
+            className="absolute right-1.5 top-1.5 z-20"
+          />
+        ) : null}
         {listing.photos.length > 1 ? (
           <span className="pointer-events-none absolute bottom-1.5 right-1.5 z-10 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
             +{listing.photos.length - 1}
@@ -371,7 +440,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
                 className="press inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border border-emerald-600/40 bg-emerald-50 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
                 aria-label={`WhatsApp ${shopDisplayName} about ${listing.title}`}
               >
-                <MessageCircle className="size-3.5" aria-hidden /> Chat
+                <WhatsAppIcon className="size-3.5" aria-hidden /> Chat
               </a>
             ) : null}
           </div>

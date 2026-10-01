@@ -1,10 +1,10 @@
 /**
- * Duuka — API behavior & security tests.
+ * Mudaala — API behavior & security tests.
  *
  * Tests observable outcomes and permission boundaries against the running dev
  * server, not implementation details. Run: npx tsx scripts/test-api.ts
  *
- * Covers: auth (cookie AND Bearer transport, UG/TZ/KE phones), ownership
+ * Covers: auth (cookie AND Bearer transport, Ugandan phone formats), ownership
  * enforcement (positive AND negative), validation, currency handling, status
  * transition rules, refresh cooldown, expiry sweep, saved-search matching +
  * permissions, notification permissions, postgres settings masking, photos +
@@ -12,6 +12,9 @@
  * completeness checklist.
  */
 import { PrismaClient } from '@prisma/client'
+import sharp from 'sharp'
+import path from 'node:path'
+import * as fs from 'node:fs'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -42,6 +45,7 @@ async function call(
   path: string,
   body?: unknown,
   jar?: Jar,
+  extraHeaders?: Record<string, string>,
 ): Promise<{ status: number; json: any; setCookie?: string }> {
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -49,6 +53,7 @@ async function call(
       'Content-Type': 'application/json',
       ...(jar?.cookie ? { cookie: jar.cookie } : {}),
       ...(jar?.token ? { authorization: `Bearer ${jar.token}` } : {}),
+      ...extraHeaders,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -75,7 +80,7 @@ function storeCookie(jar: Jar, res: { setCookie?: string }) {
   }
 }
 
-async function register(jar: Jar, phone: string, name: string, password: string, country = 'KE') {
+async function register(jar: Jar, phone: string, name: string, password: string, country = 'UG') {
   const res = await call('POST', '/api/auth/register', { phone, name, password, country }, jar)
   storeCookie(jar, res)
   if (res.json?.sessionToken) jar.token = res.json.sessionToken
@@ -83,7 +88,7 @@ async function register(jar: Jar, phone: string, name: string, password: string,
   return res
 }
 
-const uniquePhone = () => `+2547${String(Math.floor(10000000 + Math.random() * 89999999))}`
+const uniquePhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 89999999))}`
 
 const validListing = {
   type: 'OFFER',
@@ -91,14 +96,14 @@ const validListing = {
   description: 'Clean test copper scrap for validating the publishing pipeline end to end.',
   category: 'scrap-recyclables',
   price: 500,
-  currency: 'KES',
+  currency: 'UGX',
   priceNegotiable: false,
   unit: 'kg',
   quantity: 100,
-  country: 'KE',
-  county: 'Nairobi',
+  country: 'UG',
+  county: 'Kampala',
   area: 'Test Area',
-  contactPhone: '+254712345678',
+  contactPhone: '+256712345678',
   contactWhatsapp: null,
 }
 
@@ -121,11 +126,11 @@ async function main() {
     const wrongPw = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'wrongpassword' })
     ok('login with wrong password → 401, no enumeration', wrongPw.status === 401)
 
-    const ghost = await call('POST', '/api/auth/login', { phone: '+254700111222', password: 'whatever123' })
+    const ghost = await call('POST', '/api/auth/login', { phone: '+256700111222', password: 'whatever123' })
     ok('login with unknown phone → same 401 message', ghost.status === 401 && ghost.json.error === wrongPw.json.error)
 
     const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
-    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('duuka_session'))
+    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('mudaala_session'))
     ok('login returns sessionToken for the Bearer channel', typeof login.json?.sessionToken === 'string' && login.json.sessionToken.length > 0)
 
     const me = await call('GET', '/api/auth/me', undefined, alice)
@@ -136,17 +141,14 @@ async function main() {
     ok('GET /me without session → user null', anonMe.json?.user === null)
   }
 
-  console.log('\n== 1b. Multi-country phones + Bearer transport ==')
+  console.log('\n== 1b. Ugandan phone formats + Bearer transport ==')
   {
     // Seeded dev fixtures: same local-format numbers a real user would type.
     const ugLogin = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
     ok('Ugandan local number 0772123456 logs in (no country chosen)', ugLogin.status === 200 && ugLogin.json?.user?.phone === '+256772123456')
 
-    const tzLogin = await call('POST', '/api/auth/login', { phone: '0712345678', password: 'demo1234' })
-    ok('Tanzanian local number 0712345678 logs in', tzLogin.status === 200 && tzLogin.json?.user?.phone === '+255712345678')
-
-    const keLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' })
-    ok('Kenyan local number 0712000001 still logs in', keLogin.status === 200 && keLogin.json?.user?.phone === '+254712000001')
+    const ugDial = await call('POST', '/api/auth/login', { phone: '256776123456', password: 'demo1234' })
+    ok('Ugandan number typed with dial code 256776123456 logs in', ugDial.status === 200 && ugDial.json?.user?.phone === '+256776123456')
 
     // Register a Ugandan account with country declared.
     const ug: Jar = { cookie: '' }
@@ -165,6 +167,48 @@ async function main() {
     const bearerLogout = await call('POST', '/api/auth/logout', undefined, bearer)
     const meAfterBearerLogout = await call('GET', '/api/auth/me', undefined, bearer)
     ok('logout revokes the Bearer-only session too', bearerLogout.status === 200 && meAfterBearerLogout.json?.user === null)
+  }
+
+  console.log('\n== 1c. Login rate limiting ==')
+  {
+    // A throwaway account (deleted right after) proves the lockout: 5 wrong
+    // passwords are allowed, the 6th attempt is 429 even with the RIGHT one.
+    const rlPhone = uniquePhone()
+    const rl: Jar = { cookie: '' }
+    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'password123')
+    ok('rate-limit fixture account created (precondition)', rlReg.status === 201)
+
+    let saw401 = 0
+    for (let i = 0; i < 5; i++) {
+      const wrong = await call('POST', '/api/auth/login', { phone: rlPhone, password: `wrong-attempt-${i}` })
+      if (wrong.status === 401) saw401++
+    }
+    ok('5 wrong attempts each get the normal 401', saw401 === 5)
+
+    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password123' })
+    ok('6th attempt locked out with 429 — even with the correct password', locked.status === 429)
+    ok('lockout message is friendly and human', typeof locked.json?.error === 'string' && locked.json.error.includes('wait'))
+
+    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password123' })
+    ok('local-format dialing of the same phone is locked too (normalization)', alsoLocked.status === 429)
+
+    // A DIFFERENT phone from the same IP is untouched — the lock is per phone.
+    const other = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
+    ok('other phones from the same IP still sign in (200)', other.status === 200)
+
+    // Success clears counters: a lockout-free phone can fail, succeed, and fail again.
+    const nakato = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'wrong-once' })
+    const nakatoOk = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
+    const nakatoFailAgain = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'wrong-again' })
+    ok(
+      'success resets the failure counter (fail→success→fail is still 401, not 429)',
+      nakato.status === 401 && nakatoOk.status === 200 && nakatoFailAgain.status === 401,
+    )
+
+    // Cleanup the throwaway so the fixture stays clean.
+    const rlMe = await call('GET', '/api/auth/me', undefined, rl)
+    const rlUser = rlMe.json?.user
+    if (rlUser) await db.user.delete({ where: { id: rlUser.id } })
   }
 
   console.log('\n== 2. Listing creation & validation ==')
@@ -198,8 +242,8 @@ async function main() {
     const ugListing = await call('POST', '/api/listings', { ...validListing, price: 18000, currency: 'UGX', country: 'UG', county: 'Kampala', contactPhone: '0772123456' }, alice)
     ok('UGX listing in Kampala with local UG phone → 201', ugListing.status === 201 && ugListing.json?.listing?.currency === 'UGX' && ugListing.json?.listing?.contactPhone === '+256772123456')
 
-    const mismatch = await call('POST', '/api/listings', { ...validListing, country: 'UG', county: 'Nairobi' }, alice)
-    ok('KE location on a UG listing → 400 (country/location match enforced)', mismatch.status === 400)
+    const mismatch = await call('POST', '/api/listings', { ...validListing, county: 'Nairobi' }, alice)
+    ok('location outside Uganda → 400 (country/location match enforced)', mismatch.status === 400)
 
     const badCurrency = await call('POST', '/api/listings', { ...validListing, currency: 'USD' }, alice)
     ok('unsupported currency → 400', badCurrency.status === 400)
@@ -219,8 +263,8 @@ async function main() {
     const byType = await call('GET', '/api/listings?type=REQUEST')
     ok('type filter returns only REQUEST', byType.json.items.every((l: any) => l.type === 'REQUEST'))
 
-    const byCounty = await call('GET', '/api/listings?county=Nairobi')
-    ok('county filter returns only Nairobi', byCounty.json.items.every((l: any) => l.county === 'Nairobi') && byCounty.json.total > 0)
+    const byCounty = await call('GET', '/api/listings?county=Gulu')
+    ok('county filter returns only Gulu', byCounty.json.items.every((l: any) => l.county === 'Gulu') && byCounty.json.total > 0)
 
     const priceRange = await call('GET', '/api/listings?minPrice=600&maxPrice=700')
     ok('price range filter respects bounds', priceRange.json.items.every((l: any) => l.price >= 600 && l.price <= 700))
@@ -259,6 +303,31 @@ async function main() {
     })
     ok('renamed non-image rejected by magic bytes → 400', fakePng.status === 400)
 
+    // Every stored photo is re-encoded to WebP, max edge 1200: upload a big
+    // 4000×3000 PNG and check what ACTUALLY got written on disk.
+    const BIG_PNG = await sharp({
+      create: { width: 4000, height: 3000, channels: 3, background: { r: 120, g: 160, b: 90 } },
+    }).png().toBuffer()
+    const bigUpload = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: alice.cookie, authorization: `Bearer ${alice.token}` },
+      body: (() => { const f = new FormData(); f.append('file', new Blob([new Uint8Array(BIG_PNG)], { type: 'image/png' }), 'big.png'); return f })(),
+    })
+    const bigJson = await bigUpload.json().catch(() => null)
+    ok('oversized photo upload → 201 with .webp url', bigUpload.status === 201 && typeof bigJson?.url === 'string' && bigJson.url.startsWith('/uploads/') && bigJson.url.endsWith('.webp'))
+    const storedPath = path.join(process.cwd(), 'public', bigJson?.url ?? '')
+    const storedMeta = await sharp(storedPath).metadata()
+    ok(
+      'stored photo is WebP inside the 1200px box',
+      storedMeta.format === 'webp' && Math.max(storedMeta.width ?? 0, storedMeta.height ?? 0) <= 1200,
+    )
+    const storedBytes = await fs.promises.readFile(storedPath)
+    const pngBytesOnDisk = await sharp(storedPath).png().toBuffer()
+    ok(
+      're-encoding actually shrank the market photo (WebP < same image as PNG)',
+      storedBytes.byteLength < pngBytesOnDisk.byteLength,
+    )
+
     // Photos flow through create (with sanitization), detail, browse.
     const withPhotos = await call('POST', '/api/listings', {
       ...validListing,
@@ -287,7 +356,7 @@ async function main() {
       photoUrl: photoUrl ?? null,
       category: 'other',
       description: null,
-      county: 'Nairobi',
+      county: 'Kampala',
       area: null,
       phone: alicePhone,
       whatsapp: null,
@@ -300,7 +369,7 @@ async function main() {
       photoUrl: 'javascript:alert(1)',
       category: 'other',
       description: null,
-      county: 'Nairobi',
+      county: 'Kampala',
       area: null,
       phone: alicePhone,
       whatsapp: null,
@@ -399,7 +468,7 @@ async function main() {
     // Alice's profile was created in 3b, so it already carries a code.
     const profileState = await call('GET', '/api/profile', undefined, alice)
     const aliceCode = profileState.json?.profile?.shopCode
-    ok('profile exposes a DK-XXXX shop code', typeof aliceCode === 'string' && /^DK-\d{4}$/.test(aliceCode))
+    ok('profile exposes a MD-XXXX shop code', typeof aliceCode === 'string' && /^MD-\d{4}$/.test(aliceCode))
 
     // The code is a permanent identity: profile updates must never re-roll it.
     const update = await call('PUT', '/api/profile', {
@@ -407,7 +476,7 @@ async function main() {
       photoUrl: null,
       category: 'other',
       description: 'Updated description for code stability check.',
-      county: 'Nairobi',
+      county: 'Kampala',
       area: 'Test Area',
       phone: alicePhone,
       whatsapp: null,
@@ -437,22 +506,22 @@ async function main() {
     await register(dora, uniquePhone(), 'Dora Twinname', 'password789')
     const caraProfile = await call('PUT', '/api/profile', {
       businessName: 'Twin Name Market',
-      photoUrl: null, category: 'other', description: null, county: 'Nairobi',
-      area: 'Westlands', phone: uniquePhone(),
+      photoUrl: null, category: 'other', description: null, county: 'Kampala',
+      area: 'Ntinda', phone: uniquePhone(),
       whatsapp: null, hours: null,
     }, cara)
-    ok('new profile gets a code at creation', caraProfile.status === 200 && /^DK-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
+    ok('new profile gets a code at creation', caraProfile.status === 200 && /^MD-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
     const doraProfile = await call('PUT', '/api/profile', {
       businessName: 'Twin Name Market',
-      photoUrl: null, category: 'other', description: null, county: 'Nairobi',
-      area: 'Karen', phone: uniquePhone(),
+      photoUrl: null, category: 'other', description: null, county: 'Kampala',
+      area: 'Bukoto', phone: uniquePhone(),
       whatsapp: null, hours: null,
     }, dora)
     ok('same-name shop gets a DIFFERENT code',
       doraProfile.status === 200 && doraProfile.json?.profile?.shopCode !== caraProfile.json?.profile?.shopCode)
 
     // Same-name shops in one feed: owner area must ride along so the browse
-    // feed can render "Twin Name Market · Westlands" vs "· Karen".
+    // feed can render "Twin Name Market · Ntinda" vs "· Bukoto".
     const caraListing = await call('POST', '/api/listings', { ...validListing, title: 'Twin market greens offer' }, cara)
     const doraListing = await call('POST', '/api/listings', { ...validListing, title: 'Twin market greens offer two' }, dora)
     const browse = await call('GET', '/api/listings?q=twin%20market%20greens')
@@ -460,7 +529,7 @@ async function main() {
     const caraItem = both.find((l: any) => l.id === caraListing.json?.listing?.id)
     const doraItem = both.find((l: any) => l.id === doraListing.json?.listing?.id)
     ok('browse returns both same-name shops with their areas',
-      caraItem?.user?.profile?.area === 'Westlands' && doraItem?.user?.profile?.area === 'Karen')
+      caraItem?.user?.profile?.area === 'Ntinda' && doraItem?.user?.profile?.area === 'Bukoto')
 
     // check-name now flags the twin name for a third party.
     const twinCheck = await call('GET', '/api/shops/check-name?name=Twin%20Name%20Market')
@@ -483,10 +552,10 @@ async function main() {
 
     // Save + the privacy blur: coordinates are rounded to ~100 m BEFORE they
     // are stored, so a precise spot never exists server-side.
-    const setLoc = await call('PUT', '/api/profile/location', { lat: -1.2881234, lng: 36.8412345 }, alice)
+    const setLoc = await call('PUT', '/api/profile/location', { lat: 2.7741234, lng: 32.2992345 }, alice)
     ok('location save works → 200', setLoc.status === 200 && setLoc.json?.profile?.lat !== null)
     ok('stored coordinates are blurred to ~100 m',
-      setLoc.json?.profile?.lat === -1.288 && setLoc.json?.profile?.lng === 36.841)
+      setLoc.json?.profile?.lat === 2.774 && setLoc.json?.profile?.lng === 32.299)
 
     // The regular "Save shop" form write must NEVER clobber the spot: its
     // schema strips unknown keys, so lat/lng keys never reach Prisma.
@@ -495,33 +564,33 @@ async function main() {
       photoUrl: null,
       category: 'other',
       description: 'Location preservation check.',
-      county: 'Nairobi',
+      county: 'Gulu',
       area: 'Test Area',
       phone: alicePhone,
       whatsapp: null,
       hours: null,
     }, alice)
     ok('regular profile update preserves the saved location',
-      formSave.status === 200 && formSave.json?.profile?.lat === -1.288)
+      formSave.status === 200 && formSave.json?.profile?.lat === 2.774)
 
     // A seller WITHOUT a profile who shares their spot still gets a shop
-    // (create branch): account name as the shop name + a fresh DK code.
+    // (create branch): account name as the shop name + a fresh MD code.
     const nela: Jar = { cookie: '' }
     await register(nela, uniquePhone(), 'Nela Nearby', 'password789')
     const nelaLoc = await call('PUT', '/api/profile/location', { lat: 0.335, lng: 32.586 }, nela)
     ok('sharing a spot creates a minimal shop with a code',
-      nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^DK-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
+      nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^MD-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
 
-    // Nearest sort — two shops ~570 km apart; the buyer's side of the story
-    // must decide who comes first. Nairobi buyer → Alice; Kampala buyer → Nela.
+    // Nearest sort — two shops ~300 km apart; the buyer's side of the story
+    // must decide who comes first. Gulu buyer → Alice; Kampala buyer → Nela.
     const aliceListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe alpha' }, alice)
     const nelaListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe beta' }, nela)
-    const fromNairobi = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=-1.288&lng=36.841')
-    const nairobiItems = fromNairobi.json?.items ?? []
-    ok('nearest sort puts the Nairobi shop first for a Nairobi buyer',
-      fromNairobi.status === 200 && nairobiItems[0]?.id === aliceListing.json?.listing?.id)
+    const fromGulu = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=2.774&lng=32.299')
+    const guluItems = fromGulu.json?.items ?? []
+    ok('nearest sort puts the Gulu shop first for a Gulu buyer',
+      fromGulu.status === 200 && guluItems[0]?.id === aliceListing.json?.listing?.id)
     ok('browse cards carry the blurred shop spot for distance chips',
-      nairobiItems[0]?.user?.profile?.lat === -1.288 && nairobiItems[0]?.user?.profile?.lng === 36.841)
+      guluItems[0]?.user?.profile?.lat === 2.774 && guluItems[0]?.user?.profile?.lng === 32.299)
     const fromKampala = await call('GET', '/api/listings?q=nearest%20probe&sort=nearest&lat=0.335&lng=32.586')
     ok('nearest sort flips for a Kampala buyer',
       fromKampala.json?.items?.[0]?.id === nelaListing.json?.listing?.id)
@@ -547,7 +616,7 @@ async function main() {
     // The lookup is public — no jar, no cookie: buyers never sign in.
     const meProf = await call('GET', '/api/profile', undefined, alice)
     const realCode: string = meProf.json?.profile?.shopCode ?? ''
-    ok('profile exposes the seller shop code for the lookup tests', /^DK-\d{4}$/.test(realCode))
+    ok('profile exposes the seller shop code for the lookup tests', /^MD-\d{4}$/.test(realCode))
 
     const hit = await call('GET', `/api/shops/lookup?code=${encodeURIComponent(realCode)}`)
     ok('exact code resolves the right shop, anonymously',
@@ -565,7 +634,7 @@ async function main() {
     const used = new Set(taken.map((r) => r.shopCode as string))
     let unknown = ''
     for (let n = 0; n < 10_000; n++) {
-      const candidate = `DK-${String(n).padStart(4, '0')}`
+      const candidate = `MD-${String(n).padStart(4, '0')}`
       if (!used.has(candidate)) {
         unknown = candidate
         break
@@ -577,7 +646,7 @@ async function main() {
 
     const malformed = await call('GET', '/api/shops/lookup?code=AB-12')
     ok('malformed code → 400 with an honest hint',
-      malformed.status === 400 && typeof malformed.json?.error === 'string' && malformed.json.error.includes('DK-'))
+      malformed.status === 400 && typeof malformed.json?.error === 'string' && malformed.json.error.includes('MD-'))
 
     // Card-slim payload: contact details come later, from the shop page.
     ok('lookup payload carries no phone/whatsapp/password',
@@ -661,7 +730,7 @@ async function main() {
     const create = await call(
       'POST',
       '/api/saved-searches',
-      { name: 'Copper in Nairobi', query: { q: 'copper', county: 'Nairobi' } },
+      { name: 'Copper in Kampala', query: { q: 'copper', county: 'Kampala' } },
       ss,
     )
     ok('saved search created with computed match count', create.status === 201 && create.json?.search?.lastMatchCount >= 1)
@@ -693,6 +762,25 @@ async function main() {
     const carolNotif = afterRead.json.notifications[0]
     const bobMark = await call('POST', `/api/notifications/mark-read?ids=${carolNotif.id}`, undefined, bob)
     ok('mark-read on foreign notification is a no-op (200 but no effect)', bobMark.status === 200)
+
+    // Clear (delete) — the destructive sibling of mark-read: read keeps
+    // history, clear removes rows for good. UI confirms before calling.
+    const anonClear = await call('DELETE', '/api/notifications?ids=all')
+    ok('clear notifications without sign-in → 401', anonClear.status === 401)
+
+    const carolCount = afterRead.json.notifications.length
+    const bobClearAll = await call('DELETE', '/api/notifications?ids=all', undefined, bob)
+    ok('another user clearing their own alerts is 200', bobClearAll.status === 200)
+    const afterForeignClear = await call('GET', '/api/notifications', undefined, ss)
+    ok("another user's clear-all never touches my alerts", afterForeignClear.json.notifications.length === carolCount && carolCount > 0)
+
+    const clearMalformed = await call('DELETE', '/api/notifications', undefined, ss)
+    ok('clear without ids parameter → 400', clearMalformed.status === 400)
+
+    const clearAll = await call('DELETE', '/api/notifications?ids=all', undefined, ss)
+    ok('clear all notifications works', clearAll.status === 200)
+    const afterClear = await call('GET', '/api/notifications', undefined, ss)
+    ok('notification list is empty after clear', afterClear.json.notifications.length === 0 && afterClear.json.unreadCount === 0)
   }
 
   console.log('\n== 8. Expiry is real ==')
@@ -709,7 +797,7 @@ async function main() {
         priceNegotiable: false,
         unit: 'piece',
         quantity: 1,
-        county: 'Nairobi',
+        county: 'Kampala',
         area: null,
         contactPhone: alicePhone,
         status: 'ACTIVE',
@@ -738,34 +826,74 @@ async function main() {
     await call('DELETE', `/api/listings/${overdue.id}`, undefined, alice)
   }
 
+  console.log('\n== 8b. Sweep endpoint needs the cron secret ==')
+  {
+    const noHeader = await call('POST', '/api/cron/sweep')
+    ok('sweep without header → 403', noHeader.status === 403)
+
+    const wrongHeader = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': 'not-the-secret' })
+    ok('sweep with wrong secret → 403', wrongHeader.status === 403)
+
+    const cronSecret = process.env.CRON_SECRET
+    if (cronSecret) {
+      const rightHeader = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': cronSecret })
+      ok(
+        'sweep with correct secret → 200 with sweep counts',
+        rightHeader.status === 200 && typeof rightHeader.json?.expired === 'number' && typeof rightHeader.json?.expiringNotified === 'number',
+      )
+    } else {
+      const unconfigured = await call('POST', '/api/cron/sweep')
+      ok('CRON_SECRET unset → 503 (fail closed)', unconfigured.status === 503)
+    }
+  }
+
   console.log('\n== 9. Settings → Advanced Settings (PostgreSQL) ==')
   {
     const anon = await call('GET', '/api/settings/postgres')
     ok('settings require sign-in → 401', anon.status === 401)
 
+    // Deployment settings are admin-only (ADMIN_PHONES). Alice is a regular
+    // seller: every verb on the deployment config is closed to her.
+    const deniedGet = await call('GET', '/api/settings/postgres', undefined, alice)
+    ok('non-admin GET config → 403', deniedGet.status === 403)
+    const deniedPut = await call('PUT', '/api/settings/postgres', { host: 'db.internal.example', port: 5432, database: 'commerce_os', user: 'app', password: 'supersecret', sslMode: 'require' }, alice)
+    ok('non-admin PUT config → 403', deniedPut.status === 403)
+    const deniedDelete = await call('DELETE', '/api/settings/postgres', undefined, alice)
+    ok('non-admin DELETE config → 403', deniedDelete.status === 403)
+    const deniedTest = await call('POST', '/api/settings/postgres/test', undefined, alice)
+    ok('non-admin test connection → 403', deniedTest.status === 403)
+
+    // The admin allowlist phone is a seeded Ugandan account (0712000001 → +256712000001).
+    const admin: Jar = { cookie: '' }
+    const adminLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' }, admin)
+    storeCookie(admin, adminLogin)
+    admin.token = adminLogin.json?.sessionToken
+    ok('admin phone signs in (precondition)', adminLogin.status === 200)
+
     const saved = await call(
       'PUT',
       '/api/settings/postgres',
       { host: 'db.internal.example', port: 5432, database: 'commerce_os', user: 'app', password: 'supersecret', sslMode: 'require' },
-      alice,
+      admin,
     )
-    ok('save postgres config (200)', saved.status === 200)
+    ok('admin saves postgres config (200)', saved.status === 200)
 
-    const fetched = await call('GET', '/api/settings/postgres', undefined, alice)
+    const fetched = await call('GET', '/api/settings/postgres', undefined, admin)
     ok('GET config never returns the password', !JSON.stringify(fetched.json).includes('supersecret'))
     ok('GET reports hasPassword=true', fetched.json?.config?.hasPassword === true)
 
-    const testRes = await call('POST', '/api/settings/postgres/test', undefined, alice)
-    ok('test connection runs and reports honestly', testRes.status === 200 && typeof testRes.json?.ok === 'boolean')
+    // Encryption at rest: the raw AppSetting row must not contain the secret.
+    const rawRow = await db.appSetting.findUnique({ where: { key: 'postgres_config' } })
+    ok('stored config is encrypted at rest (no plaintext password)', Boolean(rawRow) && !rawRow!.value.includes('supersecret') && rawRow!.value.includes('enc:'))
+
+    const testRes = await call('POST', '/api/settings/postgres/test', undefined, admin)
+    ok('admin test connection runs and reports honestly', testRes.status === 200 && typeof testRes.json?.ok === 'boolean')
     ok('unreachable host → ok=false with a real reason', testRes.status === 200 && testRes.json?.ok === false && typeof testRes.json?.message === 'string' && testRes.json.message.length > 0)
 
-    const bobTest = await call('POST', '/api/settings/postgres/test', undefined, bob)
-    ok('deployment config is global: any signed-in user can test it', bobTest.status === 200)
+    const cleared = await call('DELETE', '/api/settings/postgres', undefined, admin)
+    ok('admin removes config works', cleared.status === 200)
 
-    const cleared = await call('DELETE', '/api/settings/postgres', undefined, alice)
-    ok('remove config works', cleared.status === 200)
-
-    const afterClear = await call('POST', '/api/settings/postgres/test', undefined, alice)
+    const afterClear = await call('POST', '/api/settings/postgres/test', undefined, admin)
     ok('test without saved config → 400', afterClear.status === 400)
   }
 
@@ -775,6 +903,175 @@ async function main() {
     ok('logout clears session', out.status === 200)
     const meAfter = await call('GET', '/api/auth/me', undefined, alice)
     ok('session gone after logout', meAfter.json?.user === null)
+  }
+
+  console.log('\n== 11. Home dashboard + price trends ==')
+  {
+    // Transport guards first: every Home endpoint is signed-in only.
+    const homeAnon = await call('GET', '/api/home')
+    ok('GET /api/home signed out → 401', homeAnon.status === 401)
+    const visitAnon = await call('POST', '/api/home/visit')
+    ok('POST /api/home/visit signed out → 401', visitAnon.status === 401)
+    const trendsAnon = await call('GET', '/api/price-trends')
+    ok('GET /api/price-trends signed out → 401', trendsAnon.status === 401)
+
+    // hana = buyer/saver (UG), nico = seller (UG). UG phones are +256 7XXX XXX XXX.
+    const ugPhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 89999999))}`
+    const hana: Jar = { cookie: '' }
+    const hanaReg = await register(hana, ugPhone(), 'Hana Home Test', 'demo1234', 'UG')
+    ok('hana registers (precondition)', hanaReg.status === 201 || hanaReg.status === 200)
+    const nico: Jar = { cookie: '' }
+    const nicoReg = await register(nico, ugPhone(), 'Nico Home Test', 'demo1234', 'UG')
+    ok('nico registers (precondition)', nicoReg.status === 201 || nicoReg.status === 200)
+
+    // Clean-slate stats: nothing invented for a fresh account.
+    const empty = await call('GET', '/api/home', undefined, hana)
+    ok('GET /api/home signed in → 200', empty.status === 200)
+    ok('fresh account: zero saved searches', empty.json?.stats?.savedSearches === 0)
+    ok('fresh account: zero active listings', empty.json?.stats?.activeListings === 0)
+    ok('fresh account: zero new matches', empty.json?.stats?.newMatches === 0)
+    ok('fresh account: lastUpdatedAt null', empty.json?.stats?.lastUpdatedAt === null)
+    ok('no profile and no listings → location source "none"', empty.json?.location?.source === 'none')
+    ok('greeting carries the first name', empty.json?.user?.firstName === 'Hana')
+
+    // Saved search + a matching listing from nico → one real NEW_MATCH.
+    const saved = await call(
+      'POST',
+      '/api/saved-searches',
+      { name: 'Electronics in Kampala', query: { category: 'electronics', county: 'Kampala' } },
+      hana,
+    )
+    ok('hana saves a search (precondition)', saved.status === 201)
+    const listingA = await call(
+      'POST',
+      '/api/listings',
+      { ...validListing, type: 'OFFER', title: 'Home test solar panel', description: 'Test solar panel for the home dashboard suite.', category: 'electronics', price: 1000, currency: 'UGX', unit: 'piece', quantity: 10, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123456' },
+      nico,
+    )
+    ok('nico publishes a matching listing (precondition)', listingA.status === 201)
+
+    const matched = await call('GET', '/api/home', undefined, hana)
+    ok('saved searches stat counts 1', matched.json?.stats?.savedSearches === 1)
+    ok('new matches counts the listing that matched since first visit', matched.json?.stats?.newMatches === 1)
+    ok('saved searches card payload carries top search', matched.json?.savedSearches?.[0]?.name === 'Electronics in Kampala')
+
+    // Visit marker: numbers must zero out only for the NEXT visit.
+    const visit = await call('POST', '/api/home/visit', undefined, hana)
+    ok('POST /api/home/visit → 200 and stamps a timestamp', visit.status === 200 && Boolean(visit.json?.lastHomeVisitAt))
+    const afterVisit = await call('GET', '/api/home', undefined, hana)
+    ok('after a recorded visit, new matches reset to 0', afterVisit.json?.stats?.newMatches === 0)
+
+    // A SECOND matching listing now counts as new since that visit.
+    const listingB = await call(
+      'POST',
+      '/api/listings',
+      { ...validListing, type: 'OFFER', title: 'Home test radio', description: 'Test radio for the home dashboard suite.', category: 'electronics', price: 5000, currency: 'UGX', unit: 'kg', quantity: 4, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123456' },
+      nico,
+    )
+    ok('nico publishes a second matching listing (precondition)', listingB.status === 201)
+    const secondMatch = await call('GET', '/api/home', undefined, hana)
+    ok('new matches since the recorded visit = 1', secondMatch.json?.stats?.newMatches === 1)
+
+    // hana publishes → her own stats + location falls back to her listing's district.
+    const hanaListing = await call(
+      'POST',
+      '/api/listings',
+      { ...validListing, type: 'OFFER', title: 'Home test phone charger', description: 'Test charger for the home dashboard suite.', category: 'electronics', price: 1500, currency: 'UGX', unit: 'piece', quantity: 30, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123457' },
+      hana,
+    )
+    ok('hana publishes her own listing (precondition)', hanaListing.status === 201)
+    const own = await call('GET', '/api/home', undefined, hana)
+    ok('active listings stat counts her listing', own.json?.stats?.activeListings === 1)
+    ok('lastUpdatedAt present after publishing', typeof own.json?.stats?.lastUpdatedAt === 'string')
+    ok('location falls back to her listing district ("listing" source)', own.json?.location?.source === 'listing' && own.json?.location?.county === 'Kampala')
+
+    // Freshness tip: backdate refreshedAt 8 days → stale, then Renew clears it.
+    const staleAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    await db.listing.update({ where: { id: hanaListing.json.listing.id }, data: { refreshedAt: staleAt } })
+    const stale = await call('GET', '/api/home', undefined, hana)
+    ok('listing refreshed 8 days ago appears as stale', stale.json?.staleCount === 1 && stale.json?.staleListings?.[0]?.title === 'Home test phone charger')
+    ok('stale listing reports its age in days', stale.json?.staleListings?.[0]?.ageDays === 8)
+    const renewed = await call('POST', `/api/listings/${hanaListing.json.listing.id}/refresh`, undefined, hana)
+    ok('Renew (refresh endpoint) succeeds past the cooldown', renewed.status === 200)
+    const renewedHome = await call('GET', '/api/home', undefined, hana)
+    ok('freshness tip disappears after renewal', renewedHome.json?.staleCount === 0)
+
+    // ---- Price trends ----
+    // Median needs sampleSize >= 5: nico adds 3 more electronics pieces.
+    for (const price of [2000, 3000, 4000]) {
+      const made = await call(
+        'POST',
+        '/api/listings',
+        { ...validListing, type: 'OFFER', title: `Home test combo ${price}`, description: 'Test combo listing for price medians.', category: 'electronics', price, currency: 'UGX', unit: 'piece', quantity: 10, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123456' },
+        nico,
+      )
+      ok(`combo listing @${price} published (precondition)`, made.status === 201)
+    }
+    // A second combo with only 2 listings must NOT produce a snapshot.
+    for (const price of [5000, 6000]) {
+      await call(
+        'POST',
+        '/api/listings',
+        { ...validListing, type: 'OFFER', title: `Home test thin ${price}`, description: 'Test listing below the median sample floor.', category: 'food-groceries', price, currency: 'UGX', unit: 'kg', quantity: 10, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123456' },
+        nico,
+      )
+    }
+
+    // Cron secret: CI injects it; local runs read the dev .env.
+    const cronSecret = process.env.CRON_SECRET ?? (() => {
+      try {
+        const line = fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8').split('\n').find((l) => l.startsWith('CRON_SECRET='))
+        return line ? line.slice('CRON_SECRET='.length).trim() : undefined
+      } catch {
+        return undefined
+      }
+    })()
+    if (cronSecret) {
+      const sweep = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': cronSecret })
+      ok('sweep with valid secret → 200 and reports snapshots', sweep.status === 200 && typeof sweep.json?.priceSnapshots === 'number')
+      ok('sweep recorded the qualifying combo (>=1 snapshot)', (sweep.json?.priceSnapshots ?? 0) >= 1)
+
+      const today = new Date().toISOString().slice(0, 10)
+      const comboRow = await db.priceSnapshot.findUnique({
+        where: { date_category_unit_currency: { date: today, category: 'electronics', unit: 'piece', currency: 'UGX' } },
+      })
+      ok('median of [1000,1500,2000,3000,4000] = 2000 (sampleSize 5)', comboRow?.medianPrice === 2000 && comboRow?.sampleSize === 5)
+      const thinRow = await db.priceSnapshot.findUnique({
+        where: { date_category_unit_currency: { date: today, category: 'food-groceries', unit: 'kg', currency: 'UGX' } },
+      })
+      ok('combo with sampleSize < 5 recorded NO snapshot', thinRow === null)
+
+      // Idempotency: rerunning the sweep never duplicates rows.
+      const resweep = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': cronSecret })
+      const rowsAfter = await db.priceSnapshot.count({ where: { date: today, category: 'electronics', unit: 'piece', currency: 'UGX' } })
+      ok('re-running the sweep stays idempotent (still 1 row)', resweep.status === 200 && rowsAfter === 1)
+
+      // Even-count median: a 6th listing re-computes in place.
+      await call(
+        'POST',
+        '/api/listings',
+        { ...validListing, type: 'OFFER', title: 'Home test combo 5000', description: 'Test listing for the even-count median.', category: 'electronics', price: 5000, currency: 'UGX', unit: 'piece', quantity: 10, country: 'UG', county: 'Kampala', area: 'Test Area', contactPhone: '+256777123456' },
+        nico,
+      )
+      await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': cronSecret })
+      const evenRow = await db.priceSnapshot.findUnique({
+        where: { date_category_unit_currency: { date: today, category: 'electronics', unit: 'piece', currency: 'UGX' } },
+      })
+      ok('median of 6 prices [1000,1500,2000,3000,4000,5000] = 2500, updated in place', evenRow?.medianPrice === 2500 && evenRow?.sampleSize === 6)
+
+      // Trends endpoint: hana's top category (posts + saves) carries the line.
+      const trends = await call('GET', '/api/price-trends', undefined, hana)
+      ok('GET /api/price-trends signed in → 200', trends.status === 200)
+      ok('trends are labeled "Based on Mudaala listings"', trends.json?.source === 'Based on Mudaala listings')
+      const hanaSeries = (trends.json?.series ?? []).find((s: { category: string }) => s.category === 'electronics')
+      ok('hana gets a series for electronics/piece/UGX', hanaSeries?.unit === 'piece' && hanaSeries?.currency === 'UGX')
+      const todayPoint = hanaSeries?.points?.find((p: { date: string }) => p.date === today)
+      ok('today point carries the honest median + sampleSize', todayPoint?.medianPrice === 2500 && todayPoint?.sampleSize === 6)
+      const nicoTrends = await call('GET', '/api/price-trends', undefined, nico)
+      ok('no user gets more than 3 series (top-3 cap)', (nicoTrends.json?.series ?? []).length <= 3)
+    } else {
+      console.log('  (CRON_SECRET not available — snapshot assertions skipped)')
+    }
   }
 
   console.log(`\n========================================`)

@@ -1,4 +1,4 @@
-// Duuka — API route helpers.
+// Mudaala — API route helpers.
 // Explicit error handling: expected failures return typed JSON errors,
 // unexpected failures are logged with context and return a generic 500.
 // Failed operations are NEVER converted into success responses.

@@ -12,7 +12,7 @@ import type { SessionUser } from '@/lib/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/lib/store'
 import { registerSchema, loginSchema } from '@/lib/validation'
-import { COUNTRIES, DEFAULT_COUNTRY, countryDef, type CountryDef } from '@/lib/constants'
+import { DEFAULT_COUNTRY, countryDef, type CountryDef } from '@/lib/constants'
 
 export function AuthDialog() {
   const open = useAppStore((s) => s.authOpen)
@@ -23,7 +23,8 @@ export function AuthDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Welcome to Duuka</DialogTitle>
+          {/* The one brand moment in the dialog: the shop-serif welcome. */}
+          <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
           <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
         </DialogHeader>
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register')}>
@@ -46,9 +47,9 @@ export function AuthDialog() {
 // Dev-only demo accounts: one tap fills real seeded credentials. They are the
 // fastest way for anyone reviewing the app to get in — no typing, no typos.
 const DEMO_ACCOUNTS = [
-  { label: 'Uganda — Kampalamart', phone: '0772123456' },
-  { label: 'Uganda — Nakato Fresh', phone: '0776123456' },
-  { label: 'Tanzania — Dodoma Supplies', phone: '0712345678' },
+  { label: 'Nakato Fresh Produce (Kampala)', phone: '0772123456' },
+  { label: 'Kampalamart Scrap (Kampala)', phone: '0776123456' },
+  { label: 'Gulu Agri Supplies (Gulu)', phone: '0712000001' },
 ] as const
 const DEMO_PASSWORD = 'demo1234'
 
@@ -122,7 +123,7 @@ function SignInForm({ onDone }: { onDone: () => void }) {
           onChange={(e) => setPhone(e.target.value)}
           required
         />
-        <p className="text-xs text-muted-foreground">Works with Uganda, Tanzania and Kenya numbers.</p>
+        <p className="text-xs text-muted-foreground">Any Ugandan format works: 07…, 2567… or +2567…</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="signin-password">Password</Label>
@@ -158,7 +159,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
-  const [countryKey, setCountryKey] = useState<string>(DEFAULT_COUNTRY)
+  const [countryKey] = useState<string>(DEFAULT_COUNTRY)
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -214,20 +215,16 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         <p className="text-xs text-muted-foreground">This is the name buyers will see on your listings.</p>
         {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
       </div>
+      {/* Uganda is the only market for now — shown as fixed fact, not a
+          choice, so nobody wonders whether their country is supported. */}
       <div className="space-y-1.5">
         <Label htmlFor="reg-country">Country</Label>
-        <select
+        <div
           id="reg-country"
-          value={countryKey}
-          onChange={(e) => setCountryKey(e.target.value)}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex h-9 w-full items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-foreground"
         >
-          {COUNTRIES.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.name} (+{c.dialCode})
-            </option>
-          ))}
-        </select>
+          Uganda (+256)
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="reg-phone">Phone number</Label>
@@ -236,7 +233,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-          placeholder={country.key === 'UG' ? '0772 345 678' : country.key === 'TZ' ? '0712 345 678' : '0712 345 678'}
+          placeholder="0772 345 678"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required

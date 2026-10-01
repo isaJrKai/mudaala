@@ -1,24 +1,18 @@
-// Duuka — shared validation schemas (zod).
+// Mudaala — shared validation schemas (zod).
 // Used by BOTH the API routes (integrity boundary) and the forms (usability).
 // Never duplicate these rules elsewhere.
 
 import { z } from 'zod'
 import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, type ListingStatus } from './constants'
 
-// Multi-country phone normalization (Uganda, Tanzania, Kenya).
-// Accepted inputs: 07XX XXX XXX, 7XXXXXXXX, +2567XXXXXXXX, 2567XXXXXXXX...
-// Normalized to E.164: +2567XXXXXXXX / +2557XXXXXXXX / +2547XXXXXXXX.
-export type CountryKey = 'UG' | 'TZ' | 'KE'
+// Uganda phone normalization. Accepted inputs: 07XX XXX XXX, 7XXXXXXXX,
+// +2567XXXXXXXX, 2567XXXXXXXX...
+// Normalized to E.164: +2567XXXXXXXX (mobiles 7XXXXXXXX, fixed 3XXXXXXXX).
+export type CountryKey = 'UG'
 
-const DIAL_CODES: Record<CountryKey, string> = { UG: '256', TZ: '255', KE: '254' }
-// Local part (after the leading 0) per country:
-//   UG: mobiles 7XXXXXXXX (MTN/Airtel), fixed 3XXXXXXXX
-//   TZ: mobiles 6XXXXXXXX / 7XXXXXXXX
-//   KE: mobiles 7XXXXXXXX / 1XXXXXXXX
+const DIAL_CODES: Record<CountryKey, string> = { UG: '256' }
 const LOCAL_PATTERNS: Record<CountryKey, RegExp> = {
   UG: /^[37]\d{8}$/,
-  TZ: /^[67]\d{8}$/,
-  KE: /^[17]\d{8}$/,
 }
 
 function normalizeFor(raw: string, country: CountryKey): string | null {
@@ -34,16 +28,17 @@ function normalizeFor(raw: string, country: CountryKey): string | null {
   return `+${dial}${local}`
 }
 
-/** Normalize with a known country (register, listing contact fields). */
+/** Normalize a Ugandan phone number (register, listing contact fields). */
 export function normalizePhone(raw: string, country: CountryKey = 'UG'): string | null {
   return normalizeFor(raw, country)
 }
 
-/** A raw local number is ambiguous across UG/TZ/KE — produce every candidate.
- *  Used by login so a returning user never needs to pick their country again. */
+/** A raw number may arrive in any dial format — produce the normalized
+ *  candidate(s). Kept plural on purpose: if another market is ever added,
+ *  login should not need rewriting. */
 export function phoneCandidates(raw: string): string[] {
   const out = new Set<string>()
-  for (const c of ['UG', 'TZ', 'KE'] as CountryKey[]) {
+  for (const c of ['UG'] as CountryKey[]) {
     const n = normalizeFor(raw, c)
     if (n) out.add(n)
   }
@@ -51,9 +46,7 @@ export function phoneCandidates(raw: string): string[] {
 }
 
 export function countryPhoneMessage(country: CountryKey): string {
-  if (country === 'UG') return 'Enter a valid Ugandan phone number (e.g. 0772 345 678)'
-  if (country === 'TZ') return 'Enter a valid Tanzanian phone number (e.g. 0712 345 678)'
-  return 'Enter a valid Kenyan phone number (e.g. 0712 345 678)'
+  return 'Enter a valid Ugandan phone number (e.g. 0772 345 678)'
 }
 
 // Shared untransformed phone string for schemas that carry an explicit country
@@ -64,7 +57,7 @@ const rawPhone = z.string().trim().min(1, 'Phone number is required').max(20, 'P
 export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80, 'Name is too long'),
   phone: rawPhone,
-  country: z.enum(['UG', 'TZ', 'KE']).default('UG'),
+  country: z.enum(COUNTRY_KEYS as [string, ...string[]]).default('UG'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
 })
 

@@ -292,3 +292,287 @@ E2E via :81 (guest, 390×844 then desktop):
 
 Stage Summary:
 - The basket now answers every tap three ways: the button flashes Check, the toast confirms, and the header basket's green goods-layer visibly RISES (never to the brim). Photos lean in under a real cursor, every pressable answers the finger at 0.97, the basket view enters with a gentle stagger. All transform/opacity, all reduced-motion-guarded, zero API changes. 136/136.
+
+---
+Task ID: 15
+Agent: Super Z (main)
+Task: Micro-feedback completeness pass (user brief: hearts that pop, empty states with one clear action, skeletons over spinners, consistent thicker icon strokes on mobile, price-change flashes green/red — "DO YOU GET THE PICTURE"). Mapped each principle to Duuka's real surfaces; filled the gaps.
+
+Work Log:
+- GAP ANALYSIS first: press-depress/add-flash/badge-bump/basket-fill/photo-zoom/stagger already shipped in 13/14; all 8 EmptyState callers already pass icon+title+action; skeletons already cover every loading surface (only spinners left are button-level in photo-picker, correct). What was genuinely missing: hearts, the number-flash cue, empty-state artistry, touch stroke weight — and --destructive was still stock-shadcn cool red.
+- lib/loved.ts (new): the buyer's shortlist — duuka.loved.v1, same parse-once + useSyncExternalStore + EMPTY-server-snapshot pattern as basket.ts. Stores only listing ids (newest first, cap 40). toggleLoved returns 'loved'|'unloved'|'full' so the pop NEVER fakes success and the cap explains itself. A heart is "find this again", a softer intent than the basket's "I'm taking this" — so OFFERs only, and the shelf re-checks availability like the basket does.
+- listing-card.tsx: HeartButton (exported, two variants: on-photo dark circle / detail light circle). Pop = CSS keyframes (heart-pop 340ms, scale 0.55→1.28→0.94→1) replayed by remounting the icon via key — no refs, no state. Loved = fill-destructive warm red on the dark photo; full cap → honest destructive toast. Placed top-right of the block photo (add button bottom-left, TypeBadge top-left, photo count bottom-right — corners all speak).
+- listing-detail.tsx: heart sits in the price row (ml-auto), next to "this is what it costs" = "come back to this one".
+- listings-browse.tsx: "Loved" mode chip (Near me family: aria-pressed, live count badge). ON → LovedShelf replaces the whole feed (explicit intent wins over code-punch/search). Shelf re-fetches every loved id via public GET; 404 → auto-unlove (a heart on a ghost eats a slot); ACTIVE items render as regular ListingBlocks; expired/fulfilled land in an amber honesty strip ("no longer available — tap the heart to forget it"); loading = ListingGridSkeleton (skeletons not spinners); typing exits Loved mode (different intent).
+- basket-view.tsx: THE number-flash cue (Duuka has no bids; the subtotal is the number that moves). On any qty edit the subtotal span WAAPI-flashes 900ms: emerald-700 green for up, var(--destructive) warm red for down, easing back to the settled color captured via getComputedStyle. Plus QtyNumber: the qty digit itself pulses (scale 1→1.25→1, 180ms) so the eye finds what moved. Both reduced-motion-guarded, both WAAPI-on-refs (no setState-in-effect — the eslint rule from Task 14 respected).
+- globals.css: heart-pop keyframes + reduced-motion guard; @media (pointer: coarse) { .lucide, svg[stroke-width="2"] { stroke-width: 2.25px } } — CSS beats the SVG presentation attribute, one rule thickens EVERY icon on touch screens exactly as briefed (verified: lucide svgs carry stroke-width="2" and match both selectors; rule compiled into the stylesheet). EmptyState upgraded to a "stamped label": tilted (−3°) dashed-border rounded chip on accent tint — the mark a market seller puts on a crate — plus a 250ms fade/zoom entrance.
+- PALETTE (the pending destructive tweak, now done): light oklch(0.577 0.215 27.3) → oklch(0.55 0.17 26) warm brick red — calmer, and white text on it jumps from ~3.9:1 to 5.29:1 AA. Dark token was FAILING (3.62:1) — swept L candidates, 0.58 0.16 26 clears AA at 4.63:1. scripts/destructive-contrast.ts (one-off, name-prefixed to not collide with palette-contrast.ts globals). palette-contrast.ts rerun: all 9 pairs still pass (body 15.59:1, muted 5.38:1, white/primary 8.51:1, dark 16.59:1...).
+- REBUILT src/app/api/settings/postgres/test/route.ts — found missing from disk AND from git (never committed; only the D-flagged upload route showed). Same cross-session loss class as Task 12's upload route. Faithful rebuild per worklog spec: requireUser, 400 when no config saved (honest copy), resolveTarget → testTcpConnection → { ok, latencyMs?, message }; global for any signed-in user (deployment config, not user data).
+- 136/136 restored after cleanup (the check-name failure was 16 stale test users from a crashed pre-cleanup run — cleanup-test-data protocol reconfirmed). tsc clean, eslint clean, fixtures back to 8 users / 16 listings.
+- E2E via :81 (guest, 390×844 touch emulation): heart tap → aria-pressed=true, label flips to "Remove…", heart-pop class live, fill-destructive ✓; Loved chip counts (1); shelf renders "Your shortlist · 1 item, newest first — lives on this phone" with the block; RELOAD → chip still "Loved 1", localStorage intact ✓; unlove → stamped empty state ("Nothing loved yet" + Browse listings) ✓; double-tap add → qty 2, badge stays line-count ✓; basket: subtotal USh 40,000 → tap + → USh 60,000 with LIVE 900ms keyframes rgb(4,120,87) green → settle ✓; tap − → USh 40,000 with var(--destructive) red flash ✓; qty digit pulse animation running ✓. pointer:coarse is false in headless (no pointer at all) so the 2.25px stroke is gated — structural proof done (rule present + selectors match), real proof on real hardware, same as the hover zoom. localStorage cleared after test, 0 console errors, screenshots: verify-loved-shelf.png, verify-empty-stamp.png, verify-subtotal-flash.png.
+
+Stage Summary:
+- Every tap now answers three ways: shape (press), state (flash/pop/fill), and words (toast) — and the two numbers that ever move (qty, subtotal) flash green/red like a ticker. Hearts give buyers a no-login shortlist that re-checks reality like the basket does. Empty states wear a stamped-label mark with exactly one next action. Icons read 2.25px on touch screens via one CSS rule. The destructive red is warm brick and now passes AA in BOTH themes (dark was failing at 3.62:1 — fixed to 4.63:1). The lost postgres/test route is rebuilt and committed-bound. 136/136, browser-verified, fixtures clean.
+
+---
+Task ID: 16
+Agent: Super Z (main)
+Task: Notifications feel + seller-side polish (user: "CLEAR NOTIFICATIONS BUTTON, also if a notification comes or if you got notifications, you can actually see that little bell shake for these pop timing and seller side polish... i just want whats better for the people"). Same five-principle treatment as Task 15, mapped onto alerts and seller surfaces.
+
+Work Log:
+- BELL SHAKE (the brief's two triggers, both built): (1) a notification ARRIVES while you're using the app — unread count grows during the visit → swing; (2) you HAVE notifications when the bell first becomes visible (sign-in into an account with unread; includes arriving with unread on session start) → swing. Reading alerts (count falling) is deliberately quiet — the bell never scolds you for catching up.
+- NEW src/hooks/use-bell-shake.ts: WAAPI one-shot on a DOM ref (the established Task 14 pattern — external-system change mutated from an effect, no setState, no cascading render). Keyframes = a DECAYING PENDULUM: rotate 0 → −16° → 13° → −9° → 6° → −2.5° → 0 over 700ms, cubic-bezier(0.23,1,0.32,1), transform-origin 50% 18% so it hangs from its crown. seenRef seeding: prev===null (first knowledge in visit) or unread>prev both fire; decrease never does. prefers-reduced-motion → no swing.
+- Wired in BOTH navs: app-header desktop Alerts link + bottom-nav mobile Alerts (the primary nav on the phones this app is built for). Each wraps only its glyph in the ref span — the swing never moves the label or badge. Both fire in sync off the shared ['notifications','badge'] query.
+- CLEAR NOTIFICATIONS (a real delete, not a re-skin of mark-read): DELETE /api/notifications?ids=a,b|all in the same route file (no new route) — deleteMany scoped by userId, foreign ids can never match. UI: trash button appears when ANY notifications exist (icon-only on mobile with aria-label/title "Clear all alerts"), opens AlertDialog: "Clear all alerts? Every alert — read and unread — is removed for good. Marking them read keeps the history; clearing does not." Keep them / Clear alerts (destructive). After clear → stamped empty state + badge gone. Mark all read KEPT alongside: read = history stays, clear = gone forever — two honest intents, never conflated.
+- Notifications view micro-feedback: press on Back / Mark all read / Clear / every alert row; rows enter with the basket-view stagger (fade-in slide-in-from-bottom-2 300ms, 40ms steps, cap 8).
+- SELLER SIDE (the "what's better for the people" pass — gaps found by audit, not invented):
+  * PER-ROW PENDING FIX (real UX bug): my-listings' three mutations shared one isPending, so refreshing listing A disabled Refresh/Edit/Fulfil on listings B and C. Now onMutate records {id, action} and onSettled clears — only the acting row pauses, same-row buttons pause together (one listing shouldn't race itself), every other row stays live. Same fix for saved-searches "Check now" (checkingId; read-only so other rows never paused — only the tapped row).
+  * RefreshCw spins while its row's refresh runs; the refreshed row's expiry label remounts (key flash-<tick>) with NEW .flash-good keyframes — green (var(--primary)) hold 55%, ease back to muted at 900ms. The seller's one number that moves answers like the buyer's subtotal does. Reduced-motion: color jump stays, fade dropped.
+  * press on every seller control: my-listings 15/15 action buttons (Refresh/Edit/Mark fulfilled/Repost/Archive/Delete), publish form (OFFER/REQUEST toggles, Publish, Cancels, Save changes), account (Save shop, location Update/Remove/Add), saved-searches (Apply/Check now/Remove), notifications (above). Buyer surfaces were press-covered since Task 14; now EVERY pressable in the app answers the finger.
+- Tests: Section 7 grew by 6 — anon DELETE → 401; bob's clear-all never touches Carol's rows (count preserved, carolCount>0); missing ids param → 400; clear-all → 200; list + unreadCount both 0 after. 136 → 142/142.
+- E2E via :81 (390×844, signed in as Nakato +256772123456): seeded real notifications (scripts/seed-notifications.ts, phone-variant lookup 07…/+256…/256…). WAAPI RECORDER (patched Element.prototype.animate logging rotate-keyframe calls) proved both triggers live: (1) insert alert mid-session + visibilitychange refetch → TWO swings logged (desktop+mobile bells, dur 700, origin 50% 18%) with badge 3→4 in both navs; (2) sign-out (quiet — no fake shake) → sign-in with unread in DB → two swings again. Alert-tap marks read → badge gone. Clear flow: dialog → Keep them (26 rows intact) → Clear → stamped "No alerts yet" + "Go to saved searches" CTA, badge gone. Seller: refresh on eggs row → toast + expiry label flash-good reading "30 days left"; refresh on matooke correctly cooling ("Refresh in 1h", disabled); publish form toggles+submit press confirmed via eval. 0 page errors, 0 console errors. Screenshots: verify-bell-badge.png, verify-alerts-list.png, verify-alerts-cleared.png, verify-bell-on-signin.png, verify-seller-refresh-flash.png.
+- Cleanup: seeded notifications deleted by title (2 + the cleared set), cleanup-test-data run → 8 users / 16 listings. Everything committed INCLUDING new source files (Task 12's untracked-files lesson).
+
+Stage Summary:
+- Alerts now have a body language: the bell swings from its crown when news arrives and when you arrive to news — and goes quiet the moment you've read up. Clearing is real (delete with an honest confirm) while mark-all-read keeps history. The seller side got the same three-way answer the buyer has had since Task 14/15: per-row action states that never grey out the whole panel, a spinner on the working button, a green flash on the expiry number that just moved, and press feedback on all 20+ seller controls. 142/142, tsc + eslint clean, browser-verified on both triggers, fixtures clean.
+
+---
+Task ID: 17
+Agent: main (Super Z)
+Task: Shop-as-account identity hero — from the user's ChatGPT concept board (user approved: "i like how you think, do it")
+
+Work Log:
+- Reviewed the user's 3-panel concept board (browse / shop page / QR poster). Matched it against the live app: concept already converged on our ListingBlock cards, palette (#18583B ≈ our primary), DK codes, QR poster. Adopted its best idea (shop-as-account) and rejected its two dishonest elements: ★4.8 fake reviews (collides with buyer-no-login + gaming risk) and auto opening-hours (stale "Open" destroys trust).
+- Serif display layer: Fraunces via next/font/google (layout.tsx, --font-fraunces) → @theme --font-display → font-display utility. Body stays Geist; serif only at display sizes (shop h1, poster h2, auth welcome).
+- Shop identity hero rebuilt (shop-view.tsx): full-width cover photo (h-36/h-48, object-cover; text never overlays seller photos), serif brand-green h1, location/hours line, trust chips (one green star "Phone confirmed" + quiet Complete-profile/listings/Since chips), description inline, Call shop (solid, press) + WhatsApp (outline, press).
+- Honesty engineering: serializer exposes phoneConfirmed ONLY when the displayed phone IS the seller's login line — !profile?.phone || samePhoneLine(profile.phone, user.phone) via phoneCandidates() overlap (lib/shop.ts + ShopPageData + client ShopInfo type). Chip renders only when true; no unverifiable "verified" claims.
+- Buyer bridge card ("Find this shop again"): QR + mono DK-code + "type it into Duuka search like a till number" + Copy button with Copied-check swap micro-feedback (1600ms revert) + Share on WhatsApp with buyer voice ("Found … shop code …"); owner keeps the poster tool instead — never two QRs on one page. Share text is audience-aware (owner "our code" / buyer "found").
+- Lettermark fallback: no photo → flat green signboard band with serif initial (designed, not broken).
+- Small doses: auth dialog welcome in serif green; footer line now "Local shops. Bigger opportunities. Every contact connects you directly."
+- Fixed pre-existing tsc failure in scripts/seed-notifications.ts (let user: User | null). Repo-wide tsc + eslint clean again.
+- Verification: 142/142 test-api, cleanup-test-data (8 shops / 16 listings intact), agent-browser E2E via :81: guest hero (mobile 375 + desktop 1440 screenshots), Copy→"Copied", hrefs pure tel:+256772123456 / wa.me / buyer share text, lettermark branch (temp-nulled Kampalamart photo → screenshot → restored exact seed value, API-verified), owner view (poster tool, no bridge). Console clean.
+- Screenshots: scripts/verify-shop-hero-guest-mobile.png, verify-shop-hero-guest-desktop.png, verify-shop-lettermark.png
+
+Stage Summary:
+- Shop page is now the seller's online home — signboard serif name, cover photo, honest trust chips, direct CTAs, till-number bridge. Zero schema changes; one derived boolean (phoneConfirmed) added to the shop payload. 142/142, tsc/eslint clean, committed 14963f6.
+- Deliberately NOT built from the concept: reviews/ratings (phase 2, needs honest identity), auto hours (only a seller-toggled state would be honest), marketing landing page (utility stays first).
+
+---
+Task ID: 18
+Agent: main (Super Z)
+Task: The authored 20% — user rejected template-feel on the shop page ("it still looks generic... the seller should feel ownership, the buyer should feel wanted and welcomed... a tag of maybe 20% something that has been built for customers")
+
+Work Log:
+- Composition audit first: the Task-17 hero had all the INFO but read as "shop profile template" — four-chip soup (buyers were shown the seller's private "Profile 4/5" to-do), no greeting, no signature mark, generic contact strip. Cut the soup; built intention in its place.
+- KARIBU eyebrow (buyer only): text-[11px] uppercase tracking-[0.18em] "Karibu · welcome" above the serif name — the greeting East Africa actually uses. Owner never sees it (they don't greet themselves); the slot stays honest per audience.
+- Signboard stroke: hand-drawn painter's underline under the serif h1 (SVG path, pathLength=1, stroke-dasharray 1) drawn in ONCE on open via .sign-draw keyframes (700ms, 350ms delay, cubic-bezier(0.23,1,0.32,1)) — like the stroke a Kampala sign painter puts under a shop name. Reduced-motion: animation none, stroke fully painted (dashoffset defaults 0). Sits still after drawing — a sign is painted once.
+- OWNER MIRROR STRIP (the ownership moment): isOwner-only section above the hero card — Eye icon + "This is your shop — exactly what buyers see." + Edit shop button (→ account view). Buyer never knows the strip exists. This answers the new seller's first question ("what do customers actually get shown?") in place.
+- Chip honesty split: buyers get exactly ONE chip (Phone confirmed — the only claim we can prove); profile-completeness chip moved to owner-only (it's the seller's to-do, not buyer info); listings count + "Since" moved into the meta line (📍 area · hours · "On Duuka since Mon YYYY" · mono DK-2623) — identity as facts, not badges.
+- Description slot now works for whoever is reading: buyer+no description → honest italic "The shop hasn't written its story yet — the listings and the phone line speak for it." (no invented copy, ever); OWNER+no description → dashed accent-tinted slot "Add a few words about your shop — buyers read them right here." with a "Write it" pen-button (→ account). The empty slot hands the owner the pen.
+- Contact strip voice: buyer — "Straight to the shop, no middleman — your call or message rings their phone."; owner — "Buyers tap these — the call or message lands straight on your phone." Same links, mirrored meaning.
+- Catalogue position line: "Posted by the shop — prices are theirs, not ours." under "In this shop (N)" — the platform's no-middleman stance in one sentence; trust in the seller is what makes the buyer trust the seller.
+- Empty shelf per audience: buyer — "Nothing on the shelf right now… the stall may still have stock. Call or WhatsApp above, or browse other shops." (CTA-aware, honest speculation framed as advice); owner — "Buyers are landing on this page — post a listing and the shelf fills up." with Post-a-listing CTA (→ publish).
+- BUG FIX (found by E2E, real user impact): providers.tsx HashSync called setImmediate() — Node-only, ReferenceError in every browser. EVERY external hashchange (opening a shared shop link while the app is already open, browser back/forward) threw and left the page stuck on the old view. Now setTimeout(fn, 0) with the same defer semantics. Proven live: external hash → shop navigates correctly, zero new page errors (6 stale pre-fix entries remain in the recorder log, all setImmediate stacks).
+- BUG FIX (demo chips swapped): auth-dialog DEMO_ACCOUNTS labeled 0772123456 as "Kampalamart" and 0776123456 as "Nakato Fresh" — seed truth is the opposite (Nakato=+256772123456, Kampalamart=+256776123456). Anyone using the one-tap demo fill signed in as the WRONG shop. Swapped the labels.
+- Verification: tsc + eslint clean; 142/142 test-api; cleanup-test-data (8 users / 16 listings); agent-browser E2E via :81 — buyer guest (Karibu eyebrow case+tracking verified, Fraunces serif h1, stroke dashoffset 0 after draw, single chip, meta line with DK-2623, no profile/listings chip leak, pure tel:+256772123456 and wa.me hrefs) and owner (mirror strip text, no Karibu leak, "Complete shop profile" chip, mirror contact line, poster tool present, buyer bridge absent); description null→dashed "Write it" slot verified then restored EXACTLY via API round-trip (seed text back, 200). Screenshots: scripts/verify-shop-authored-buyer-mobile.png, -buyer-desktop.png, -owner-mobile.png, -owner-desktop.png, -owner-writeit.png.
+
+Stage Summary:
+- The shop page now has its 20%: a greeting in the language of the market, a signboard stroke that is painted once, a mirror strip that tells the seller "this is yours", one honest chip instead of badge soup, and copy that talks to whoever is reading — buyer or owner — in Duuka's own voice. Two real bugs fixed along the way: a router that crashed on every externally-triggered hashchange (Node-only API in browser code) and swapped demo-account labels that logged reviewers in as the wrong shop. Zero API/schema changes for the design layer. 142/142, tsc/eslint clean, fixtures clean, browser-verified both audiences.
+
+---
+Task ID: 19
+Agent: main (Super Z)
+Task: The Duka curve — user brought ChatGPT's design-language breakdown ("i love how he used curves to give it a design, think about it"). Adopt the sweeping curve as brand signature, with discipline.
+
+Work Log:
+- Adopted ONE idea from the concept breakdown: the sweeping green curve as the recurring brand edge. Everything else in the breakdown (serif+sans voices, cream paper, market photography, market-notice cards, QR poster system, shop-as-first-class, anti-SaaS restraint) already exists in Duuka from Tasks 1–18 — confirmed point by point before writing anything.
+- Established the discipline rule in code (DukaCurve doc comment): the curve appears ONLY on doorway surfaces and NEVER on functional ones. Cards, forms, lists, chips stay rectangles — a signature that shows up everywhere is just decoration again. This mirrors the concept's own table ("organic curves + restrained rectangles", "cards functional, not decorative").
+- DukaCurve component (shop-view.tsx): single SVG path `M0 7.2 C 26 8.8, 58 2.6, 100 1.6 L 100 10 L 0 10 Z` in viewBox 0 0 100 10 with preserveAspectRatio=none — the colored mass sits low-left and sweeps up-right, ONE chirality on every surface. Filled with currentColor so the same path works over any background: text-card (the surface that follows) / text-primary (print band). Decorative only: aria-hidden, no text rides on it, nothing animates (no reduced-motion surface needed).
+- Doorway 1 — shop cover photo seam: photo wrapped in relative container, DukaCurve absolute at the bottom edge (h-5 mobile / h-6 sm) filled text-card. The photo flows into the identity card through the sweep. The Task-17 contrast promise is preserved: the curve shapes the SEAM, carries no text; text still never overlays seller photos.
+- Doorway 2 — lettermark signboard (no photo): same curve at the bottom of the green band with the serif initial — the doorway keeps its shape with or without a photo. (E2E verified by temporarily nulling the photo via PUT /api/profile — which also triggered the app's own "Add a shop photo" checklist nudge, a nice cross-system confirmation — then restoring the seed photoUrl exactly, API-verified.)
+- Doorway 3 — the printed QR poster (the physical surface): poster card restructured (overflow-hidden, white inner p-8) — QR + mono code stay black-on-white ABOVE the curve (the one number that must survive any printer gets the most reliable ink), then DukaCurve in primary green sweeps into a solid green band carrying "Scan to see our shop on Duuka" + "Or call us: {phone}" in white (white on #18583B ≈ 8.5:1). A shopper in Nakasero should recognize a Duuka poster from across the row — the curve now leaves the screen and enters the market.
+- Deliberately NOT curved (restraint ledger): listing cards, browse feed, forms, chips, buttons, basket, empty states (the stamped crate label is already the empty-state signature — two signatures on one surface is noise), auth dialog (functional surface).
+- Verification: tsc + eslint clean; 142/142 test-api; cleanup-test-data (8 users / 16 listings); agent-browser E2E via :81 — owner poster dialog screenshot (curve + green band + print-safe code), guest hero mobile + desktop (curve seam live on photo), lettermark mobile (curve on green band), photo restored via API round-trip. Screenshots: scripts/verify-curve-poster.png, verify-curve-hero-guest-mobile.png, verify-curve-hero-guest-desktop.png, verify-curve-lettermark.png.
+
+Stage Summary:
+- Duuka has its first true signature element: one sweeping edge, one direction, three doorway surfaces (cover seam, lettermark, printed poster) and nowhere else — the restraint is the design. The poster now carries the brand into the physical market, which is the whole thesis of the app: a digital layer on top of a real one. Zero API/schema changes; 142/142; fixtures clean; browser-verified.
+
+---
+Task ID: 20
+Agent: main (Super Z)
+Task: "The curve, out loud" — user came back after Task 19 with "i am not seeing these changes bro. doSOMETHING". Task 19's restraint had hidden the curve on surfaces the user never looks at (a 20px cover seam, the no-photo lettermark fallback, the print dialog). The signature must live on the surfaces every user actually sees.
+
+Work Log:
+- Diagnosis first: opened the app cold and confirmed the complaint — browse opened straight into a search box, the header logo was a generic lucide Store icon, and both Task-19 curve instances were effectively invisible in normal use. The manifesto's #1 point (hero boundary, "remove the logo and still know This is Duka") was unmet.
+- DukaCurve extracted from shop-view.tsx into src/components/commerce/duka-curve.tsx (same path, same discipline doc comment, doorway list updated) so more than one surface can carry it.
+- THE FRONT-DOOR RIBBON (the poster move, browse page): a deep-green band that rises out of the page through the DukaCurve on top and flows back in through a second DukaCurve below — the same stroke used twice, framing the words. Geometry bonus discovered while building: top strip (text-primary) adds green thickness at the same rate the bottom strip (text-background) removes it, so the band reads as a constant-weight ribbon whose edges sweep in parallel — a painted banner, not a rectangle with rounded corners. Copy in Duuka voice: eyebrow "Karibu · Uganda · Tanzania", serif Fraunces h1 "The market, on your phone." (now the browse page's real h1), subline "Real shops post what they sell and what they need — you call or message them direct, no middleman." Compact on purpose (~150px mobile): search stays one glance away.
+- HEADER LETTERMARK: the generic Store icon replaced by the mark itself — green rounded chip with the white DukaCurve sweeping across its bottom (DukaCurve text-primary-foreground, aria-hidden; wordmark beside it carries the name). The brand signature now sits on every page at every scroll. Footer keeps its Store icon.
+- Restraint ledger unchanged: cards, forms, lists, chips, buttons, empty states, auth dialog stay rectangles. The ribbon appears exactly once in the app (browse doorway); the header chip is the miniature echo.
+- Verification: tsc + eslint clean; 142/142 test-api; cleanup-test-data (8 users / 16 listings); agent-browser E2E via :81 — DOM proof (h1 text, 2 ribbon svgs, header chip svg, eyebrow), visual proof mobile 390×844 + desktop 1440×900, shop-page regression (cover seam curve count = 1, owner strip/serif/stroke untouched), fresh-document error check = 0 (the 6 recorder entries are the known stale pre-fix setImmediate stacks). Screenshots: scripts/verify-curve20-browse-guest-mobile.png, verify-curve20-browse-desktop.png, verify-curve20-shop-seam.png.
+
+Stage Summary:
+- The curve is no longer an easter egg. The browse front door is now the poster: a green ribbon that rises and flows through the same sweeping stroke twice, carrying the market's thesis in serif. The header mark is the curve itself. One path, one direction, four doorway surfaces (browse ribbon, cover seam, lettermark, printed poster) and nowhere else. Zero API/schema changes; 142/142; fixtures clean; committed cfcb7ad.
+
+---
+Task ID: 21
+Agent: main (Super Z)
+Task: Mudaala rename + hero photo + category pills + shop avatar + featured rail (user's five-task brief; app's real name is Mudaala, mockups in /upload used for layout/curve/colors/type only)
+
+Work Log:
+- RENAME: git mv duka-curve.tsx -> mudaala-curve.tsx (component MudaalaCurve); sed across 27 src files + README + prisma schema comment + scripts for Duuka/Duka/duuka -> Mudaala/mudaala. Storage/cookie keys renamed too (duuka_session -> mudaala_session, duuka_session_token, duuka.basket.v1, duuka.loved.v1, duuka_shop_setup_dismissed) — old browser sessions/baskets reset, accepted at dev stage. Header wordmark: lucide Leaf (fill-primary/15) + "mudaala" font-display bold lowercase text-primary; icon chip removed. layout.tsx title/description/keywords, footer, poster ("Scan to see our shop on Mudaala"), share texts, all comments.
+- SHOP CODES: scripts/backfill-shop-codes.ts rewritten — job 1 migrates DK-XXXX -> MD-XXXX preserving digits (posters keep working), job 2 assigns MD- to nulls; run on dev DB, all 8 shops migrated (Nakato DK-2623 -> MD-2623 etc.). generateShopCode (lib/shop.ts) emits MD-; normalizeShopCode (lib/format.ts) accepts (?:DK|MD) and canonicalizes to MD- (digits ARE the identity); lookup 400 message updated; test-api MD- assertions + mudaala_session cookie. Verified via curl: DK-2623 and md-2623 both resolve to Nakato (stored MD-2623).
+- BROWSE HERO: curves h-6 sm:h-9 top+bottom (bigger sweep); desktop grid text | 42% photo (public/uploads/seed/shop-nakato.png — matooke/tomatoes/onions stall, loading=lazy) with a MudaalaCurve overlay (-left-24, w+6rem, h-10 sm:h-14) sweeping across the photo's bottom edge out of the green field; chips Real shops / Call direct / No middleman (honest set — no verified-seller or delivery claims) sm+ only; mobile one-line copy "Real shops, direct calls — no middleman." keeps ribbon at 164px.
+- CATEGORY PILLS: scrollable row under search (role=group aria-label), All ('any') + CATEGORIES (11), active filled bg-primary, aria-pressed, press class, setFilters({category}) (auto page reset). Verified live: Farm Produce -> 5 listings (from 14).
+- SHOP AVATAR: square img (size-14/sm:size-16, rounded-lg, thin border, lazy, alt="") absolute -bottom-4/-sm:-bottom-5 left-4/left-5 z-10 over the cover's curve seam; signboard block (eyebrow/h1/stroke) wrapped with pl-[4.5rem] sm:pl-[5.5rem] when photo present. Lettermark branch unchanged.
+- FEATURED RAIL: FeaturedShopPanel in listings-browse — desktop lg:grid-cols-[1fr_240px], aside hidden lg:block; first result with a named shop -> GET /api/shops/:id (staleTime 60s); photo or lettermark, serif name, QR (react-qr-code, origin via the shop-view useSyncExternalStore pattern), mono MD code, tel: call link. Feed lg:grid-cols-3 beside it. Rectangle — restraint rule keeps the curve off cards.
+- Verification: tsc clean, eslint clean, 142/142 test-api, cleanup-test-data (8 users / 16 listings); fresh-document browser check 0 errors; screenshots scripts/verify-mudaala-browse-mobile.png, -browse-desktop.png, -pills-filtered.png, -shop-mobile.png. Playwright text-locator missed pills in the horizontal scroller (tool artifact) — JS click proved the handler works.
+
+Stage Summary:
+- The app is Mudaala end to end: leaf+serif wordmark, MD- codes with DK- legacy acceptance, mockup-faithful sweep-masked hero photo, aisle-sign pills, avatar-over-seam shop page, and a desktop featured-shop rail. Zero schema/API shape changes (lookup copy only); storage keys renamed (one-time session/basket reset); 142/142, fixtures clean, committed a2c7bc9.
+---
+Task ID: 22
+Agent: main (Super Z)
+Task: Push Mudaala to GitHub — private repo "mudaala", main committed clean, redesign work on branch mudaala-redesign (user brief: 5 steps)
+
+Work Log:
+- State check: Task 21 (the five redesign tasks) was already committed as one atomic commit; audit confirmed all five live in code — rename zero "duka" leftovers repo-wide, Leaf+serif lowercase wordmark, normalizeShopCode accepts DK|MD canonicalizing to MD-, hero photo/chips/curves, category pills (role=group, aria-pressed), square avatar over cover seam, FeaturedShopPanel aside hidden lg:block. tsc + eslint clean on the branch. Line-410 grep display artifact looked like a broken grid class; direct Read proved lg:grid-cols-[minmax(0,1fr)_240px] correct — no fix needed, no fake commits manufactured.
+- GIT HYGIENE (commit 834b12b on main): git rm --cached .env db/custom.db (files stay on disk, dev server untouched); .gitignore += /db/ (real local data never pushes); found+fixed a silent repo-breaking ignore — bare 'test' rule was excluding src/app/api/settings/postgres/test/ (a real API route); added negations and committed the route so a fresh clone is complete.
+- HISTORY PURGE (pre-remote, safe): filter-branch index-filter removed .env and db/custom.db from ALL 38 commits, reflog expired, gc aggressive; .git 24M -> 18M (rest is mockup PNGs + verify screenshots + bun.lock). Verified: git log --all -- .env db/custom.db empty; both files still on disk.
+- BRANCH: mudaala-redesign created from hygiene commit; carries the redesign (Task 21 commit, now 1a25120 after rewrite).
+- GITHUB BLOCKER (honest): no GitHub token exists in this environment — gh CLI not installed, no GH_TOKEN/GITHUB_TOKEN env, no ~/.git-credentials, no gh config, .env holds only DATABASE_URL, token-pattern grep across config dirs empty. Network to github.com IS reachable. Repo creation is the single step that cannot be done without credentials.
+- Prepared scripts/push-to-github.sh: resolves login from token, creates PRIVATE repo via REST API (idempotent), sets origin WITHOUT token in .git/config, pushes main + mudaala-redesign via one-shot credential helper. One command once a PAT exists.
+
+Stage Summary:
+- Local work is 100% push-ready: main = 38 commits, .env and db/custom.db untracked AND purged from all history, postgres test route rescued, working tree clean, branch mudaala-redesign in place with the five-task redesign verified (tsc/eslint clean). The only missing input is a GitHub token — paste a PAT (repo scope) and run scripts/push-to-github.sh, or send it in chat and the push completes immediately. Repo URL once pushed: https://github.com/<login>/mudaala (private).
+---
+Task ID: 22 (addendum)
+Agent: main (Super Z)
+Task: GitHub push completion (user provided PAT, created repo manually)
+
+Work Log:
+- Token rounds: PAT #1 and #2 both 403 on repo creation (fine-grained without Administration write); probe showed isaJrKai/mudaala already existed (user created it manually, private). Patched push-to-github.sh to fall through on 403 when GET confirms the repo exists.
+- First push attempt 403 on write (token lacked Contents write); user granted Contents: Read and write; push then succeeded for both branches.
+- Platform between-turn sync moved the Task 22 worklog commit onto main (+2 checkpoint commits capturing the push-script edits) and reset mudaala-redesign to 834b12b — verified nothing lost: origin/main carries full history incl. worklog (23 task entries) and push script; branch = redesign snapshot per brief.
+- Remote verified: private: true, default_branch: main, main=cef03bd, mudaala-redesign=834b12b; no .env / db/ anywhere in pushed tree or its history.
+
+Stage Summary:
+- https://github.com/isaJrKai/mudaala (PRIVATE) is live: main = complete project, mudaala-redesign = the five-task redesign. Real data (.env, db/custom.db) absent from every commit. User advised to scope down or delete the chat-shared PAT.
+---
+Task ID: 23
+Agent: main (Super Z)
+Task: Hardening pass — 8 items, one commit each, tsc+eslint+test-api after every item, UI untouched
+
+Work Log:
+- 1 postgres settings (7bb2a14): requireAdmin gate from ADMIN_PHONES (any dial format, empty env fails closed); GET/PUT/DELETE/test all 403 non-admins; password + connectionString now AES-256-GCM encrypted at rest (SETTINGS_ENC_KEY, machine-local fallback), legacy plaintext still reads. +6 tests.
+- 2 cron sweep (404c67e): x-cron-secret header vs CRON_SECRET, timing-safe compare, 503 fail-closed when unset. +3 tests.
+- 3 rate limits (efed654): in-memory sliding window lib; login 5 failed/15min per phone (all dial formats one bucket, success clears) + 30/15min per IP; register 20/15min per IP; friendly 429 + Retry-After. Tests prove 5 wrongs→401, 6th→429 even correct pw, format-normalization not a bypass, other phones unaffected. +7 tests.
+- 4 Bearer fallback (d87203f): AUTH_BEARER_FALLBACK=1 opt-in; default = httpOnly cookie only. Proven live both ways.
+- 5 (c8216a1): ignoreBuildErrors false; production build passes strict with zero fixes.
+- 6 (2de291e): depcheck + grep-verified removal of 14 unused deps; build passes; scaffolding-imported deps kept; socket.io example noise ignored.
+- 7 (738225e): uploads now sharp-piped — EXIF rotate, fit 1200x1200, WebP q82, .webp always; decode-failure rejected 400. Tests upload 4000x3000 PNG and inspect the stored file. +3 tests. Dev .env raises per-IP caps so repeated suite runs don't trip prod defaults.
+- 8 (f24f238): .github/workflows/ci.yml — fresh sqlite + seed + dev server + tsc + eslint . + 160-test suite + cleanup on every push/PR; YAML validated, first real run on GitHub.
+- Suite now 160/160 (was 142); fixtures 8 users / 16 listings after every run; final push of branch done.
+
+Stage Summary:
+- All 8 hardening items landed as separate commits on mudaala-redesign; UI untouched; 160/160 green. Chosen NOT to do: horizontally-shared rate-limit store (noted in lib for when it matters), rate-limit lockout of register per-phone (meaningless), removing scaffolding ui/ components that import kept deps, CI secrets hardened via GitHub Secrets (env is fixture-only, no real credentials).
+
+---
+Task ID: 23 (addendum)
+Agent: main (Super Z)
+Task: Hardening pass — verification after session gap; branch reconciliation
+
+Work Log:
+- Re-verified full green state post-checkpoint: tsc 0 errors, eslint clean, suite 160/160, cleanup restored fixtures (8 users / 16 listings).
+- Spot-checked all 8 implementations in tree: ADMIN_PHONES gate (lib/admin.ts), x-cron-secret fail-closed, rate-limit lib + login/register wiring, AUTH_BEARER_FALLBACK opt-in, ignoreBuildErrors:false, sharp WebP pipeline, ci.yml.
+- Platform between-turn sync had moved the 8 hardening commits onto main; mudaala-redesign left at 9de1abe (pre-hardening). Fast-forwarded mudaala-redesign to main (6822b22) and pushed — worklog claim "landed on mudaala-redesign" now true on both branches.
+- CI verified live: main runs completed success (tsc+lint+tests on GitHub); branch run queued on push.
+
+Stage Summary:
+- Hardening pass closed out: 8/8 items, 160/160 local, CI green on GitHub. Both branches at 6822b22 on origin.
+
+---
+Task ID: 24
+Agent: main (Super Z)
+Task: MUDAALA Deployment Guide (.docx) with live secrets wired in
+
+Work Log:
+- docx skill chain read in full (SKILL -> create route -> docx-js-core -> common-rules -> design-system R1/FG-1 -> toc.md -> report scene).
+- Built scripts/guide-lib.js (R1 cover recipe + calcTitleLayout/calcCoverSpacing verbatim) and scripts/generate-deployment-guide.js (10 chapters, 2 tables, code blocks, systemd unit, nginx, cron, backups, troubleshooting).
+- Real values wired into Chapter 4 + verify commands: ADMIN_PHONES=0753824458,0759882817; CRON_SECRET=...0957.LOL; SETTINGS_ENC_KEY=ffb76e...0b55; AUTH_BEARER_FALLBACK + RATE_LIMIT_* documented as DO NOT SET in production.
+- add_toc_placeholders.py --auto (exit 0, 13 entries); postprocess-guide.py strips empty pgNumType + patches footer PAGE \\* arabic; postcheck.py 8/9, 0 errors (1 intentional line-spacing warning: 276 code/table vs 312 prose).
+- Visual QA via LibreOffice PDF render: cover, TOC, env table (header repeats across pages), code blocks all correct; trailing PageBreak after TOC removed to kill double-break blank page.
+- SECURITY: guide + generator scripts contain live secrets -> gitignored (/download/, scripts/generate-deployment-guide.js, guide-lib.js, postprocess-guide.py, tool-results/); docx moved deps -> devDependencies.
+
+Stage Summary:
+- download/mudaala-deployment-guide.docx (11 pages) delivered, local only, never pushed. Repo changes: .gitignore additions + docx devDep only.
+
+---
+Task ID: 25
+Agent: main (Super Z)
+Task: Signed-in "Home" dashboard — desktop sidebar, mobile Home tab, stat cards, best offers near you, saved searches, freshness tip, price trends (PriceSnapshot + cron medians)
+
+Work Log:
+- Schema: PriceSnapshot {date, category, unit, currency, medianPrice, sampleSize} with @@unique([date,category,unit,currency]) (idempotent upserts) + User.lastHomeVisitAt. Deliberate addition beyond brief: currency is part of the key — a median across UGX and KES rows would be a fabricated number. db pushed, client regenerated, dev server restarted (stale-client lesson).
+- lib/price-trends.ts: recordPriceSnapshots() groups ACTIVE OFFER listings by category+unit+currency (OFFER only: a REQUEST price is what a buyer wants to PAY — averaging sell+want prices would fabricate a number neither side quoted), median per combo, only sampleSize >= 5, upsert by day. priceTrendsForUser(): top 3 categories scored from the user's own listings + saved-search queries; per category picks the (unit,currency) the user actually posts in, else the best-sampled snapshot combo; returns 7-day point sets (empty points = honest absence).
+- Cron sweep extended: POST /api/cron/sweep now also records priceSnapshots (response {expired, expiringNotified, priceSnapshots}). Idempotent.
+- New endpoints (all requireUser): GET /api/home (stats: savedSearches count, activeListings, newMatches = DISTINCT listingIds from real NEW_MATCH notifications after lastHomeVisitAt, lastUpdatedAt = max own-listing updatedAt; top-4 saved searches; staleListings ACTIVE with refreshedAt > 7d (STALE_LISTING_DAYS in constants) + staleCount; location = profile area/county/blurred spot → most recent listing district → none); POST /api/home/visit (stamps lastHomeVisitAt — GET stays read-only so numbers never zero mid-visit); GET /api/price-trends (series per top category, source label, minSample).
+- Navigation: store 'home' view (#/home); AppSidebar (fixed left, hidden lg:flex, w-60): Home/Browse/Post/My Listings/Saved Searches/Notifications (unread badge + bell shake)/My Business/Settings, "Post what you need / have" primary button, "Need help? Chat on WhatsApp" plain wa.me link from NEXT_PUBLIC_SUPPORT_WHATSAPP (absent env → no card, never a fake link). page.tsx content column lg:ml-60; header keeps wordmark (now → home) + basket + account dropdown, desktop nav links removed (sidebar owns them); BottomNav = Home first tab (Home/Browse/Post/Listings/Alerts — Account reachable via header dropdown; bell shake kept).
+- home-view.tsx: signed-out → honest welcome card (Sign in / Browse); signed in → serif time-of-day greeting "Good morning/afternoon/evening, {first name}", 4 stat cards (each navigates: saved→saved, active→my-listings, new matches→notifications, last updated→my-listings), Freshness tip card ONLY when stale listings exist (oldest first, up to 3 + "+N more", per-row Renew → existing refresh endpoint, invalidates home), Best offers near you (12 category chips + All, location chip "Nakasero, Kampala – Change" dialog: Anywhere + shop-area option + grouped UG/TZ/KE districts, choice persisted in mudaala.home.location.v1, "Use my shop area" reset; feed = EXISTING /api/listings?type=OFFER&pageSize=8&county&category&sort=nearest&lat&lng when the default area's blurred spot exists else sort=newest; row-style list: photo (lazy, category-glyph fallback), shop, title, price/unit, quantity · distance (haversine vs ref spot, only when both spots known) · place · updated, Call/Chat plain tel:/wa.me links), Saved searches card (top 4 → applyQuery pattern from saved-searches.tsx + View all), Price trends card (recharts LineChart via existing ChartContainer, 7-day window, one line per category with per-series currency/unit label, connectNulls — no invented points, compact Y ticks, tooltip Intl numbers, "Based on Mudaala listings" label; zero chartable series → "Not enough listings yet" + why).
+- Tests +20/section 11 in test-api.ts (suite 160 → 203): 401 guards on all 3 endpoints; fresh-account zero-state (nothing invented); saved search + matching publish → newMatches 1; visit marker → 0; second match since visit → 1; own publish → activeListings/lastUpdatedAt/location fallback "listing"; refreshedAt backdated 8d → staleCount + ageDays; Renew via refresh endpoint → tip gone; cron medians: odd-count median 2000/5, sub-sample combo NO row, re-sweep idempotent (1 row), 6th listing → 2500/6 updated in place, trends series electronics/piece/UGX + today point + top-3 cap + source label. Cron secret resolves from env (CI) or dev .env (local). ugh: uniquePhone() is KE-format — added ugPhone() for UG registrations.
+- cleanup-test-data.ts: also removes notifications pointing at deleted listings (60 found — was polluting fixture users' NEW_MATCH counts) and all PriceSnapshots (pure derived data; sweep rebuilds honestly). eslint ignores for gitignored local guide generators.
+- Verification: tsc clean, eslint clean, 203/203 suite, cleanup restores 8 users / 16 listings; agent-browser E2E: desktop 1440 sidebar + all sections + real numbers (1/3/0/45min), freshness tip staged (scripts/stage-stale-listing.ts) → Renew via UI → tip gone, location picker Jinja → feed filters honestly (2 Jinja rows, empty state when none) → reset to shop area, Farm Produce chip filters, mobile 390: no h-overflow, bottom nav Home first, rows stack Call/Chat; public browse regression: hero ribbon/pills/cards intact, header nav replaced by rail; zero page errors; deep-link #/home survives reload. Screenshots: scripts/verify-home25-desktop.png, -desktop-bottom.png, -mobile.png, -mobile-offers.png, -browse-desktop.png.
+- .env += NEXT_PUBLIC_SUPPORT_WHATSAPP=256753824458 (operator's line; deployment-configurable).
+
+Stage Summary:
+- Home is now the signed-in workbench: real numbers only (newMatches counts REAL notification records; trends only when >= 5 real ACTIVE OFFER listings back a median; empty states say so). Public browse untouched. Desktop gets the workspace rail, mobile keeps bottom nav with Home first. 203/203 tests, tsc+eslint clean, fixtures clean, browser-verified mobile+desktop. No verified badges/ratings/stock claims/in-app messaging added (per brief).
+
+---
+Task ID: 25 (addendum)
+Agent: main (Super Z)
+Task: Home tab post-gap re-verification + delivery; user greenlit "the home tab build"
+
+Work Log:
+- Found Task 25 commit 57453f3 complete on both branches but UNPUSHED (ahead 1 vs origin each); working tree clean.
+- Re-verified full green state in current env: tsc 0 errors, eslint clean, suite 203/203, cleanup restored 8 users / 16 listings (also wiped derived PriceSnapshots per cleanup policy).
+- agent-browser E2E re-run: signed in as fixture Nakato (+256772123456); desktop 1440 Home view renders serif greeting, 4 real stat cards (1/3/0/10min), best offers rows with photo/shop/price/qty/distance/updated + Call/Chat, saved searches card (Copper scrap in Kampala, 2 matches), price trends card honest "Not enough listings yet" (0 snapshots after cleanup; cron rebuilds daily when a category+unit combo reaches 5+ ACTIVE OFFER listings); sidebar has all 8 items + Post CTA + WhatsApp help link; mobile 390 no h-overflow, bottom nav Home first (#/home deep link survives reload); public browse regression intact (hero, ribbon, pills); zero console/page errors.
+- Fresh screenshots captured: scripts/verify-home25-desktop.png, -desktop-bottom.png, -mobile.png.
+- Push blocked: no GH_TOKEN in env, no stored credentials (previous PAT was recommended for revocation). Commit stays local until user supplies a fresh PAT.
+
+Stage Summary:
+- Home tab build CONFIRMED delivered and verified green (203/203, browser-checked desktop + mobile, screenshots refreshed). Only outstanding action: push 57453f3 to origin once a fresh PAT is provided.
+
+---
+Task ID: 26
+Agent: main (Super Z)
+Task: Real WhatsApp brand icon everywhere + printed shop poster rebuilt from the user's mockup
+
+Work Log:
+- User: "import and use real whatsapp icon... those icons to be real and not general"; also pointed at the mockup poster with QR code that was never adopted.
+- New src/components/commerce/brand-icons.tsx: WhatsAppIcon with the official public glyph path (Lucide ships no brand marks), currentColor fill, aria-hidden, role img. Replaced generic MessageCircle in ALL WhatsApp contexts: home-view Chat buttons, listing-detail WhatsApp button, basket-view send-list buttons, app-sidebar help card, shop-setup-dialog checklist, shop-view shop WhatsApp button. Call buttons keep Lucide Phone (already a real handset mark).
+- Poster (shop-view.tsx printable overlay) rebuilt to the mockup anatomy: brand header (leaf + mudaala serif wordmark + "Local shops. Real opportunities." caps), size-28 photo, serif name, MapPin location, QR with centered leaf badge (level="H" so the badge never breaks scannability), "Scan to shop on Mudaala", big serif shop code + SHOP CODE caps, can't-scan fallback line, curve + green band with "Call us: {formatPhonePretty(shop.phone)}" + italic "Real shops, direct calls".
+- Verified: tsc 0, eslint clean (touched files + repo), 203/203 suite, cleanup restored 8 users / 16 listings (2 suite upload leftovers deleted per 6822b22 convention). Browser-verified: poster screenshot matches mockup layout, 3 wa.me glyphs on shop page + 4 on home, WhatsApp glyph present in DOM at all contact points. Screenshots: scripts/verify-poster-mockup.png, verify-shop-icons.png, verify-home-wa-icon.png.
+- Git: platform between-turns sync inserted UUID commit f331a10 on main; main now ahead 3 of origin (57453f3 + f331a10 + 4175508). Push still blocked: no PAT stored anywhere (script only has the ghp_xxxx placeholder) — user confirmed old PAT still active but token value was never persisted on this machine.
+
+Stage Summary:
+- WhatsApp contacts now carry the real brand logo at every touchpoint; the printable shop poster is the mockup's poster design, Mudaala-branded, print-safe (H-level QR). 203/203 green, committed 4175508 on main. Push pending user PAT.
+
+---
+Task ID: 27
+Agent: main (Super Z)
+Task: Real WhatsApp glyph on ALL contact buttons + Uganda-only pivot + deep residue clean
+
+Work Log:
+- WhatsApp glyph completion: listing-card.tsx (browse/catalogue Chat buttons, 2 sites) was still on Lucide MessageCircle — swapped to brand-icons WhatsAppIcon; all contact buttons now carry the official logo (verified 3 glyphs on shop page, 4 on home desktop, 5 on home mobile).
+- Uganda-only pivot (user: "keep the app locally in uganda. remove kenya or tanzania information... after do deep cleaning of residues"):
+  - constants.ts: COUNTRIES → Uganda only; CURRENCIES → UGX only; COUNTIES = Uganda districts.
+  - validation.ts: CountryKey='UG', local pattern ^[37]\d{8}$ only, phoneCandidates UG-only, countryPhoneMessage single message, registerSchema country via COUNTRY_KEYS.
+  - UI: auth-dialog register shows fixed "Uganda (+256)" field (no select), login helper copy "Any Ugandan format works", browse ribbon "KARIBU · UGANDA", publish-form area placeholder Kisenyi, comments cleaned (format.ts, admin.ts, publish-form, login route, layout keywords, PriceSnapshot/currency comments).
+  - Seed rewritten Uganda-only, same shape (8 users / 16 listings, same flags: 1 FULFILLED, 1 expired, 2 saved searches): Nakato/Kampalamart/Jinja unchanged + Gulu Agri Supplies (+256712000001 = fixture ADMIN), Mbale Flour Millers, Mbarara Fresh Produce, Masaka Chapati Supplies, Owino Second Hand. All UGX prices realistic (oil 130k, maize 1.1k/kg, flour 185k/bag, milk 1.2k/L, bales 155k). Images git-mv'd to Ugandan names; shop-jomo-scrap deleted; shop-owino.png generated via z-ai sdk one-off (scripts/generate-owino-shop.mjs).
+  - cleanup-test-data.ts + backfill-shop-coords.ts fixture lists → new UG phones/coords.
+  - test-api.ts: uniquePhone → +2567…, register default UG, validListing UGX/Kampala, TZ+KE login tests consolidated into one "dial-code 256776123456" test (suite count 203 → 202 by design), ghost phone +256…, location-blur + nearest-sort + county-filter + saved-search + twin-shop tests moved to Ugandan coords/areas (Gulu 2.774,32.299 vs Kampala; Ntinda/Bukoto). Only intentional Nairobi left = the outside-Uganda rejection test.
+  - .env (local, untracked): ADMIN_PHONES +254712000001 → +256712000001; server restarted.
+- Verification: tsc 0, eslint clean, suite 202/202 (clean-run; observed flaky failures earlier were self-inflicted: suite re-runs without cleanup trip the in-memory login IP limiter — cleanup BEFORE each run is mandatory), DB reseeded, fixtures 8/16. Browser: ribbon, fixed-Uganda register, location picker = 20 options all Uganda (0 TZ/KE), Ugandan shops in feed, mobile 390 no overflow. Final grep: zero KE/TZ/KES/TZS/+254/+255 residue in src/prisma/scripts/README (only the intentional rejection test).
+- Note: suite totals 202 now, not a regression — 2 regional login tests became 1 UG dial-format test.
+
+Stage Summary:
+- Mudaala is Uganda-only end to end and every WhatsApp contact carries the real logo. Commit e1bd3e1 on main (now ahead 5 of origin: 57453f3, f331a10, 4175508, f2eb692, e1bd3e1). Push still blocked on user PAT.

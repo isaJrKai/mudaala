@@ -1,4 +1,4 @@
-// Duuka — client navigation + filter state.
+// Mudaala — client navigation + filter state.
 // Views are client-side (the product ships as a single route), synced to the
 // URL hash so the browser back button behaves as users expect.
 
@@ -6,6 +6,7 @@ import { create } from 'zustand'
 import type { ListingQuery } from '@/lib/validation'
 
 export type ViewName =
+  | 'home'
   | 'browse'
   | 'listing'
   | 'shop'
@@ -61,6 +62,8 @@ interface AppState {
 
 export function viewToHash(view: View): string {
   switch (view.name) {
+    case 'home':
+      return '#/home'
     case 'browse':
       return '#/browse'
     case 'listing':
@@ -89,7 +92,7 @@ export function viewToHash(view: View): string {
 export function hashToView(hash: string): View {
   const parts = hash.replace(/^#\/?/, '').split('/')
   const [name, id] = parts
-  const valid: ViewName[] = ['browse', 'listing', 'shop', 'basket', 'publish', 'edit', 'my-listings', 'saved', 'notifications', 'account', 'settings']
+  const valid: ViewName[] = ['home', 'browse', 'listing', 'shop', 'basket', 'publish', 'edit', 'my-listings', 'saved', 'notifications', 'account', 'settings']
   if (valid.includes(name as ViewName)) {
     if ((name === 'listing' || name === 'edit' || name === 'shop') && !id) return { name: 'browse' }
     return { name: name as ViewName, id }

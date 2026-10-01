@@ -11,7 +11,8 @@
 
 import { useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Clock, FileText, MapPin, MessageCircle, Store } from 'lucide-react'
+import { Camera, Clock, FileText, MapPin, Store } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -26,7 +27,7 @@ import type { ShopChecklistT } from '@/lib/client'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 
-const DISMISS_KEY = 'duuka_shop_setup_dismissed'
+const DISMISS_KEY = 'mudaala_shop_setup_dismissed'
 
 // localStorage as an external store — server snapshot says "not dismissed",
 // which matches the post-hydration render (queries have not resolved yet).
@@ -53,7 +54,7 @@ const TODO_COPY: Record<keyof ShopChecklistT, { label: string; hint: string; ico
   description: { label: 'Say what you sell', hint: 'one or two honest lines are enough', icon: <FileText className="size-4" aria-hidden /> },
   area: { label: 'Say where you are', hint: 'area and town', icon: <MapPin className="size-4" aria-hidden /> },
   hours: { label: 'Add opening hours', hint: 'buyers want to know when to come', icon: <Clock className="size-4" aria-hidden /> },
-  whatsapp: { label: 'Add a WhatsApp number', hint: 'more buyers reach you there', icon: <MessageCircle className="size-4" aria-hidden /> },
+  whatsapp: { label: 'Add a WhatsApp number', hint: 'more buyers reach you there', icon: <WhatsAppIcon className="size-4" aria-hidden /> },
 }
 
 export function ShopSetupDialog() {
@@ -96,7 +97,7 @@ export function ShopSetupDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-left">
             <Store className="size-5 shrink-0 text-primary" aria-hidden />
-            Welcome to Duuka, {firstName}
+            Welcome to Mudaala, {firstName}
           </DialogTitle>
           <DialogDescription className="text-left">
             Your shop space is ready — a place where buyers see everything you sell. Three quick things make buyers trust it:

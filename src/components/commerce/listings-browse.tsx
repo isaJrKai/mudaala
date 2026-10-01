@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, MapPin, Info } from 'lucide-react'
+import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, Heart, MapPin, Info, Phone } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,16 +10,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPost } from '@/lib/client'
-import type { ListingsPage, ShopLookupResponse } from '@/lib/client'
-import { normalizeShopName, normalizeShopCode } from '@/lib/format'
+import type { ListingsPage, ShopLookupResponse, ListingDetail as ListingDetailT, Listing, ListingShopOwner as ListingShopOwnerT, ShopPage as ShopPageT } from '@/lib/client'
+import { normalizeShopName, normalizeShopCode, telLink } from '@/lib/format'
 import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { unlove, useLovedIds } from '@/lib/loved'
 import { useAddToBasket } from './basket-view'
-import { ListingBlock } from './listing-card'
+import { ListingBlock, HeartButton } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
+import { MudaalaCurve } from './mudaala-curve'
+import QRCode from 'react-qr-code'
+import { TriangleAlert } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Two shops can legally share a name — when they appear in the SAME feed,
 // suffix each with their area so buyers tap the right one. The shop's own
@@ -67,15 +72,21 @@ const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
 export function ListingsBrowse() {
   const { filters, setFilters, resetFilters, navigate } = useAppStore()
   const addToBasket = useAddToBasket()
+  const lovedIds = useLovedIds()
+  const [lovedOnly, setLovedOnly] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState(filters.q)
   const [nearMe, setNearMe] = useState<NearMeState>(NEARME_IDLE)
   const nearOn = nearMe.status === 'on' && nearMe.lat !== null && nearMe.lng !== null
 
-  // Debounced search input → store
+  // Debounced search input → store. Typing is a different intent than
+  // shortlisting, so it also steps out of Loved mode.
   useEffect(() => {
     const t = setTimeout(() => {
-      if (searchInput !== filters.q) setFilters({ q: searchInput })
+      if (searchInput !== filters.q) {
+        setFilters({ q: searchInput })
+        setLovedOnly(false)
+      }
     }, 350)
     return () => clearTimeout(t)
   }, [searchInput, filters.q, setFilters])
@@ -108,7 +119,7 @@ export function ListingsBrowse() {
   }
 
   const query = filtersToQuery(filters)
-  // A code-shaped query ("dk 2623", "DK-2623") is a till-number punch, not a
+  // A code-shaped query ("dk 2623", "MD-2623") is a till-number punch, not a
   // text search — canonicalize it and look the shop up directly. Anything
   // else keeps flowing through the normal listing search.
   const codeQuery = useMemo(() => (filters.q ? (normalizeShopCode(filters.q) ?? '') : ''), [filters.q])
@@ -157,6 +168,62 @@ export function ListingsBrowse() {
 
   return (
     <div className="space-y-3">
+      {/* The front door — the poster, translated into the app. One green
+          ribbon that rises out of the page through the curve on top and
+          flows back in below: the same stroke, twice, framing the words.
+          On desktop a real market photo sits in the right half, its bottom
+          edge carried away by the sweep — the curve masks the photo, the
+          way the mockup poster wraps its image. Mobile keeps it compact
+          (~150px): no photo, no chips, the search one glance away. */}
+      <section aria-labelledby="browse-heading">
+        <MudaalaCurve className="block h-6 w-full text-primary sm:h-9" />
+        <div className="bg-primary text-primary-foreground">
+          <div className="sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,42%)]">
+            <div className="px-5 py-5 sm:px-8 sm:py-9">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
+                Karibu · Uganda
+              </p>
+              <h1 id="browse-heading" className="mt-1 font-display text-[22px] font-semibold leading-tight tracking-tight sm:text-3xl">
+                The market, on your phone.
+              </h1>
+              <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
+                {/* One line on the phone keeps the whole ribbon ~150px tall;
+                    the full sentence earns its space where there's room. */}
+                <span className="sm:hidden">Real shops, direct calls — no middleman.</span>
+                <span className="hidden sm:inline">Real shops post what they sell and what they need — you call or message them direct, no middleman.</span>
+              </p>
+              {/* Only claims the app can back: the shops are real (every
+                  listing carries a phone line), contact is direct, and the
+                  platform takes no cut and sits in no middle of anything. */}
+              <div className="mt-3.5 hidden flex-wrap gap-1.5 sm:flex" aria-label="What Mudaala stands for">
+                {['Real shops', 'Call direct', 'No middleman'].map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full border border-primary-foreground/30 px-2.5 py-0.5 text-[11px] font-medium text-primary-foreground/90"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="relative hidden sm:block">
+              <img
+                src="/uploads/seed/shop-nakato.png"
+                alt="Market stall piled with matooke, tomatoes and red onions under canvas canopies"
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              {/* The sweep that ties the photo into the ribbon: wider than
+                  the column so its low end emerges out of the green field,
+                  then rises across the photo's bottom edge — the same stroke,
+                  same direction, just given room to breathe. */}
+              <MudaalaCurve className="absolute -left-24 bottom-0 block h-10 w-[calc(100%+6rem)] text-primary sm:h-14" />
+            </div>
+          </div>
+        </div>
+        <MudaalaCurve className="block h-6 w-full text-background sm:h-9" />
+      </section>
+
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -186,6 +253,32 @@ export function ListingsBrowse() {
         </Button>
       </div>
 
+      {/* Category pills — the aisle signs of the market, one tap under the
+          search bar. Same filter machinery as the FilterDialog dropdown
+          (filters.category, 'any' = All), just always visible. Horizontally
+          scrollable because eleven aisles don't fit a phone. */}
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-slim pb-0.5" role="group" aria-label="Filter by category">
+        {([['any', 'All'], ...CATEGORIES.map((c) => [c.key, c.label])] as Array<[string, string]>).map(([key, label]) => {
+          const active = filters.category === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilters({ category: key })}
+              aria-pressed={active}
+              className={cn(
+                'press shrink-0 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors',
+                active
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Active filter chips + sort */}
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-slim pb-0.5">
         <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v as typeof filters.sort })}>
@@ -212,6 +305,30 @@ export function ListingsBrowse() {
           {nearMe.status === 'locating' ? 'Finding you…' : nearOn ? 'Near me ✓' : 'Near me'}
         </Button>
         <SaveSearchButton />
+        {/* Loved — the buyer's shortlist. Same family as Near me: an explicit
+            mode chip, count visible at a glance, pressed state unambiguous. */}
+        <Button
+          type="button"
+          size="sm"
+          variant={lovedOnly ? 'default' : 'outline'}
+          className="shrink-0 gap-1.5"
+          onClick={() => setLovedOnly((v) => !v)}
+          aria-pressed={lovedOnly}
+          aria-label={lovedOnly ? 'Showing your loved items' : `Show your loved items${lovedIds.length > 0 ? ` (${lovedIds.length})` : ''}`}
+        >
+          <Heart className={cn('size-3.5', lovedOnly && 'fill-current')} aria-hidden />
+          Loved
+          {lovedIds.length > 0 ? (
+            <span
+              className={cn(
+                'flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                lovedOnly ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary',
+              )}
+            >
+              {lovedIds.length}
+            </span>
+          ) : null}
+        </Button>
         {activeFilterCount > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
             <X className="size-3.5" aria-hidden /> Clear all
@@ -231,10 +348,17 @@ export function ListingsBrowse() {
 
       <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
 
-      {/* A typed DK code replaces the whole feed: the buyer is asking for ONE
-          shop, exactly like dialing a till number — show that shop, or say
-          plainly that the number didn't match. */}
-      {codeQuery !== '' ? (
+      {/* Loved mode replaces the whole feed — the buyer asked for their
+          shortlist, not the market. Explicit intent wins over every other
+          mode (search, filters, code punch all wait their turn). */}
+      {lovedOnly ? (
+        <LovedShelf
+          onOpen={(id) => navigate({ name: 'listing', id })}
+          onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+          onAdd={addToBasket}
+          onBrowse={() => setLovedOnly(false)}
+        />
+      ) : codeQuery !== '' ? (
         codeLookup.isLoading ? (
           <p className="text-sm text-muted-foreground" role="status">
             Finding the shop for {codeQuery}…
@@ -283,37 +407,237 @@ export function ListingsBrowse() {
           }
         />
       ) : data ? (
-        <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
-          <p className="text-sm text-muted-foreground" role="status">
-            {data.total} {data.total === 1 ? 'listing' : 'listings'} found
-            {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
-          </p>
-          {/* Blocks, not rows: photo-first cards in a grid are how a market
-              feed should scan — four pictures beat four paragraphs. */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-            {data.items.map((listing) => (
-              <ListingBlock
-                key={listing.id}
-                listing={listing}
-                shopLabel={shopLabels.get(listing.id)}
-                distanceLabel={distanceLabels.get(listing.id)}
-                onOpen={(id) => navigate({ name: 'listing', id })}
-                onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
-                onAdd={addToBasket}
-              />
-            ))}
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-4">
+          <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
+            <p className="text-sm text-muted-foreground" role="status">
+              {data.total} {data.total === 1 ? 'listing' : 'listings'} found
+              {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
+            </p>
+            {/* Blocks, not rows: photo-first cards in a grid are how a market
+                feed should scan — four pictures beat four paragraphs. */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3">
+              {data.items.map((listing) => (
+                <ListingBlock
+                  key={listing.id}
+                  listing={listing}
+                  shopLabel={shopLabels.get(listing.id)}
+                  distanceLabel={distanceLabels.get(listing.id)}
+                  onOpen={(id) => navigate({ name: 'listing', id })}
+                  onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+                  onAdd={addToBasket}
+                />
+              ))}
+            </div>
+
+            {data.pageCount > 1 ? (
+              <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
+            ) : null}
           </div>
 
-          {data.pageCount > 1 ? (
-            <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
-          ) : null}
+          <FeaturedShopPanel items={data.items} />
         </div>
       ) : null}
     </div>
   )
 }
 
-// The result of punching a DK code into search — one shop, whole card taps
+// The featured-shop rail — desktop's right column turns the current results
+// into a doorway: one shop from whatever the buyer is looking at, its poster
+// code, its phone line. It follows the search the way a shop window follows
+// the street you're standing on. Hidden below lg — on the phone the feed IS
+// the page. A rectangle, not a curve: it is a card, and the restraint rule
+// keeps the signature off cards.
+function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
+  // Same hydration-safe origin pattern as shop-view: '' during SSR, the real
+  // origin after mount (a page's origin never changes while it is open).
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => '',
+  )
+  // First result with a named shop wins the rail.
+  const shopId = items.find((l) => l.user?.profile?.businessName)?.user?.id ?? null
+  const shopQuery = useQuery({
+    queryKey: ['featured-shop', shopId],
+    enabled: Boolean(shopId),
+    staleTime: 60_000,
+    queryFn: () => apiGet<ShopPageT>(`/api/shops/${shopId}`),
+  })
+  const shop = shopQuery.data?.shop ?? null
+  const shopUrl = useMemo(
+    () => (origin && shop ? `${origin}/#/shop/${shop.id}` : ''),
+    [origin, shop],
+  )
+
+  return (
+    <aside className="hidden lg:block" aria-label="Featured shop from your results">
+      {shop ? (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          {shop.photoUrl ? (
+            <img src={shop.photoUrl} alt="" loading="lazy" className="h-32 w-full object-cover" />
+          ) : (
+            <div className="flex h-32 items-center justify-center bg-primary">
+              <span className="font-display text-4xl font-semibold text-primary-foreground">
+                {shop.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Featured shop · from your results
+            </p>
+            <h2 className="mt-1 font-display text-lg font-semibold leading-tight tracking-tight text-primary">
+              {shop.name}
+            </h2>
+            {shop.area || shop.county ? (
+              <p className="mt-0.5 text-xs text-muted-foreground">{[shop.area, shop.county].filter(Boolean).join(', ')}</p>
+            ) : null}
+            <div className="mt-3 flex items-center gap-3">
+              <div className="shrink-0 bg-white p-1.5">
+                {shopUrl ? <QRCode value={shopUrl} size={64} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
+              </div>
+              <div className="min-w-0">
+                {shop.shopCode ? (
+                  <p className="font-mono text-sm font-bold tracking-widest text-foreground">{shop.shopCode}</p>
+                ) : null}
+                <p className="text-[11px] leading-snug text-muted-foreground">Scan, or type the code in search, to see the whole shop.</p>
+              </div>
+            </div>
+            <a
+              href={telLink(shop.phone)}
+              className="press mt-3 flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              <Phone className="size-4" aria-hidden /> Call the shop
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="h-64 animate-pulse rounded-lg border bg-muted/40" aria-hidden />
+      )}
+    </aside>
+  )
+}
+
+// The Loved shelf — the shortlist, rendered as the same photo-first blocks
+// as the feed. Every item is re-fetched from the public API when the shelf
+// opens (the heart stores only an id), so what the buyer sees is what is
+// really there right now: sold-out items say so instead of pretending.
+function LovedShelf({
+  onOpen,
+  onOpenShop,
+  onAdd,
+  onBrowse,
+}: {
+  onOpen: (id: string) => void
+  onOpenShop: (shopId: string) => void
+  // Same shape ListingBlock hands every caller — blocks may come back from
+  // the public detail endpoint, but the add contract stays the wide one.
+  onAdd: (listing: Listing & { user?: ListingShopOwnerT }) => boolean | void
+  onBrowse: () => void
+}) {
+  const lovedIds = useLovedIds()
+
+  const itemsQuery = useQuery({
+    queryKey: ['loved-items', lovedIds.join(',')],
+    enabled: lovedIds.length > 0,
+    retry: false,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const results = await Promise.all(
+        lovedIds.map(async (id) => {
+          try {
+            const res = await apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`)
+            return res.listing
+          } catch (err) {
+            // A 404 means the seller deleted it — a heart on a ghost is
+            // clutter that also eats a shortlist slot, so it unloves itself.
+            if (err instanceof Error && /404|does not exist|removed/i.test(err.message)) {
+              unlove(id)
+              return null
+            }
+            throw err
+          }
+        }),
+      )
+      return results.filter((l): l is ListingDetailT => l !== null)
+    },
+  })
+
+  if (lovedIds.length === 0) {
+    return (
+      <EmptyState
+        icon={<Heart />}
+        title="Nothing loved yet"
+        description="Tap the heart on any item and it waits here for later — like a name scribbled on a price list. It lives on this phone, just like the basket."
+        action={<Button onClick={onBrowse}>Browse listings</Button>}
+      />
+    )
+  }
+
+  if (itemsQuery.isLoading) {
+    return <ListingGridSkeleton />
+  }
+
+  if (itemsQuery.isError || !itemsQuery.data) {
+    return <ErrorState message="Could not load your loved items" onRetry={() => itemsQuery.refetch()} />
+  }
+
+  const items = itemsQuery.data
+  const available = items.filter((l) => l.status === 'ACTIVE')
+  const unavailable = items.filter((l) => l.status !== 'ACTIVE')
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground" role="status">
+        Your shortlist · {items.length} {items.length === 1 ? 'item' : 'items'}, newest first — lives on this phone
+      </p>
+
+      {available.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+          {available.map((listing) => (
+            <ListingBlock
+              key={listing.id}
+              listing={listing}
+              onOpen={onOpen}
+              onOpenShop={onOpenShop}
+              onAdd={onAdd}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* Honest shelf: what expired or sold out is said out loud, with the
+          one action that fixes it. */}
+      {unavailable.length > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3">
+          <p className="flex items-start gap-1.5 text-xs font-medium text-amber-800">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            {unavailable.length === 1
+              ? '1 loved item is no longer available:'
+              : `${unavailable.length} loved items are no longer available:`}
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {unavailable.map((listing) => (
+              <li key={listing.id} className="flex items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => onOpen(listing.id)}
+                  className="min-w-0 flex-1 truncate text-left hover:underline"
+                >
+                  {listing.title}
+                </button>
+                <HeartButton listingId={listing.id} title={listing.title} className="size-7 shrink-0 border-0 bg-transparent hover:bg-transparent" />
+                <span className="shrink-0 text-xs text-amber-800">tap the heart to forget it</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// The result of punching a MD code into search — one shop, whole card taps
 // through, same affordance as a listing card. The code chip repeats so the
 // buyer can confirm the number they typed matches the shop they got.
 function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOpen: () => void }) {
@@ -335,7 +659,7 @@ function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOp
         <span className="block truncate font-semibold">{shop.name}</span>
         <span className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
-          {[shop.area, shop.county].filter(Boolean).join(', ') || 'Shop on Duuka'}
+          {[shop.area, shop.county].filter(Boolean).join(', ') || 'Shop on Mudaala'}
         </span>
         <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
           <Hash className="size-3" aria-hidden /> <span className="font-mono tracking-wide">{shop.shopCode}</span>

@@ -1,4 +1,4 @@
-// WCAG contrast for Duuka's actual OKLCH tokens (grounded palette critique)
+// WCAG contrast for Mudaala's actual OKLCH tokens (grounded palette critique)
 // OKLab -> linear sRGB (standard Björn Ottosson math), then WCAG relative luminance.
 
 function oklchToSrgb(L: number, C: number, hDeg: number): [number, number, number] {

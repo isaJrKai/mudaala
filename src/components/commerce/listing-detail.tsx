@@ -5,7 +5,8 @@
 // pickup), and direct contact. No login needed for any of it.
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Check, MapPin, MessageCircle, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { ArrowLeft, Check, MapPin, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { apiGet } from '@/lib/client'
@@ -23,6 +24,7 @@ import {
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
+import { HeartButton } from './listing-card'
 import { useAppStore } from '@/lib/store'
 import { useAddToBasket, useAddedFlash } from './basket-view'
 import { TypeBadge, StatusBadge } from './badges'
@@ -148,6 +150,16 @@ export function ListingDetail({ id }: { id: string }) {
               </>
             ) : null}
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
+            {/* The heart lives with the price: "come back to this one" sits
+                right next to "this is what it costs". OFFERs only, like the
+                basket — a shortlist of things you can actually take. */}
+            {listing.type === 'OFFER' ? (
+              <HeartButton
+                listingId={listing.id}
+                title={listing.title}
+                className="ml-auto self-center"
+              />
+            ) : null}
           </div>
 
           {/* The buy action, next to the price where buy intent lives.
@@ -263,7 +275,7 @@ export function ListingDetail({ id }: { id: string }) {
                 className="press h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
               >
                 <a href={whatsappLink(whatsapp, listing.title, listing.type)} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="size-4" aria-hidden /> WhatsApp
+                  <WhatsAppIcon className="size-4" aria-hidden /> WhatsApp
                 </a>
               </Button>
             ) : null}

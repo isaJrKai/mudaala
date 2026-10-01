@@ -1,6 +1,6 @@
 'use client'
 
-// The basket view — the Duuka-native "checkout": one list per shop, and
+// The basket view — the Mudaala-native "checkout": one list per shop, and
 // sending it means opening WhatsApp with the whole list pre-written. No
 // payment, no order tracking, no login — the seller's WhatsApp inbox is the
 // order inbox, which is exactly where they already answer customers.
@@ -13,7 +13,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MessageCircle, Minus, Phone, Plus, ShoppingBasket, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { Minus, Phone, Plus, ShoppingBasket, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
 import type { ListingDetail } from '@/lib/client'
@@ -138,6 +139,37 @@ export function BasketView() {
   )
 }
 
+// The qty number answers the stepper itself: a small scale pulse on every
+// change, so the eye finds the number that just moved. WAAPI one-shot on a
+// ref — external-system mutation, no React state, no cascading render.
+function QtyNumber({ qty, title }: { qty: number; title: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const prevRef = useRef<number | null>(null)
+  useEffect(() => {
+    const prev = prevRef.current
+    prevRef.current = qty
+    if (prev === null || prev === qty) return
+    if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    ref.current?.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.25)', offset: 0.5 },
+        { transform: 'scale(1)' },
+      ],
+      { duration: 180, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+    )
+  }, [qty])
+  return (
+    <span
+      ref={ref}
+      className="inline-block min-w-6 text-center text-sm font-semibold"
+      aria-label={`Quantity of ${title}: ${qty}`}
+    >
+      {qty}
+    </span>
+  )
+}
+
 function BasketShopSection({
   shopId,
   shop,
@@ -157,6 +189,33 @@ function BasketShopSection({
   const sendable = statuses.isLoading ? entries : fresh
   const sendableLines = sendable.map(([, line]) => line)
   const subtotal = basketSubtotal(sendableLines)
+
+  // The subtotal flash — Mudaala's answer to the ticker-tape cue: when the
+  // number moves because the buyer edited a quantity, it flashes green for
+  // "went up" and the warm red for "went down", then settles. Direction,
+  // read at a glance without parsing digits. WAAPI on a ref (no re-render,
+  // no state), guarded for reduced motion like every other mover here.
+  const subtotalRef = useRef<HTMLSpanElement>(null)
+  const prevAmountRef = useRef<number | null>(null)
+  const subtotalAmount = subtotal?.amount ?? null
+  useEffect(() => {
+    const prev = prevAmountRef.current
+    prevAmountRef.current = subtotalAmount
+    if (subtotalAmount === null || prev === null || prev === subtotalAmount) return
+    if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const el = subtotalRef.current
+    if (!el) return
+    const settle = getComputedStyle(el).color
+    const flash = subtotalAmount > prev ? '#047857' : 'var(--destructive)'
+    el.animate(
+      [
+        { color: flash, offset: 0 },
+        { color: flash, offset: 0.55 },
+        { color: settle, offset: 1 },
+      ],
+      { duration: 900, easing: 'ease-out' },
+    )
+  }, [subtotalAmount])
 
   return (
     <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Basket for ${shop.name}`}>
@@ -207,7 +266,7 @@ function BasketShopSection({
                 {gone ? (
                   <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800">
                     <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
-                    {status === 'GONE' ? 'Removed from Duuka — take it off your list.' : 'No longer available — the seller may have sold out.'}
+                    {status === 'GONE' ? 'Removed from Mudaala — take it off your list.' : 'No longer available — the seller may have sold out.'}
                   </p>
                 ) : null}
               </div>
@@ -223,9 +282,7 @@ function BasketShopSection({
                 >
                   <Minus className="size-3.5" aria-hidden />
                 </Button>
-                <span className="min-w-6 text-center text-sm font-semibold" aria-label={`Quantity of ${line.title}: ${line.qty}`}>
-                  {line.qty}
-                </span>
+                <QtyNumber qty={line.qty} title={line.title} />
                 <Button
                   type="button"
                   variant="outline"
@@ -256,7 +313,7 @@ function BasketShopSection({
 
         {subtotal ? (
           <p className="text-sm">
-            <span className="font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
+            <span ref={subtotalRef} className="inline-block font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
             <span className="text-xs text-muted-foreground">estimate — the seller confirms the final total</span>
           </p>
         ) : null}
@@ -270,13 +327,13 @@ function BasketShopSection({
                 rel="noopener noreferrer"
                 aria-label={`Send your list of ${sendable.length} items to ${shop.name} on WhatsApp`}
               >
-                <MessageCircle className="size-4" aria-hidden /> Send list on WhatsApp
+                <WhatsAppIcon className="size-4" aria-hidden /> Send list on WhatsApp
               </a>
             </Button>
           ) : null}
           {sendable.length === 0 ? (
             <Button className="h-10 flex-1" disabled>
-              <MessageCircle className="size-4" aria-hidden /> Nothing to send
+              <WhatsAppIcon className="size-4" aria-hidden /> Nothing to send
             </Button>
           ) : null}
           {!shop.whatsapp && sendable.length > 0 ? (
