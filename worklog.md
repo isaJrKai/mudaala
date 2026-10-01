@@ -595,3 +595,17 @@ Work Log:
 
 Stage Summary:
 - Nothing was lost after all: every UI/UX change (home dashboard, real WhatsApp logos, mockup poster, Uganda-only pivot) is restored and re-verified green at 202/202. The repo is a fresh lineage with the full state in c0bd29f; pushing it to GitHub the moment the user pastes their PAT so this can never happen again.
+
+---
+Task ID: 28-b (addendum)
+Agent: main (Super Z)
+Task: Push recovered state to GitHub after user supplied PAT.
+
+Work Log:
+- PAT verified against api.github.com (login isaJrKai). Token used inline per command via credential.helper; never written to any file, config, or env persisted across calls. git config clean, no credential storage.
+- Remote re-attached: origin = github.com/isaJrKai/mudaala (reprovision had dropped it). Remote main tip was a1020ba "Task 24: deployment guide docx" — original named history survived on GitHub through Task 24 only; commits 57453f3/f331a10/4175508/f2eb692/e1bd3e1 (Tasks 25-27) were never pushed and remain unrecoverable as objects. Their full content lives in restore commit c0bd29f.
+- History safety: pushed origin's old tip to refs/heads/backup/task24-history BEFORE rewriting. Then force-pushed main: a1020ba → 905aa68 (worklog Task 28 + restore commit). Remote main now = verified 202/202 restored state incl. home-view.tsx + brand-icons.tsx (ls-tree confirmed).
+- mudaala-redesign branch left at a1020ba (stale redesign line, untouched). Backup branch keeps Task 24 history reachable forever.
+
+Stage Summary:
+- GitHub is now the real backup: origin/main = full recovered Mudaala (home dashboard, real WhatsApp logos, mockup poster, Uganda-only), old history preserved on backup/task24-history. Future rule: push at the end of EVERY task, no exceptions.
