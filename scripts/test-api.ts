@@ -42,6 +42,7 @@ async function call(
   path: string,
   body?: unknown,
   jar?: Jar,
+  extraHeaders?: Record<string, string>,
 ): Promise<{ status: number; json: any; setCookie?: string }> {
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -49,6 +50,7 @@ async function call(
       'Content-Type': 'application/json',
       ...(jar?.cookie ? { cookie: jar.cookie } : {}),
       ...(jar?.token ? { authorization: `Bearer ${jar.token}` } : {}),
+      ...extraHeaders,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
@@ -755,6 +757,27 @@ async function main() {
     const daysExtended = (new Date(repost.json.listing.expiresAt).getTime() - Date.now()) / 86_400_000
     ok('repost extended expiry by ~30 days', daysExtended > 29 && daysExtended <= 31)
     await call('DELETE', `/api/listings/${overdue.id}`, undefined, alice)
+  }
+
+  console.log('\n== 8b. Sweep endpoint needs the cron secret ==')
+  {
+    const noHeader = await call('POST', '/api/cron/sweep')
+    ok('sweep without header → 403', noHeader.status === 403)
+
+    const wrongHeader = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': 'not-the-secret' })
+    ok('sweep with wrong secret → 403', wrongHeader.status === 403)
+
+    const cronSecret = process.env.CRON_SECRET
+    if (cronSecret) {
+      const rightHeader = await call('POST', '/api/cron/sweep', undefined, undefined, { 'x-cron-secret': cronSecret })
+      ok(
+        'sweep with correct secret → 200 with sweep counts',
+        rightHeader.status === 200 && typeof rightHeader.json?.expired === 'number' && typeof rightHeader.json?.expiringNotified === 'number',
+      )
+    } else {
+      const unconfigured = await call('POST', '/api/cron/sweep')
+      ok('CRON_SECRET unset → 503 (fail closed)', unconfigured.status === 503)
+    }
   }
 
   console.log('\n== 9. Settings → Advanced Settings (PostgreSQL) ==')
