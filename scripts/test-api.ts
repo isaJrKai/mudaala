@@ -762,29 +762,48 @@ async function main() {
     const anon = await call('GET', '/api/settings/postgres')
     ok('settings require sign-in → 401', anon.status === 401)
 
+    // Deployment settings are admin-only (ADMIN_PHONES). Alice is a regular
+    // seller: every verb on the deployment config is closed to her.
+    const deniedGet = await call('GET', '/api/settings/postgres', undefined, alice)
+    ok('non-admin GET config → 403', deniedGet.status === 403)
+    const deniedPut = await call('PUT', '/api/settings/postgres', { host: 'db.internal.example', port: 5432, database: 'commerce_os', user: 'app', password: 'supersecret', sslMode: 'require' }, alice)
+    ok('non-admin PUT config → 403', deniedPut.status === 403)
+    const deniedDelete = await call('DELETE', '/api/settings/postgres', undefined, alice)
+    ok('non-admin DELETE config → 403', deniedDelete.status === 403)
+    const deniedTest = await call('POST', '/api/settings/postgres/test', undefined, alice)
+    ok('non-admin test connection → 403', deniedTest.status === 403)
+
+    // The admin allowlist phone is a seeded KE account (0712000001).
+    const admin: Jar = { cookie: '' }
+    const adminLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' }, admin)
+    storeCookie(admin, adminLogin)
+    admin.token = adminLogin.json?.sessionToken
+    ok('admin phone signs in (precondition)', adminLogin.status === 200)
+
     const saved = await call(
       'PUT',
       '/api/settings/postgres',
       { host: 'db.internal.example', port: 5432, database: 'commerce_os', user: 'app', password: 'supersecret', sslMode: 'require' },
-      alice,
+      admin,
     )
-    ok('save postgres config (200)', saved.status === 200)
+    ok('admin saves postgres config (200)', saved.status === 200)
 
-    const fetched = await call('GET', '/api/settings/postgres', undefined, alice)
+    const fetched = await call('GET', '/api/settings/postgres', undefined, admin)
     ok('GET config never returns the password', !JSON.stringify(fetched.json).includes('supersecret'))
     ok('GET reports hasPassword=true', fetched.json?.config?.hasPassword === true)
 
-    const testRes = await call('POST', '/api/settings/postgres/test', undefined, alice)
-    ok('test connection runs and reports honestly', testRes.status === 200 && typeof testRes.json?.ok === 'boolean')
+    // Encryption at rest: the raw AppSetting row must not contain the secret.
+    const rawRow = await db.appSetting.findUnique({ where: { key: 'postgres_config' } })
+    ok('stored config is encrypted at rest (no plaintext password)', Boolean(rawRow) && !rawRow!.value.includes('supersecret') && rawRow!.value.includes('enc:'))
+
+    const testRes = await call('POST', '/api/settings/postgres/test', undefined, admin)
+    ok('admin test connection runs and reports honestly', testRes.status === 200 && typeof testRes.json?.ok === 'boolean')
     ok('unreachable host → ok=false with a real reason', testRes.status === 200 && testRes.json?.ok === false && typeof testRes.json?.message === 'string' && testRes.json.message.length > 0)
 
-    const bobTest = await call('POST', '/api/settings/postgres/test', undefined, bob)
-    ok('deployment config is global: any signed-in user can test it', bobTest.status === 200)
+    const cleared = await call('DELETE', '/api/settings/postgres', undefined, admin)
+    ok('admin removes config works', cleared.status === 200)
 
-    const cleared = await call('DELETE', '/api/settings/postgres', undefined, alice)
-    ok('remove config works', cleared.status === 200)
-
-    const afterClear = await call('POST', '/api/settings/postgres/test', undefined, alice)
+    const afterClear = await call('POST', '/api/settings/postgres/test', undefined, admin)
     ok('test without saved config → 400', afterClear.status === 400)
   }
 

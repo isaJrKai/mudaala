@@ -3,16 +3,17 @@
 // outcome honestly: reachable is reachable, unreachable says why. It never
 // claims credentials work — a TCP handshake knows nothing about passwords.
 //
-// The deployment config is global (one deployment, one database), so any
-// signed-in user may test it — but nobody may test it without saving one
-// first (400), and anonymous visitors get the usual 401.
+// The deployment config is global (one deployment, one database), so testing
+// it is admin-only (ADMIN_PHONES): it reveals host reachability. Nobody may
+// test without saving a config first (400); anonymous visitors get 401.
 
-import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
+import { route, jsonOk, ApiError } from '@/lib/api'
+import { requireAdmin } from '@/lib/admin'
 import { readPostgresConfig, resolveTarget, testTcpConnection } from '@/lib/postgres-settings'
 
 export async function POST() {
   return route(async () => {
-    await requireUser('Sign in to test the database connection')
+    await requireAdmin('Only the shop admin can test the database connection')
 
     const stored = await readPostgresConfig()
     if (!stored) {
