@@ -42,11 +42,17 @@ git remote remove origin 2>/dev/null || true
 git remote add origin "https://github.com/${GH_USER}/${REPO_NAME}.git"
 echo "Remote origin set: $(git remote get-url origin)"
 
-CRED='-c credential.helper=!f(){ echo username=x-access-token; echo password=$GH_TOKEN; };f'
+# One-shot askpass: token supplied at push time, never written to .git/config
+ASKPASS="$(mktemp)"
+trap 'rm -f "$ASKPASS"' EXIT
+printf '#!/bin/sh\ncase "$1" in *Username*) echo "%s" ;; *) echo "$GH_TOKEN" ;; esac\n' "$GH_USER" > "$ASKPASS"
+chmod +x "$ASKPASS"
+export GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0
+
 echo "--- pushing main ---"
-git $CRED push -u origin main
+git push -u origin main
 echo "--- pushing mudaala-redesign ---"
-git $CRED push -u origin mudaala-redesign
+git push -u origin mudaala-redesign
 
 echo
 echo "DONE. Private repo: https://github.com/${GH_USER}/${REPO_NAME}"
