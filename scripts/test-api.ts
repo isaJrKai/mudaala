@@ -12,6 +12,9 @@
  * completeness checklist.
  */
 import { PrismaClient } from '@prisma/client'
+import sharp from 'sharp'
+import path from 'node:path'
+import * as fs from 'node:fs'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -302,6 +305,31 @@ async function main() {
       body: (() => { const f = new FormData(); f.append('file', new Blob(['definitely not an image'], { type: 'image/png' }), 'fake.png'); return f })(),
     })
     ok('renamed non-image rejected by magic bytes → 400', fakePng.status === 400)
+
+    // Every stored photo is re-encoded to WebP, max edge 1200: upload a big
+    // 4000×3000 PNG and check what ACTUALLY got written on disk.
+    const BIG_PNG = await sharp({
+      create: { width: 4000, height: 3000, channels: 3, background: { r: 120, g: 160, b: 90 } },
+    }).png().toBuffer()
+    const bigUpload = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: alice.cookie, authorization: `Bearer ${alice.token}` },
+      body: (() => { const f = new FormData(); f.append('file', new Blob([new Uint8Array(BIG_PNG)], { type: 'image/png' }), 'big.png'); return f })(),
+    })
+    const bigJson = await bigUpload.json().catch(() => null)
+    ok('oversized photo upload → 201 with .webp url', bigUpload.status === 201 && typeof bigJson?.url === 'string' && bigJson.url.startsWith('/uploads/') && bigJson.url.endsWith('.webp'))
+    const storedPath = path.join(process.cwd(), 'public', bigJson?.url ?? '')
+    const storedMeta = await sharp(storedPath).metadata()
+    ok(
+      'stored photo is WebP inside the 1200px box',
+      storedMeta.format === 'webp' && Math.max(storedMeta.width ?? 0, storedMeta.height ?? 0) <= 1200,
+    )
+    const storedBytes = await fs.promises.readFile(storedPath)
+    const pngBytesOnDisk = await sharp(storedPath).png().toBuffer()
+    ok(
+      're-encoding actually shrank the market photo (WebP < same image as PNG)',
+      storedBytes.byteLength < pngBytesOnDisk.byteLength,
+    )
 
     // Photos flow through create (with sanitization), detail, browse.
     const withPhotos = await call('POST', '/api/listings', {
