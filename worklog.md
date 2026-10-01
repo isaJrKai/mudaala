@@ -429,3 +429,18 @@ Work Log:
 
 Stage Summary:
 - The app is Mudaala end to end: leaf+serif wordmark, MD- codes with DK- legacy acceptance, mockup-faithful sweep-masked hero photo, aisle-sign pills, avatar-over-seam shop page, and a desktop featured-shop rail. Zero schema/API shape changes (lookup copy only); storage keys renamed (one-time session/basket reset); 142/142, fixtures clean, committed a2c7bc9.
+---
+Task ID: 22
+Agent: main (Super Z)
+Task: Push Mudaala to GitHub — private repo "mudaala", main committed clean, redesign work on branch mudaala-redesign (user brief: 5 steps)
+
+Work Log:
+- State check: Task 21 (the five redesign tasks) was already committed as one atomic commit; audit confirmed all five live in code — rename zero "duka" leftovers repo-wide, Leaf+serif lowercase wordmark, normalizeShopCode accepts DK|MD canonicalizing to MD-, hero photo/chips/curves, category pills (role=group, aria-pressed), square avatar over cover seam, FeaturedShopPanel aside hidden lg:block. tsc + eslint clean on the branch. Line-410 grep display artifact looked like a broken grid class; direct Read proved lg:grid-cols-[minmax(0,1fr)_240px] correct — no fix needed, no fake commits manufactured.
+- GIT HYGIENE (commit 834b12b on main): git rm --cached .env db/custom.db (files stay on disk, dev server untouched); .gitignore += /db/ (real local data never pushes); found+fixed a silent repo-breaking ignore — bare 'test' rule was excluding src/app/api/settings/postgres/test/ (a real API route); added negations and committed the route so a fresh clone is complete.
+- HISTORY PURGE (pre-remote, safe): filter-branch index-filter removed .env and db/custom.db from ALL 38 commits, reflog expired, gc aggressive; .git 24M -> 18M (rest is mockup PNGs + verify screenshots + bun.lock). Verified: git log --all -- .env db/custom.db empty; both files still on disk.
+- BRANCH: mudaala-redesign created from hygiene commit; carries the redesign (Task 21 commit, now 1a25120 after rewrite).
+- GITHUB BLOCKER (honest): no GitHub token exists in this environment — gh CLI not installed, no GH_TOKEN/GITHUB_TOKEN env, no ~/.git-credentials, no gh config, .env holds only DATABASE_URL, token-pattern grep across config dirs empty. Network to github.com IS reachable. Repo creation is the single step that cannot be done without credentials.
+- Prepared scripts/push-to-github.sh: resolves login from token, creates PRIVATE repo via REST API (idempotent), sets origin WITHOUT token in .git/config, pushes main + mudaala-redesign via one-shot credential helper. One command once a PAT exists.
+
+Stage Summary:
+- Local work is 100% push-ready: main = 38 commits, .env and db/custom.db untracked AND purged from all history, postgres test route rescued, working tree clean, branch mudaala-redesign in place with the five-task redesign verified (tsc/eslint clean). The only missing input is a GitHub token — paste a PAT (repo scope) and run scripts/push-to-github.sh, or send it in chat and the push completes immediately. Repo URL once pushed: https://github.com/<login>/mudaala (private).

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Push Mudaala to a PRIVATE GitHub repo named "mudaala".
+#
+# Usage (token = Personal Access Token with `repo` scope, classic, or
+# fine-grained with Administration + Contents read/write on this account):
+#
+#   GH_TOKEN=ghp_xxxx bash scripts/push-to-github.sh
+#   GH_TOKEN=ghp_xxxx GH_USER=myname bash scripts/push-to-github.sh   # skip login lookup
+#
+# What it does:
+#   1. Resolves your GitHub login from the token (unless GH_USER given)
+#   2. Creates the PRIVATE repo <login>/mudaala via the REST API (idempotent —
+#      continues if it already exists)
+#   3. Adds remote "origin" WITHOUT embedding the token in .git/config
+#   4. Pushes main and mudaala-redesign with -u (token passed one-shot via
+#      credential helper, never persisted)
+set -euo pipefail
+
+: "${GH_TOKEN:?Set GH_TOKEN (a GitHub PAT with repo scope)}"
+REPO_NAME="${REPO_NAME:-mudaala}"
+
+api() { curl -sS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$@"; }
+
+if [ -z "${GH_USER:-}" ]; then
+  GH_USER=$(api https://api.github.com/user | sed -n 's/.*"login": *"\([^"]*\)".*/\1/p' | head -1)
+  [ -n "$GH_USER" ] || { echo "Could not resolve login from token — check the token or pass GH_USER=..."; exit 1; }
+fi
+echo "GitHub account: ${GH_USER}"
+
+HTTP=$(api -o /tmp/mudaala-repo.json -w '%{http_code}' https://api.github.com/user/repos \
+  -X POST -d "{\"name\":\"${REPO_NAME}\",\"private\":true,\"has_issues\":true,\"has_wiki\":false}")
+if [ "$HTTP" = "201" ]; then
+  echo "Created private repo ${GH_USER}/${REPO_NAME}"
+elif [ "$HTTP" = "422" ]; then
+  echo "Repo ${GH_USER}/${REPO_NAME} already exists — continuing"
+else
+  echo "Unexpected API response (HTTP $HTTP):"; cat /tmp/mudaala-repo.json; echo
+  exit 1
+fi
+
+git remote remove origin 2>/dev/null || true
+git remote add origin "https://github.com/${GH_USER}/${REPO_NAME}.git"
+echo "Remote origin set: $(git remote get-url origin)"
+
+CRED='-c credential.helper=!f(){ echo username=x-access-token; echo password=$GH_TOKEN; };f'
+echo "--- pushing main ---"
+git $CRED push -u origin main
+echo "--- pushing mudaala-redesign ---"
+git $CRED push -u origin mudaala-redesign
+
+echo
+echo "DONE. Private repo: https://github.com/${GH_USER}/${REPO_NAME}"
