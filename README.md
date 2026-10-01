@@ -1,16 +1,16 @@
-# Duuka
+# Mudaala
 
 A local-commerce discovery platform: people post **OFFER** and **REQUEST** listings,
 find each other by category and location, compare price/quantity/freshness, and
 contact each other directly on WhatsApp or by phone.
 
-Built to the Duuka product contract — a discovery platform, not an ERP:
+Built to the Mudaala product contract — a discovery platform, not an ERP:
 no payments, wallets, escrow, delivery dispatch, in-app chat, or transaction
 ratings in V1.
 
 ## Markets & currency
 
-Duuka launches in **Uganda** (default), with **Tanzania** and **Kenya** supported:
+Mudaala launches in **Uganda** (default), with **Tanzania** and **Kenya** supported:
 
 - Country chosen at registration drives the phone format (+256/+255/+254), the
   district/region list, and the default currency (USh/TSh/KSh)

@@ -1,5 +1,5 @@
 /**
- * Duuka — development seed.
+ * Mudaala — development seed.
  *
  * These are DEVELOPMENT FIXTURES for reviewing the product, clearly labeled as
  * such in the repository. Fixture users have demo passwords and 0000xxx phone
@@ -84,7 +84,7 @@ const savedSearches = [
 ]
 
 async function main() {
-  console.log('Seeding Duuka development fixtures…')
+  console.log('Seeding Mudaala development fixtures…')
   await db.notification.deleteMany()
   await db.savedSearch.deleteMany()
   await db.listing.deleteMany()
@@ -97,11 +97,11 @@ async function main() {
     const user = await db.user.create({
       data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234') },
     })
-    // Same rule as src/lib/shop.ts: a unique DK-XXXX identity code, assigned
+    // Same rule as src/lib/shop.ts: a unique MD-XXXX identity code, assigned
     // once and never changed. (Local copy — scripts stay standalone.)
     let shopCode = ''
     for (let attempt = 0; attempt < 200; attempt++) {
-      const candidate = `DK-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
+      const candidate = `MD-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
       const clash = await db.businessProfile.findUnique({ where: { shopCode: candidate }, select: { id: true } })
       if (!clash) {
         shopCode = candidate

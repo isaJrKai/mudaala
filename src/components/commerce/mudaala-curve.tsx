@@ -1,4 +1,4 @@
-// The Duka curve — the brand's sweeping edge, the one shape that belongs to
+// The Mudaala curve — the brand's sweeping edge, the one shape that belongs to
 // no template. It appears ONLY on doorway surfaces and NEVER on functional
 // ones (cards, forms, lists, chips, buttons stay rectangles — a signature
 // that shows up everywhere is just decoration again):
@@ -14,7 +14,7 @@
 // over any background — text-primary where the green mass carries the edge,
 // text-card / text-background where the page eats into it. Pure paint — no
 // text rides on it, nothing animates, aria-hidden everywhere.
-export function DukaCurve({ className }: { className?: string }) {
+export function MudaalaCurve({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 10" preserveAspectRatio="none" className={className} aria-hidden="true">
       <path d="M0 7.2 C 26 8.8, 58 2.6, 100 1.6 L 100 10 L 0 10 Z" fill="currentColor" />

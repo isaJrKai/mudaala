@@ -1,4 +1,4 @@
-// Duuka — client-side API types (mirror of server responses).
+// Mudaala — client-side API types (mirror of server responses).
 
 import type { ListingType, ListingStatus } from './constants'
 
@@ -6,7 +6,7 @@ import type { ListingType, ListingStatus } from './constants'
 // The preview can run inside a cross-origin iframe where browsers drop
 // SameSite cookies. The session token ALSO lives in localStorage and is sent
 // as Authorization: Bearer on every request, so sign-in survives anywhere.
-const SESSION_TOKEN_KEY = 'duuka_session_token'
+const SESSION_TOKEN_KEY = 'mudaala_session_token'
 
 export function storeSessionToken(token: string): void {
   try {
@@ -110,7 +110,7 @@ export interface BusinessProfileT {
   whatsapp: string | null
   hours: string | null
   verified: boolean
-  /** Public identity code ("DK-4821") — assigned once, never changes. */
+  /** Public identity code ("MD-4821") — assigned once, never changes. */
   shopCode: string | null
   /** Shop spot, pre-rounded to ~100 m server-side. Null when not shared. */
   lat: number | null
@@ -212,7 +212,7 @@ export interface ShopInfo {
   whatsapp: string | null
   /** True only when the displayed phone IS the seller's login line. */
   phoneConfirmed: boolean
-  /** Public identity code ("DK-4821") — stable for the life of the shop. */
+  /** Public identity code ("MD-4821") — stable for the life of the shop. */
   shopCode: string | null
   memberSince: string
   activeCount: number
@@ -225,7 +225,7 @@ export interface ShopPage {
   listings: Listing[]
 }
 
-/** Result of punching a DK-XXXX code into /api/shops/lookup — card-slim on
+/** Result of punching a MD-XXXX code into /api/shops/lookup — card-slim on
  * purpose: no phone/contact details, the shop page has those after a tap. */
 export interface ShopLookupResult {
   id: string

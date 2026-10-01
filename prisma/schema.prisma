@@ -54,7 +54,7 @@ model BusinessProfile {
   // Verification is NOT offered in V1. This flag stays false and no verified
   // badge is rendered anywhere until a real verification process exists.
   verified     Boolean @default(false)
-  // Public shop identity code (e.g. "DK-4821"). Auto-assigned once, then
+  // Public shop identity code (e.g. "MD-4821"). Auto-assigned once, then
   // NEVER changed — buyers and printed QR posters rely on its stability.
   shopCode     String? @unique
   // Optional shop spot. The seller taps "Add my shop location" while standing

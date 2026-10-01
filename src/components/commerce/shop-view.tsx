@@ -1,10 +1,10 @@
 'use client'
 
-// The shop — a seller's own space on Duuka. Everything a buyer needs to trust
+// The shop — a seller's own space on Mudaala. Everything a buyer needs to trust
 // them and browse their whole catalogue: who they are, where they are, when
 // they are open, a call/WhatsApp button, and every active listing they run.
 // Buyers never sign in to see any of this.
-// The shop's identity code (DK-XXXX) and its printable QR poster live here
+// The shop's identity code (MD-XXXX) and its printable QR poster live here
 // too — the poster is the seller's tool for pulling walk-up customers onto
 // their page (print it, stick it on the stall, buyers scan).
 
@@ -19,7 +19,7 @@ import { telLink, whatsappLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { useAddToBasket } from './basket-view'
-import { DukaCurve } from './duka-curve'
+import { MudaalaCurve } from './mudaala-curve'
 import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -100,8 +100,8 @@ export function ShopView({ id }: { id: string }) {
     shopUrl && shop.shopCode
       ? `https://wa.me/?text=${encodeURIComponent(
           isOwner
-            ? `Find ${shop.name} on Duuka — our code is ${shop.shopCode} — ${shopUrl}`
-            : `Found ${shop.name} on Duuka — shop code ${shop.shopCode} — ${shopUrl}`,
+            ? `Find ${shop.name} on Mudaala — our code is ${shop.shopCode} — ${shopUrl}`
+            : `Found ${shop.name} on Mudaala — shop code ${shop.shopCode} — ${shopUrl}`,
         )}`
       : null
 
@@ -141,7 +141,7 @@ export function ShopView({ id }: { id: string }) {
           the cover and the name is the signboard: serif, in the brand green,
           the way a market shop paints its name, with the painter's stroke
           under it. Guests are greeted the way East Africa greets — Karibu.
-          The photo meets the signboard through the Duka curve — the brand's
+          The photo meets the signboard through the Mudaala curve — the brand's
           sweeping edge. Text never overlays the photo — we do not control
           what sellers upload, so the name sits on our card where contrast is
           always ours to keep; the curve shapes the seam, it carries no text. */}
@@ -153,7 +153,16 @@ export function ShopView({ id }: { id: string }) {
               alt={`Photo of ${shop.name}`}
               className="h-36 w-full object-cover object-center sm:h-48"
             />
-            <DukaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
+            <MudaalaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
+            {/* The shop's face: a square avatar riding the seam, bottom-left
+                — the way a market stall's photo hangs over the counter edge.
+                Same image as the cover, so it lazy-loads from cache. */}
+            <img
+              src={shop.photoUrl}
+              alt=""
+              loading="lazy"
+              className="absolute -bottom-4 left-4 z-10 size-14 rounded-lg border border-border bg-card object-cover sm:-bottom-5 sm:left-5 sm:size-16"
+            />
           </div>
         ) : (
           // No photo yet: a flat green signboard with the shop's initial —
@@ -163,34 +172,38 @@ export function ShopView({ id }: { id: string }) {
             <span className="font-display text-6xl font-semibold text-primary-foreground sm:text-7xl">
               {shop.name.charAt(0).toUpperCase()}
             </span>
-            <DukaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
+            <MudaalaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
           </div>
         )}
         <div className="p-4 sm:p-5">
-          {/* A buyer entering someone's shop is a guest, and the greeting is
-              in the word East Africa actually uses. The owner doesn't greet
-              themselves — they get the mirror strip above instead. */}
-          {!isOwner ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/75">
-              Karibu · welcome
-            </p>
-          ) : null}
-          <h1 className="mt-0.5 font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
-            {shop.name}
-          </h1>
-          {/* The painter's stroke under a market signboard — drawn once on
-              open, then it just sits there, the way a good sign does. */}
-          <svg viewBox="0 0 150 8" className="mt-1.5 h-2 w-32 text-primary/60 sm:w-48" aria-hidden="true">
-            <path
-              d="M2 6 C 30 2.2, 58 1.4, 82 3.4 S 130 6.4, 148 3"
-              pathLength={1}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              className="sign-draw"
-            />
-          </svg>
+          {/* With an avatar overlapping the seam, the signboard block is
+              indented to clear it — the name starts where the photo ends. */}
+          <div className={shop.photoUrl ? 'pl-[4.5rem] sm:pl-[5.5rem]' : undefined}>
+            {/* A buyer entering someone's shop is a guest, and the greeting is
+                in the word East Africa actually uses. The owner doesn't greet
+                themselves — they get the mirror strip above instead. */}
+            {!isOwner ? (
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/75">
+                Karibu · welcome
+              </p>
+            ) : null}
+            <h1 className="mt-0.5 font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
+              {shop.name}
+            </h1>
+            {/* The painter's stroke under a market signboard — drawn once on
+                open, then it just sits there, the way a good sign does. */}
+            <svg viewBox="0 0 150 8" className="mt-1.5 h-2 w-32 text-primary/60 sm:w-48" aria-hidden="true">
+              <path
+                d="M2 6 C 30 2.2, 58 1.4, 82 3.4 S 130 6.4, 148 3"
+                pathLength={1}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                className="sign-draw"
+              />
+            </svg>
+          </div>
 
           <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
             {shop.area || shop.county ? (
@@ -204,7 +217,7 @@ export function ShopView({ id }: { id: string }) {
               </span>
             ) : null}
             <span>
-              On Duuka since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+              On Mudaala since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
             </span>
             {shop.shopCode ? (
               <span className="font-mono text-[13px] font-semibold tracking-widest text-foreground/70">{shop.shopCode}</span>
@@ -303,7 +316,7 @@ export function ShopView({ id }: { id: string }) {
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold">Find this shop again</h2>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Scan the code, or type it into Duuka search like a till number.
+                Scan the code, or type it into Mudaala search like a till number.
               </p>
               <p className="mt-1 font-mono text-lg font-bold tracking-widest text-primary">{shop.shopCode}</p>
             </div>
@@ -356,7 +369,7 @@ export function ShopView({ id }: { id: string }) {
                 Print it and put it where customers stand. Anyone who scans lands right here — no typing, no searching.
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your code is <span className="font-mono font-semibold text-foreground">{shop.shopCode}</span> — it never changes, so old posters keep working. Customers can type it into the Duuka search, too.
+                Your code is <span className="font-mono font-semibold text-foreground">{shop.shopCode}</span> — it never changes, so old posters keep working. Customers can type it into the Mudaala search, too.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-2">
@@ -440,9 +453,9 @@ export function ShopView({ id }: { id: string }) {
             </Button>
           </div>
           <div className="mx-auto max-w-md overflow-hidden rounded-lg border-2 border-neutral-900 bg-white text-center">
-            {/* The paper carries the Duka curve too — this poster is the
+            {/* The paper carries the Mudaala curve too — this poster is the
                 brand's PHYSICAL surface. A shopper in the market should
-                recognize a Duuka poster from across the row, the same way
+                recognize a Mudaala poster from across the row, the same way
                 they recognize the app. The code itself stays black-on-white
                 above the band: the one number that must survive any printer
                 gets the most reliable ink. */}
@@ -463,11 +476,11 @@ export function ShopView({ id }: { id: string }) {
               </div>
               <p className="mt-3 font-mono text-3xl font-bold tracking-widest text-neutral-900">{shop.shopCode}</p>
               <p className="mt-1 text-xs uppercase tracking-wider text-neutral-500">Shop code</p>
-              <p className="mt-2 text-sm text-neutral-600">Can't scan? Type the code in Duuka search.</p>
+              <p className="mt-2 text-sm text-neutral-600">Can't scan? Type the code in Mudaala search.</p>
             </div>
-            <DukaCurve className="block h-6 w-full text-primary" />
+            <MudaalaCurve className="block h-6 w-full text-primary" />
             <div className="bg-primary px-8 pb-7 pt-2.5 text-primary-foreground">
-              <p className="text-base font-semibold">Scan to see our shop on Duuka</p>
+              <p className="text-base font-semibold">Scan to see our shop on Mudaala</p>
               <p className="mt-1.5 text-sm text-primary-foreground/85">Or call us: {shop.phone}</p>
             </div>
           </div>

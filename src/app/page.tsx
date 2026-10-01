@@ -21,7 +21,7 @@ export default function Home() {
           <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:text-left">
             <p className="flex items-center gap-1.5">
               <Store className="size-3.5" aria-hidden />
-              Duuka — discover offers and requests near you
+              Mudaala — discover offers and requests near you
             </p>
             <p>Local shops. Bigger opportunities. Every contact connects you directly.</p>
           </div>

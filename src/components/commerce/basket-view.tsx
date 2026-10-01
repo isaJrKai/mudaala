@@ -1,6 +1,6 @@
 'use client'
 
-// The basket view — the Duuka-native "checkout": one list per shop, and
+// The basket view — the Mudaala-native "checkout": one list per shop, and
 // sending it means opening WhatsApp with the whole list pre-written. No
 // payment, no order tracking, no login — the seller's WhatsApp inbox is the
 // order inbox, which is exactly where they already answer customers.
@@ -189,7 +189,7 @@ function BasketShopSection({
   const sendableLines = sendable.map(([, line]) => line)
   const subtotal = basketSubtotal(sendableLines)
 
-  // The subtotal flash — Duuka's answer to the ticker-tape cue: when the
+  // The subtotal flash — Mudaala's answer to the ticker-tape cue: when the
   // number moves because the buyer edited a quantity, it flashes green for
   // "went up" and the warm red for "went down", then settles. Direction,
   // read at a glance without parsing digits. WAAPI on a ref (no re-render,
@@ -265,7 +265,7 @@ function BasketShopSection({
                 {gone ? (
                   <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800">
                     <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
-                    {status === 'GONE' ? 'Removed from Duuka — take it off your list.' : 'No longer available — the seller may have sold out.'}
+                    {status === 'GONE' ? 'Removed from Mudaala — take it off your list.' : 'No longer available — the seller may have sold out.'}
                   </p>
                 ) : null}
               </div>

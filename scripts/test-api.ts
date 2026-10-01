@@ -1,5 +1,5 @@
 /**
- * Duuka — API behavior & security tests.
+ * Mudaala — API behavior & security tests.
  *
  * Tests observable outcomes and permission boundaries against the running dev
  * server, not implementation details. Run: npx tsx scripts/test-api.ts
@@ -125,7 +125,7 @@ async function main() {
     ok('login with unknown phone → same 401 message', ghost.status === 401 && ghost.json.error === wrongPw.json.error)
 
     const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
-    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('duuka_session'))
+    ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('mudaala_session'))
     ok('login returns sessionToken for the Bearer channel', typeof login.json?.sessionToken === 'string' && login.json.sessionToken.length > 0)
 
     const me = await call('GET', '/api/auth/me', undefined, alice)
@@ -399,7 +399,7 @@ async function main() {
     // Alice's profile was created in 3b, so it already carries a code.
     const profileState = await call('GET', '/api/profile', undefined, alice)
     const aliceCode = profileState.json?.profile?.shopCode
-    ok('profile exposes a DK-XXXX shop code', typeof aliceCode === 'string' && /^DK-\d{4}$/.test(aliceCode))
+    ok('profile exposes a MD-XXXX shop code', typeof aliceCode === 'string' && /^MD-\d{4}$/.test(aliceCode))
 
     // The code is a permanent identity: profile updates must never re-roll it.
     const update = await call('PUT', '/api/profile', {
@@ -441,7 +441,7 @@ async function main() {
       area: 'Westlands', phone: uniquePhone(),
       whatsapp: null, hours: null,
     }, cara)
-    ok('new profile gets a code at creation', caraProfile.status === 200 && /^DK-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
+    ok('new profile gets a code at creation', caraProfile.status === 200 && /^MD-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
     const doraProfile = await call('PUT', '/api/profile', {
       businessName: 'Twin Name Market',
       photoUrl: null, category: 'other', description: null, county: 'Nairobi',
@@ -505,12 +505,12 @@ async function main() {
       formSave.status === 200 && formSave.json?.profile?.lat === -1.288)
 
     // A seller WITHOUT a profile who shares their spot still gets a shop
-    // (create branch): account name as the shop name + a fresh DK code.
+    // (create branch): account name as the shop name + a fresh MD code.
     const nela: Jar = { cookie: '' }
     await register(nela, uniquePhone(), 'Nela Nearby', 'password789')
     const nelaLoc = await call('PUT', '/api/profile/location', { lat: 0.335, lng: 32.586 }, nela)
     ok('sharing a spot creates a minimal shop with a code',
-      nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^DK-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
+      nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^MD-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
 
     // Nearest sort — two shops ~570 km apart; the buyer's side of the story
     // must decide who comes first. Nairobi buyer → Alice; Kampala buyer → Nela.
@@ -547,7 +547,7 @@ async function main() {
     // The lookup is public — no jar, no cookie: buyers never sign in.
     const meProf = await call('GET', '/api/profile', undefined, alice)
     const realCode: string = meProf.json?.profile?.shopCode ?? ''
-    ok('profile exposes the seller shop code for the lookup tests', /^DK-\d{4}$/.test(realCode))
+    ok('profile exposes the seller shop code for the lookup tests', /^MD-\d{4}$/.test(realCode))
 
     const hit = await call('GET', `/api/shops/lookup?code=${encodeURIComponent(realCode)}`)
     ok('exact code resolves the right shop, anonymously',
@@ -565,7 +565,7 @@ async function main() {
     const used = new Set(taken.map((r) => r.shopCode as string))
     let unknown = ''
     for (let n = 0; n < 10_000; n++) {
-      const candidate = `DK-${String(n).padStart(4, '0')}`
+      const candidate = `MD-${String(n).padStart(4, '0')}`
       if (!used.has(candidate)) {
         unknown = candidate
         break
@@ -577,7 +577,7 @@ async function main() {
 
     const malformed = await call('GET', '/api/shops/lookup?code=AB-12')
     ok('malformed code → 400 with an honest hint',
-      malformed.status === 400 && typeof malformed.json?.error === 'string' && malformed.json.error.includes('DK-'))
+      malformed.status === 400 && typeof malformed.json?.error === 'string' && malformed.json.error.includes('MD-'))
 
     // Card-slim payload: contact details come later, from the shop page.
     ok('lookup payload carries no phone/whatsapp/password',

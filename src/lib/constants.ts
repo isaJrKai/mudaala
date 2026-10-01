@@ -1,4 +1,4 @@
-// Duuka — shared domain constants.
+// Mudaala — shared domain constants.
 // Single source of truth for both server validation and UI rendering.
 
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const

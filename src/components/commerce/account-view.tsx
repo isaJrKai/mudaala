@@ -230,7 +230,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           <Store className="size-4" aria-hidden /> My Shop
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          This is your space on Duuka — give it the name of your shop. Buyers see it on every listing you post.
+          This is your space on Mudaala — give it the name of your shop. Buyers see it on every listing you post.
         </p>
         {data?.profile?.shopCode ? (
           <p className="mt-1 text-xs text-muted-foreground">

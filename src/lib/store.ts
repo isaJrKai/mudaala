@@ -1,4 +1,4 @@
-// Duuka — client navigation + filter state.
+// Mudaala — client navigation + filter state.
 // Views are client-side (the product ships as a single route), synced to the
 // URL hash so the browser back button behaves as users expect.
 

@@ -26,7 +26,7 @@ import type { ShopChecklistT } from '@/lib/client'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 
-const DISMISS_KEY = 'duuka_shop_setup_dismissed'
+const DISMISS_KEY = 'mudaala_shop_setup_dismissed'
 
 // localStorage as an external store — server snapshot says "not dismissed",
 // which matches the post-hydration render (queries have not resolved yet).
@@ -96,7 +96,7 @@ export function ShopSetupDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-left">
             <Store className="size-5 shrink-0 text-primary" aria-hidden />
-            Welcome to Duuka, {firstName}
+            Welcome to Mudaala, {firstName}
           </DialogTitle>
           <DialogDescription className="text-left">
             Your shop space is ready — a place where buyers see everything you sell. Three quick things make buyers trust it:

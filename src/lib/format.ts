@@ -1,4 +1,4 @@
-// Duuka — display formatting helpers (client-safe).
+// Mudaala — display formatting helpers (client-safe).
 
 import { currencyDef, LISTING_ACTIVE_DAYS } from './constants'
 
@@ -75,8 +75,8 @@ export { LISTING_ACTIVE_DAYS }
 export function whatsappLink(phone: string, listingTitle: string, listingType: 'OFFER' | 'REQUEST'): string {
   const digits = phone.replace(/\D/g, '')
   const intro = listingType === 'OFFER'
-    ? `Hi, I saw your listing "${listingTitle}" on Duuka. Is it still available?`
-    : `Hi, about your request "${listingTitle}" on Duuka — can we talk?`
+    ? `Hi, I saw your listing "${listingTitle}" on Mudaala. Is it still available?`
+    : `Hi, about your request "${listingTitle}" on Mudaala — can we talk?`
   return `https://wa.me/${digits}?text=${encodeURIComponent(intro)}`
 }
 
@@ -102,12 +102,15 @@ export function normalizeShopName(name: string): string {
 
 // Shop-code canonicalizer, shared by the server (lookup API) and the client
 // (browse search detection). Buyers punch in a code like a mobile-money till
-// number — forgiving about case, spaces and dashes ("dk 2623", "DK-2623",
-// "dk2623" all work), but the match against the stored code stays EXACT, so
-// a mistyped number never lands on a stranger's shop. Lives in format.ts
-// because the client imports it and format.ts must stay server-free.
+// number — forgiving about case, spaces and dashes ("md 2623", "MD-2623",
+// "md2623" all work), but the match against the stored code stays EXACT, so
+// a mistyped number never lands on a stranger's shop. Both prefixes are
+// accepted and canonicalize to MD-: the digits ARE the identity, so a code
+// read off a pre-rename DK- poster still lands on the same shop. Lives in
+// format.ts because the client imports it and format.ts must stay
+// server-free.
 export function normalizeShopCode(raw: string): string | null {
   const compact = raw.replace(/[\s-]+/g, '').toUpperCase()
-  const match = /^DK(\d{4})$/.exec(compact)
-  return match ? `DK-${match[1]}` : null
+  const match = /^(?:DK|MD)(\d{4})$/.exec(compact)
+  return match ? `MD-${match[1]}` : null
 }

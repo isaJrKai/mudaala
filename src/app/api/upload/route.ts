@@ -1,4 +1,4 @@
-// Photo upload — the ONLY way images enter Duuka.
+// Photo upload — the ONLY way images enter Mudaala.
 // requireUser: uploads are a seller action, buyers never need this.
 // Trust is decided by magic bytes, never by the filename a client claims —
 // "evil.png" that is really text (or worse) is rejected before it is written.

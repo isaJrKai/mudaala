@@ -9,7 +9,7 @@ const geistSans = Geist({
 });
 
 // The display serif — shop names, the printed poster, brand moments.
-// A market shop's name on a painted signboard is serif; Duuka should read
+// A market shop's name on a painted signboard is serif; Mudaala should read
 // the same way. Body text stays Geist: serif is for display sizes only.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -22,10 +22,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Duuka — Trade locally, discover more",
+  title: "Mudaala — Trade locally, discover more",
   description:
-    "Duuka connects local buyers and sellers: find OFFERs and REQUESTs near you, compare prices and quantities, and contact sellers or buyers directly on WhatsApp or by phone.",
-  keywords: ["Duuka", "marketplace", "local commerce", "Uganda", "Tanzania", "offer", "request"],
+    "Mudaala connects local buyers and sellers: find OFFERs and REQUESTs near you, compare prices and quantities, and contact sellers or buyers directly on WhatsApp or by phone.",
+  keywords: ["Mudaala", "marketplace", "local commerce", "Uganda", "Tanzania", "offer", "request"],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },

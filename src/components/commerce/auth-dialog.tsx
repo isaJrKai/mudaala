@@ -24,7 +24,7 @@ export function AuthDialog() {
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           {/* The one brand moment in the dialog: the shop-serif welcome. */}
-          <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Duuka</DialogTitle>
+          <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
           <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
         </DialogHeader>
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register')}>

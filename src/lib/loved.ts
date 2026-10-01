@@ -1,4 +1,4 @@
-// Duuka — the buyer's shortlist: things you loved while browsing, kept the
+// Mudaala — the buyer's shortlist: things you loved while browsing, kept the
 // same place the basket lives — on this phone, no account (rule 1).
 //
 //   • A heart is "I want to find this again", a softer intent than the
@@ -13,7 +13,7 @@
 
 import { useSyncExternalStore } from 'react'
 
-const STORAGE_KEY = 'duuka.loved.v1'
+const STORAGE_KEY = 'mudaala.loved.v1'
 const MAX_LOVED = 40
 
 const EMPTY: string[] = []

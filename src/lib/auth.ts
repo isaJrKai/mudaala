@@ -1,4 +1,4 @@
-// Duuka — authentication & session management.
+// Mudaala — authentication & session management.
 // scrypt (node:crypto) for password hashing — no extra dependencies.
 // Sessions are opaque random tokens stored server-side.
 //
@@ -15,7 +15,7 @@ import { cookies, headers } from 'next/headers'
 import { db } from '@/lib/db'
 import type { User } from '@prisma/client'
 
-const SESSION_COOKIE = 'duuka_session'
+const SESSION_COOKIE = 'mudaala_session'
 const SESSION_DAYS = 30
 
 export function hashPassword(password: string): string {

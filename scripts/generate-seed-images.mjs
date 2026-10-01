@@ -1,5 +1,5 @@
 /**
- * Generates realistic seed photos for Duuka fixtures into public/uploads/seed/.
+ * Generates realistic seed photos for Mudaala fixtures into public/uploads/seed/.
  * Product photos: one per seeded listing. Shop photos: one per seeded shop.
  * Run: node scripts/generate-seed-images.mjs
  */
