@@ -34,8 +34,16 @@ if [ "$HTTP" = "201" ]; then
 elif [ "$HTTP" = "422" ]; then
   echo "Repo ${GH_USER}/${REPO_NAME} already exists — continuing"
 else
-  echo "Unexpected API response (HTTP $HTTP):"; cat /tmp/mudaala-repo.json; echo
-  exit 1
+  # 403 = token can't create repos. That's fine if the repo already exists
+  # (created manually) and the token has Contents write — verify via GET.
+  EXISTS=$(api -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${GH_USER}/${REPO_NAME}")
+  if [ "$EXISTS" = "200" ]; then
+    echo "Repo ${GH_USER}/${REPO_NAME} already exists (creation skipped: token lacks Administration) — continuing"
+  else
+    echo "Cannot create repo (HTTP $HTTP) and repo does not exist (GET $EXISTS):"
+    cat /tmp/mudaala-repo.json; echo
+    exit 1
+  fi
 fi
 
 git remote remove origin 2>/dev/null || true
