@@ -5,10 +5,13 @@
 // DUAL TRANSPORT (why two ways to send the same token):
 // The preview/sandbox UI can run inside a cross-origin iframe. Browsers drop
 // SameSite=Lax cookies there, and SameSite=None cookies require HTTPS+Secure —
-// which plain-http sandboxes cannot use either. So the token ALSO travels in
-// the Authorization: Bearer header, persisted client-side. Routes never care
-// which channel carried the token: getSessionUser() tries the cookie first,
-// then the header.
+// which plain-http sandboxes cannot use either. So the token can ALSO travel
+// in the Authorization: Bearer header.
+//
+// BUT the Bearer channel is an opt-in compatibility feature, not a right:
+// AUTH_BEARER_FALLBACK=1 turns it on (dev, preview, sandbox). Production sets
+// nothing and gets the httpOnly cookie ONLY — a stolen-URL token cannot ride
+// an Authorization header there, and logout revokes exactly the cookie session.
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { cookies, headers } from 'next/headers'
@@ -70,6 +73,9 @@ export async function clearSessionCookie(): Promise<void> {
   store.set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
 }
 
+// Bearer fallback is explicitly opt-in per environment. Nothing set (and
+// anything other than "1") means cookie-only — the production posture.
+
 export function extractBearerToken(header: string | null): string | null {
   if (!header) return null
   const match = /^Bearer\s+(.+)$/i.exec(header.trim())
@@ -77,10 +83,14 @@ export function extractBearerToken(header: string | null): string | null {
 }
 
 /** The token for the CURRENT request, from either channel. Used by logout so a
- *  Bearer-only client (cookie blocked) can still revoke exactly its session. */
+ *  Bearer-only client (cookie blocked) can still revoke exactly its session.
+ *  When the fallback is disabled, the Authorization header is ignored. */
 export async function getCurrentSessionToken(): Promise<string | null> {
   const [store, hdrs] = await Promise.all([cookies(), headers()])
-  return store.get(SESSION_COOKIE)?.value ?? extractBearerToken(hdrs.get('authorization'))
+  return (
+    store.get(SESSION_COOKIE)?.value ??
+    (process.env.AUTH_BEARER_FALLBACK === '1' ? extractBearerToken(hdrs.get('authorization')) : null)
+  )
 }
 
 export async function getSessionUser(): Promise<User | null> {
