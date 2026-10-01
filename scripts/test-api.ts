@@ -169,6 +169,48 @@ async function main() {
     ok('logout revokes the Bearer-only session too', bearerLogout.status === 200 && meAfterBearerLogout.json?.user === null)
   }
 
+  console.log('\n== 1c. Login rate limiting ==')
+  {
+    // A throwaway account (deleted right after) proves the lockout: 5 wrong
+    // passwords are allowed, the 6th attempt is 429 even with the RIGHT one.
+    const rlPhone = uniquePhone()
+    const rl: Jar = { cookie: '' }
+    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'password123')
+    ok('rate-limit fixture account created (precondition)', rlReg.status === 201)
+
+    let saw401 = 0
+    for (let i = 0; i < 5; i++) {
+      const wrong = await call('POST', '/api/auth/login', { phone: rlPhone, password: `wrong-attempt-${i}` })
+      if (wrong.status === 401) saw401++
+    }
+    ok('5 wrong attempts each get the normal 401', saw401 === 5)
+
+    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password123' })
+    ok('6th attempt locked out with 429 — even with the correct password', locked.status === 429)
+    ok('lockout message is friendly and human', typeof locked.json?.error === 'string' && locked.json.error.includes('wait'))
+
+    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password123' })
+    ok('local-format dialing of the same phone is locked too (normalization)', alsoLocked.status === 429)
+
+    // A DIFFERENT phone from the same IP is untouched — the lock is per phone.
+    const other = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
+    ok('other phones from the same IP still sign in (200)', other.status === 200)
+
+    // Success clears counters: a lockout-free phone can fail, succeed, and fail again.
+    const nakato = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'wrong-once' })
+    const nakatoOk = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
+    const nakatoFailAgain = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'wrong-again' })
+    ok(
+      'success resets the failure counter (fail→success→fail is still 401, not 429)',
+      nakato.status === 401 && nakatoOk.status === 200 && nakatoFailAgain.status === 401,
+    )
+
+    // Cleanup the throwaway so the fixture stays clean.
+    const rlMe = await call('GET', '/api/auth/me', undefined, rl)
+    const rlUser = rlMe.json?.user
+    if (rlUser) await db.user.delete({ where: { id: rlUser.id } })
+  }
+
   console.log('\n== 2. Listing creation & validation ==')
   {
     const anon = await call('POST', '/api/listings', validListing)
