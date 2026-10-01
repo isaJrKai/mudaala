@@ -609,3 +609,20 @@ Work Log:
 
 Stage Summary:
 - GitHub is now the real backup: origin/main = full recovered Mudaala (home dashboard, real WhatsApp logos, mockup poster, Uganda-only), old history preserved on backup/task24-history. Future rule: push at the end of EVERY task, no exceptions.
+
+---
+Task ID: 29
+Agent: main (Super Z)
+Task: Dead code deep clean (user: "LOOK INTO APP FOR SCRAP AND DEAD CODE. DO A CLEANING").
+
+Work Log:
+- Built scripts/deadcode-scan.ts (cross-file usage scanner: exports with zero external references, whole files never imported, console/debug leftovers, TODO markers). knip crashed (oxc-parser ArrayBuffer allocation) and depcheck had false positives (@tailwindcss/postcss, tw-animate-css are used via config/CSS import); the custom scanner covers what matters for this tree.
+- Deleted 31 never-imported files. Mostly shadcn template components the app never adopted: accordion, alert, aspect-ratio, avatar, breadcrumb, calendar, carousel, collapsible, command, context-menu, drawer, form, hover-card, input-otp, menubar, navigation-menu, pagination, popover, progress, radio-group, resizable, scroll-area, sidebar, slider, sonner, switch, table + cascade deaths (toggle-group killed ui/toggle; ui/sidebar killed hooks/use-mobile and later sheet + tooltip, which only sidebar imported) + old-branding duka-curve.tsx (superseded by mudaala-curve.tsx). ui dir: 48 -> 17 files.
+- Unexported 34 symbols that were only used inside their own module (admin, auth, basket, client, constants, format, geo, listings, loved, postgres-settings, price-trends, rate-limit, shop, validation, category-icons, listing-card, skeletons). Deleted 7 fully dead ones: clearBasket, DEFAULT_CURRENCY, formatDate, shopTradeLabel, countryNameOf, ShopUserRow, listingPhotosSchema.
+- Uninstalled 30 orphaned dependencies: 16 radix packages + react-tooltip, react-hook-form, react-day-picker, embla-carousel-react, cmdk, vaul, input-otp, react-resizable-panels, sonner, next-themes, react-icons, date-fns, docx (Task 24 one-off), bun-types. GOTCHA: @types/node had been arriving transitively and vanished with the uninstall (tsc broke on process/Buffer/node: imports everywhere) — re-pinned explicitly as devDep.
+- Removed 30 unreferenced files in public/uploads (old session photos; zero db references; recoverable from git history). Kept seed images.
+- Kept deliberately: layout viewport export (Next.js framework contract), shadcn sub-exports inside live ui files (anatomy compatibility for future shadcn updates), scripts/ one-off tools (worklog-documented recovery history), examples/ + mini-services/ (platform template), ui/toast system (app uses use-toast, NOT sonner — ui/sonner.tsx deleted instead).
+- Verification: tsc clean, eslint clean, rescan = zero dead files/symbols outside the intentional keeps, suite 202/202, cleanup restored 8/16, browse page + home render perfectly with 0 console errors (verify-cleanup-home.png).
+
+Stage Summary:
+- The app shed ~2 dozen template files and 30 packages it never used; every remaining export earns its keep or is a framework contract. 202/202 green, pushed to GitHub.
