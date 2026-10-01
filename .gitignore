@@ -57,3 +57,9 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Deployment guide + its generators hold LIVE SECRETS — never commit
+/download/
+/scripts/generate-deployment-guide.js
+/scripts/guide-lib.js
+/scripts/postprocess-guide.py
+/tool-results/

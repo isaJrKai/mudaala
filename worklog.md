@@ -489,3 +489,19 @@ Work Log:
 
 Stage Summary:
 - Hardening pass closed out: 8/8 items, 160/160 local, CI green on GitHub. Both branches at 6822b22 on origin.
+
+---
+Task ID: 24
+Agent: main (Super Z)
+Task: MUDAALA Deployment Guide (.docx) with live secrets wired in
+
+Work Log:
+- docx skill chain read in full (SKILL -> create route -> docx-js-core -> common-rules -> design-system R1/FG-1 -> toc.md -> report scene).
+- Built scripts/guide-lib.js (R1 cover recipe + calcTitleLayout/calcCoverSpacing verbatim) and scripts/generate-deployment-guide.js (10 chapters, 2 tables, code blocks, systemd unit, nginx, cron, backups, troubleshooting).
+- Real values wired into Chapter 4 + verify commands: ADMIN_PHONES=0753824458,0759882817; CRON_SECRET=...0957.LOL; SETTINGS_ENC_KEY=ffb76e...0b55; AUTH_BEARER_FALLBACK + RATE_LIMIT_* documented as DO NOT SET in production.
+- add_toc_placeholders.py --auto (exit 0, 13 entries); postprocess-guide.py strips empty pgNumType + patches footer PAGE \\* arabic; postcheck.py 8/9, 0 errors (1 intentional line-spacing warning: 276 code/table vs 312 prose).
+- Visual QA via LibreOffice PDF render: cover, TOC, env table (header repeats across pages), code blocks all correct; trailing PageBreak after TOC removed to kill double-break blank page.
+- SECURITY: guide + generator scripts contain live secrets -> gitignored (/download/, scripts/generate-deployment-guide.js, guide-lib.js, postprocess-guide.py, tool-results/); docx moved deps -> devDependencies.
+
+Stage Summary:
+- download/mudaala-deployment-guide.docx (11 pages) delivered, local only, never pushed. Repo changes: .gitignore additions + docx devDep only.
