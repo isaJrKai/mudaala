@@ -188,6 +188,18 @@
   animation: heart-pop 340ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* The seller's "it worked" number: the expiry label of a freshly refreshed
+   listing flashes green, then eases back to its settled muted color — the
+   same cue family as the buyer's subtotal flash, mirrored onto the seller's
+   one number that moves. Color only, remounted via key so it replays. */
+@keyframes flash-good {
+  0%, 55% { color: var(--primary); }
+  100% { color: var(--muted-foreground); }
+}
+.flash-good {
+  animation: flash-good 900ms ease-out both;
+}
+
 /* Touch screens: slightly thicker icon strokes read better at small sizes
    (fat fingers, cheap panels, sunlight). CSS presentation properties beat
    the SVG stroke-width attribute, so one rule covers every lucide icon and
@@ -207,6 +219,10 @@
     transition: none;
   }
   .heart-pop {
+    animation: none;
+  }
+  /* Color-only: the state change stays, the fade away is dropped. */
+  .flash-good {
     animation: none;
   }
   .press,

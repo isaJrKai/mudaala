@@ -693,6 +693,25 @@ async function main() {
     const carolNotif = afterRead.json.notifications[0]
     const bobMark = await call('POST', `/api/notifications/mark-read?ids=${carolNotif.id}`, undefined, bob)
     ok('mark-read on foreign notification is a no-op (200 but no effect)', bobMark.status === 200)
+
+    // Clear (delete) — the destructive sibling of mark-read: read keeps
+    // history, clear removes rows for good. UI confirms before calling.
+    const anonClear = await call('DELETE', '/api/notifications?ids=all')
+    ok('clear notifications without sign-in → 401', anonClear.status === 401)
+
+    const carolCount = afterRead.json.notifications.length
+    const bobClearAll = await call('DELETE', '/api/notifications?ids=all', undefined, bob)
+    ok('another user clearing their own alerts is 200', bobClearAll.status === 200)
+    const afterForeignClear = await call('GET', '/api/notifications', undefined, ss)
+    ok("another user's clear-all never touches my alerts", afterForeignClear.json.notifications.length === carolCount && carolCount > 0)
+
+    const clearMalformed = await call('DELETE', '/api/notifications', undefined, ss)
+    ok('clear without ids parameter → 400', clearMalformed.status === 400)
+
+    const clearAll = await call('DELETE', '/api/notifications?ids=all', undefined, ss)
+    ok('clear all notifications works', clearAll.status === 200)
+    const afterClear = await call('GET', '/api/notifications', undefined, ss)
+    ok('notification list is empty after clear', afterClear.json.notifications.length === 0 && afterClear.json.unreadCount === 0)
   }
 
   console.log('\n== 8. Expiry is real ==')

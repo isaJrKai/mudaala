@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { useBellShake } from '@/hooks/use-bell-shake'
 import { basketCount, basketUnits, useBasket } from '@/lib/basket'
 import { BasketGlyph } from './basket-icon'
 
@@ -42,6 +43,7 @@ export function AppHeader() {
     refetchInterval: 60_000,
   })
   const unread = user ? (notificationsQuery.data?.unreadCount ?? 0) : 0
+  const bellRef = useBellShake(unread)
   const basket = useBasket()
   const basketItems = basketCount(basket)
   const units = basketUnits(basket)
@@ -92,6 +94,18 @@ export function AppHeader() {
     { name: 'notifications', label: 'Alerts', icon: <Bell className="size-4" aria-hidden />, badge: unread },
   ]
 
+  // The bell is the one nav icon with a body: when alerts exist it swings
+  // from its crown (see useBellShake). The ref wraps ONLY the glyph so the
+  // swing never moves the label or the badge.
+  function linkIcon(link: (typeof links)[number]) {
+    if (link.name !== 'notifications') return link.icon
+    return (
+      <span ref={bellRef} className="inline-flex" style={{ transformOrigin: '50% 18%' }}>
+        {link.icon}
+      </span>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b bg-card">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
@@ -114,7 +128,7 @@ export function AppHeader() {
                 view.name === link.name ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {link.icon}
+              {linkIcon(link)}
               {link.label}
               {link.badge ? (
                 <span className="ml-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-white">
