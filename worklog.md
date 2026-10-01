@@ -396,3 +396,19 @@ Work Log:
 
 Stage Summary:
 - Duuka has its first true signature element: one sweeping edge, one direction, three doorway surfaces (cover seam, lettermark, printed poster) and nowhere else — the restraint is the design. The poster now carries the brand into the physical market, which is the whole thesis of the app: a digital layer on top of a real one. Zero API/schema changes; 142/142; fixtures clean; browser-verified.
+
+---
+Task ID: 20
+Agent: main (Super Z)
+Task: "The curve, out loud" — user came back after Task 19 with "i am not seeing these changes bro. doSOMETHING". Task 19's restraint had hidden the curve on surfaces the user never looks at (a 20px cover seam, the no-photo lettermark fallback, the print dialog). The signature must live on the surfaces every user actually sees.
+
+Work Log:
+- Diagnosis first: opened the app cold and confirmed the complaint — browse opened straight into a search box, the header logo was a generic lucide Store icon, and both Task-19 curve instances were effectively invisible in normal use. The manifesto's #1 point (hero boundary, "remove the logo and still know This is Duka") was unmet.
+- DukaCurve extracted from shop-view.tsx into src/components/commerce/duka-curve.tsx (same path, same discipline doc comment, doorway list updated) so more than one surface can carry it.
+- THE FRONT-DOOR RIBBON (the poster move, browse page): a deep-green band that rises out of the page through the DukaCurve on top and flows back in through a second DukaCurve below — the same stroke used twice, framing the words. Geometry bonus discovered while building: top strip (text-primary) adds green thickness at the same rate the bottom strip (text-background) removes it, so the band reads as a constant-weight ribbon whose edges sweep in parallel — a painted banner, not a rectangle with rounded corners. Copy in Duuka voice: eyebrow "Karibu · Uganda · Tanzania", serif Fraunces h1 "The market, on your phone." (now the browse page's real h1), subline "Real shops post what they sell and what they need — you call or message them direct, no middleman." Compact on purpose (~150px mobile): search stays one glance away.
+- HEADER LETTERMARK: the generic Store icon replaced by the mark itself — green rounded chip with the white DukaCurve sweeping across its bottom (DukaCurve text-primary-foreground, aria-hidden; wordmark beside it carries the name). The brand signature now sits on every page at every scroll. Footer keeps its Store icon.
+- Restraint ledger unchanged: cards, forms, lists, chips, buttons, empty states, auth dialog stay rectangles. The ribbon appears exactly once in the app (browse doorway); the header chip is the miniature echo.
+- Verification: tsc + eslint clean; 142/142 test-api; cleanup-test-data (8 users / 16 listings); agent-browser E2E via :81 — DOM proof (h1 text, 2 ribbon svgs, header chip svg, eyebrow), visual proof mobile 390×844 + desktop 1440×900, shop-page regression (cover seam curve count = 1, owner strip/serif/stroke untouched), fresh-document error check = 0 (the 6 recorder entries are the known stale pre-fix setImmediate stacks). Screenshots: scripts/verify-curve20-browse-guest-mobile.png, verify-curve20-browse-desktop.png, verify-curve20-shop-seam.png.
+
+Stage Summary:
+- The curve is no longer an easter egg. The browse front door is now the poster: a green ribbon that rises and flows through the same sweeping stroke twice, carrying the market's thesis in serif. The header mark is the curve itself. One path, one direction, four doorway surfaces (browse ribbon, cover seam, lettermark, printed poster) and nowhere else. Zero API/schema changes; 142/142; fixtures clean; committed cfcb7ad.
