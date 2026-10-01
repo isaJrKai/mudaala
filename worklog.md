@@ -626,3 +626,19 @@ Work Log:
 
 Stage Summary:
 - The app shed ~2 dozen template files and 30 packages it never used; every remaining export earns its keep or is a framework contract. 202/202 green, pushed to GitHub.
+
+---
+Task ID: 30
+Agent: main (Super Z)
+Task: Diagnose and fix the GitHub Actions CI failure on main (user screenshot: "CI / verify failed" email).
+
+Work Log:
+- ci.yml (authored pre-Uganda, restored via c0bd29f) still had ADMIN_PHONES=+254712000001 (Kenya). Since the Uganda-only conversion, src/lib/admin.ts normalizes +256 only, so the seeded admin 0712000001 could never pass requireAdmin. Every deployment-settings assertion in section 9 of the suite dies with 403.
+- Built a faithful CI replay harness (rsync copy excluding node_modules/.next/.git/.env/db into ci-repro/, then ran the job's exact steps with the job's exact env values). GOTCHA: rsync --exclude upload is unanchored and silently excluded src/app/api/upload/ too, which made the harness report a phantom "Failed to find Server Action" 404 on uploads; rerun with anchored /upload and the phantom vanished.
+- Replay results: bun install / prisma db push / generate / seed / tsc / eslint all green; suite = 195 passed, 7 failed, every failure in section 9 (deployment settings). Rerun with ADMIN_PHONES=+256712000001 on a fresh server after cleanup-test-data: 202 passed, 0 failed. GOTCHA: two consecutive suite runs on one dev server trip the in-memory login IP limiter mid-suite (dora login throttled, crash at test-api.ts:539); restart server between runs.
+- Fixes: ci.yml ADMIN_PHONES +254712000001 -> +256712000001; ci.yml push trigger now filtered to branches [main] so the backup/task24-history archive branch never burns Actions minutes again; added .env.example (placeholders only) documenting the exact shape CI mirrors, with a .gitignore !.env.example exception.
+- Housekeeping: ci-repro harness deleted, real dev server restarted (probe 200), no reseed needed (replay used its own db).
+- Pushed 7bb4bdf, then polled the Actions API (PAT inline, never persisted): run completed success.
+
+Stage Summary:
+- CI on main is green again and the workflow can no longer drift from the Uganda-only reality silently: the admin env value, its documented meaning, and .env.example now agree. Lesson recorded: when replaying CI locally, anchor rsync excludes, and restart the server between suite runs to reset the login limiter.
