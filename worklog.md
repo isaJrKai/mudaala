@@ -475,3 +475,17 @@ Work Log:
 
 Stage Summary:
 - All 8 hardening items landed as separate commits on mudaala-redesign; UI untouched; 160/160 green. Chosen NOT to do: horizontally-shared rate-limit store (noted in lib for when it matters), rate-limit lockout of register per-phone (meaningless), removing scaffolding ui/ components that import kept deps, CI secrets hardened via GitHub Secrets (env is fixture-only, no real credentials).
+
+---
+Task ID: 23 (addendum)
+Agent: main (Super Z)
+Task: Hardening pass — verification after session gap; branch reconciliation
+
+Work Log:
+- Re-verified full green state post-checkpoint: tsc 0 errors, eslint clean, suite 160/160, cleanup restored fixtures (8 users / 16 listings).
+- Spot-checked all 8 implementations in tree: ADMIN_PHONES gate (lib/admin.ts), x-cron-secret fail-closed, rate-limit lib + login/register wiring, AUTH_BEARER_FALLBACK opt-in, ignoreBuildErrors:false, sharp WebP pipeline, ci.yml.
+- Platform between-turn sync had moved the 8 hardening commits onto main; mudaala-redesign left at 9de1abe (pre-hardening). Fast-forwarded mudaala-redesign to main (6822b22) and pushed — worklog claim "landed on mudaala-redesign" now true on both branches.
+- CI verified live: main runs completed success (tsc+lint+tests on GitHub); branch run queued on push.
+
+Stage Summary:
+- Hardening pass closed out: 8/8 items, 160/160 local, CI green on GitHub. Both branches at 6822b22 on origin.
