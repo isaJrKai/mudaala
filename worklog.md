@@ -335,3 +335,24 @@ Work Log:
 
 Stage Summary:
 - Alerts now have a body language: the bell swings from its crown when news arrives and when you arrive to news — and goes quiet the moment you've read up. Clearing is real (delete with an honest confirm) while mark-all-read keeps history. The seller side got the same three-way answer the buyer has had since Task 14/15: per-row action states that never grey out the whole panel, a spinner on the working button, a green flash on the expiry number that just moved, and press feedback on all 20+ seller controls. 142/142, tsc + eslint clean, browser-verified on both triggers, fixtures clean.
+
+---
+Task ID: 17
+Agent: main (Super Z)
+Task: Shop-as-account identity hero — from the user's ChatGPT concept board (user approved: "i like how you think, do it")
+
+Work Log:
+- Reviewed the user's 3-panel concept board (browse / shop page / QR poster). Matched it against the live app: concept already converged on our ListingBlock cards, palette (#18583B ≈ our primary), DK codes, QR poster. Adopted its best idea (shop-as-account) and rejected its two dishonest elements: ★4.8 fake reviews (collides with buyer-no-login + gaming risk) and auto opening-hours (stale "Open" destroys trust).
+- Serif display layer: Fraunces via next/font/google (layout.tsx, --font-fraunces) → @theme --font-display → font-display utility. Body stays Geist; serif only at display sizes (shop h1, poster h2, auth welcome).
+- Shop identity hero rebuilt (shop-view.tsx): full-width cover photo (h-36/h-48, object-cover; text never overlays seller photos), serif brand-green h1, location/hours line, trust chips (one green star "Phone confirmed" + quiet Complete-profile/listings/Since chips), description inline, Call shop (solid, press) + WhatsApp (outline, press).
+- Honesty engineering: serializer exposes phoneConfirmed ONLY when the displayed phone IS the seller's login line — !profile?.phone || samePhoneLine(profile.phone, user.phone) via phoneCandidates() overlap (lib/shop.ts + ShopPageData + client ShopInfo type). Chip renders only when true; no unverifiable "verified" claims.
+- Buyer bridge card ("Find this shop again"): QR + mono DK-code + "type it into Duuka search like a till number" + Copy button with Copied-check swap micro-feedback (1600ms revert) + Share on WhatsApp with buyer voice ("Found … shop code …"); owner keeps the poster tool instead — never two QRs on one page. Share text is audience-aware (owner "our code" / buyer "found").
+- Lettermark fallback: no photo → flat green signboard band with serif initial (designed, not broken).
+- Small doses: auth dialog welcome in serif green; footer line now "Local shops. Bigger opportunities. Every contact connects you directly."
+- Fixed pre-existing tsc failure in scripts/seed-notifications.ts (let user: User | null). Repo-wide tsc + eslint clean again.
+- Verification: 142/142 test-api, cleanup-test-data (8 shops / 16 listings intact), agent-browser E2E via :81: guest hero (mobile 375 + desktop 1440 screenshots), Copy→"Copied", hrefs pure tel:+256772123456 / wa.me / buyer share text, lettermark branch (temp-nulled Kampalamart photo → screenshot → restored exact seed value, API-verified), owner view (poster tool, no bridge). Console clean.
+- Screenshots: scripts/verify-shop-hero-guest-mobile.png, verify-shop-hero-guest-desktop.png, verify-shop-lettermark.png
+
+Stage Summary:
+- Shop page is now the seller's online home — signboard serif name, cover photo, honest trust chips, direct CTAs, till-number bridge. Zero schema changes; one derived boolean (phoneConfirmed) added to the shop payload. 142/142, tsc/eslint clean, committed 14963f6.
+- Deliberately NOT built from the concept: reviews/ratings (phase 2, needs honest identity), auto hours (only a seller-toggled state would be honest), marketing landing page (utility stays first).
