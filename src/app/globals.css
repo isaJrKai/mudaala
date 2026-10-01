@@ -202,6 +202,19 @@
   animation: flash-good 900ms ease-out both;
 }
 
+/* The signboard stroke: the painter's line under a market shop's name.
+   Draws in once when the shop page opens (pathLength normalized to 1 so
+   the dash math is independent of the SVG's rendered size), then sits
+   still — a sign is painted once, not forever animating. */
+@keyframes sign-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.sign-draw {
+  stroke-dasharray: 1;
+  animation: sign-draw 700ms cubic-bezier(0.23, 1, 0.32, 1) 350ms both;
+}
+
 /* Touch screens: slightly thicker icon strokes read better at small sizes
    (fat fingers, cheap panels, sunlight). CSS presentation properties beat
    the SVG stroke-width attribute, so one rule covers every lucide icon and
@@ -225,6 +238,10 @@
   }
   /* Color-only: the state change stays, the fade away is dropped. */
   .flash-good {
+    animation: none;
+  }
+  /* The stroke appears fully painted — dashoffset defaults to 0 — no draw-in. */
+  .sign-draw {
     animation: none;
   }
   .press,

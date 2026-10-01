@@ -10,7 +10,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, Check, Clock, Copy, MapPin, MessageCircle, Package, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Check, Clock, Copy, Eye, MapPin, MessageCircle, Pencil, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
@@ -110,11 +110,39 @@ export function ShopView({ id }: { id: string }) {
         <ArrowLeft className="size-4" aria-hidden /> Back to browse
       </Button>
 
+      {/* The owner's mirror: only the seller ever sees this strip. It names
+          the page as THEIRS — ownership is felt, not claimed — and answers
+          the first question every new seller has ("what do customers actually
+          get shown?") with a one-tap edit. A buyer loading this page never
+          knows the strip exists. */}
+      {isOwner ? (
+        <section
+          aria-label="Owner note"
+          className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-primary/20 bg-accent/60 px-3 py-2"
+        >
+          <Eye className="size-3.5 shrink-0 text-primary" aria-hidden />
+          <p className="min-w-0 flex-1 text-xs leading-snug">
+            <span className="font-semibold text-primary">This is your shop</span>
+            <span className="text-foreground/75"> — exactly what buyers see.</span>
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="press h-7 gap-1 border-primary/30 px-2.5 text-xs text-primary hover:bg-accent"
+            onClick={() => navigate({ name: 'account' })}
+          >
+            <Pencil className="size-3" aria-hidden /> Edit shop
+          </Button>
+        </section>
+      ) : null}
+
       {/* Shop identity — the seller's own space, named by them. The photo is
           the cover and the name is the signboard: serif, in the brand green,
-          the way a market shop paints its name. Text never overlays the photo
-          — we do not control what sellers upload, so the name sits on our card
-          where contrast is always ours to keep. */}
+          the way a market shop paints its name, with the painter's stroke
+          under it. Guests are greeted the way East Africa greets — Karibu.
+          Text never overlays the photo — we do not control what sellers
+          upload, so the name sits on our card where contrast is always ours
+          to keep. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
         {shop.photoUrl ? (
           <img
@@ -132,10 +160,32 @@ export function ShopView({ id }: { id: string }) {
           </div>
         )}
         <div className="p-4 sm:p-5">
-          <h1 className="font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
+          {/* A buyer entering someone's shop is a guest, and the greeting is
+              in the word East Africa actually uses. The owner doesn't greet
+              themselves — they get the mirror strip above instead. */}
+          {!isOwner ? (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/75">
+              Karibu · welcome
+            </p>
+          ) : null}
+          <h1 className="mt-0.5 font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
             {shop.name}
           </h1>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+          {/* The painter's stroke under a market signboard — drawn once on
+              open, then it just sits there, the way a good sign does. */}
+          <svg viewBox="0 0 150 8" className="mt-1.5 h-2 w-32 text-primary/60 sm:w-48" aria-hidden="true">
+            <path
+              d="M2 6 C 30 2.2, 58 1.4, 82 3.4 S 130 6.4, 148 3"
+              pathLength={1}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              className="sign-draw"
+            />
+          </svg>
+
+          <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
             {shop.area || shop.county ? (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3.5" aria-hidden /> {[shop.area, shop.county].filter(Boolean).join(', ')}
@@ -146,35 +196,67 @@ export function ShopView({ id }: { id: string }) {
                 <Clock className="size-3.5" aria-hidden /> {shop.hours}
               </span>
             ) : null}
+            <span>
+              On Duuka since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+            </span>
+            {shop.shopCode ? (
+              <span className="font-mono text-[13px] font-semibold tracking-widest text-foreground/70">{shop.shopCode}</span>
+            ) : null}
           </p>
 
-          {/* Honest trust chips — one green star ("Phone confirmed", which the
-              API only sets when the number shown IS the seller's login line),
-              the rest quiet facts. No "verified" claims we cannot back. */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            {shop.phoneConfirmed ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground ring-1 ring-inset ring-primary/15">
-                <BadgeCheck className="size-3.5" aria-hidden /> Phone confirmed
-              </span>
-            ) : null}
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              {shop.complete ? 'Complete shop profile' : `Profile ${doneCount}/5 complete`}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              <Package className="size-3" aria-hidden /> {shop.activeCount} {shop.activeCount === 1 ? 'listing' : 'listings'}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              <Store className="size-3" aria-hidden /> Since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
-            </span>
-          </div>
+          {/* Trust, not decoration: the one chip we can actually back — the
+              number on screen IS the seller's login line, the API guarantees
+              it. No "verified" claims we cannot prove. The profile-completeness
+              chip is the seller's to-do, so only the seller ever sees it. */}
+          {shop.phoneConfirmed || isOwner ? (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              {shop.phoneConfirmed ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground ring-1 ring-inset ring-primary/15">
+                  <BadgeCheck className="size-3.5" aria-hidden /> Phone confirmed
+                </span>
+              ) : null}
+              {isOwner ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {shop.complete ? 'Complete shop profile' : `Profile ${doneCount}/5 complete`}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
 
           {shop.description ? (
-            <p className="mt-3 text-sm leading-relaxed text-foreground/90">{shop.description}</p>
-          ) : null}
+            <p className="mt-3 max-w-prose text-[15px] leading-relaxed text-foreground/90">{shop.description}</p>
+          ) : isOwner ? (
+            // The empty slot works FOR the seller: it names what belongs here
+            // and hands them the pen. Not a blank gap, not a lorem ipsum.
+            <p className="mt-3 max-w-prose rounded-md border border-dashed border-primary/30 bg-accent/40 px-3 py-2 text-sm leading-relaxed text-foreground/80">
+              Add a few words about your shop — buyers read them right here.{' '}
+              <button
+                type="button"
+                className="press inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
+                onClick={() => navigate({ name: 'account' })}
+              >
+                <Pencil className="size-3" aria-hidden /> Write it
+              </button>
+            </p>
+          ) : (
+            // And no invented copy for buyers either — the honest line beats
+            // a template's polished filler.
+            <p className="mt-3 max-w-prose text-sm italic leading-relaxed text-muted-foreground/85">
+              The shop hasn't written its story yet — the listings and the phone line speak for it.
+            </p>
+          )}
         </div>
 
-        {/* Shop contact — the same direct links buyers get everywhere */}
+        {/* Shop contact — the same direct links buyers get everywhere. The
+            line above the buttons says WHY they exist: no middleman, no fees,
+            the shop's own phone rings. The owner reads the mirror version —
+            these are their incoming lines. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
+          <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
+            {isOwner
+              ? 'Buyers tap these — the call or message lands straight on your phone.'
+              : 'Straight to the shop, no middleman — your call or message rings their phone.'}
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(shop.phone)} aria-label={`Call ${shop.name}`}>
@@ -293,19 +375,35 @@ export function ShopView({ id }: { id: string }) {
 
       {/* The catalogue — every active listing this shop runs */}
       <section aria-label="Shop catalogue" className="space-y-3">
-        <h2 className="text-base font-semibold">
-          In this shop <span className="font-normal text-muted-foreground">({shop.activeCount})</span>
-        </h2>
+        <div>
+          <h2 className="text-base font-semibold">
+            In this shop <span className="font-normal text-muted-foreground">({shop.activeCount})</span>
+          </h2>
+          {/* The platform's position, in one line: we host, we never set the
+              price. It reads as trust in the seller, which is what makes a
+              buyer trust the seller. */}
+          <p className="mt-0.5 text-xs text-muted-foreground">Posted by the shop — prices are theirs, not ours.</p>
+        </div>
 
         {listings.length === 0 ? (
           <EmptyState
             icon={<Store />}
-            title="Nothing in the shop right now"
-            description="This shop has no active listings at the moment. Check back later, or browse other shops."
+            title="Nothing on the shelf right now"
+            description={
+              isOwner
+                ? 'Buyers are landing on this page — post a listing and the shelf fills up.'
+                : "The shop hasn't posted anything yet — the stall may still have stock. Call or WhatsApp above, or browse other shops."
+            }
             action={
-              <Button variant="outline" onClick={() => navigate({ name: 'browse' })}>
-                Browse all listings
-              </Button>
+              isOwner ? (
+                <Button className="press" onClick={() => navigate({ name: 'publish' })}>
+                  Post a listing
+                </Button>
+              ) : (
+                <Button variant="outline" className="press" onClick={() => navigate({ name: 'browse' })}>
+                  Browse all listings
+                </Button>
+              )
             }
           />
         ) : (

@@ -47,8 +47,8 @@ export function AuthDialog() {
 // Dev-only demo accounts: one tap fills real seeded credentials. They are the
 // fastest way for anyone reviewing the app to get in — no typing, no typos.
 const DEMO_ACCOUNTS = [
-  { label: 'Uganda — Kampalamart', phone: '0772123456' },
-  { label: 'Uganda — Nakato Fresh', phone: '0776123456' },
+  { label: 'Uganda — Nakato Fresh', phone: '0772123456' },
+  { label: 'Uganda — Kampalamart', phone: '0776123456' },
   { label: 'Tanzania — Dodoma Supplies', phone: '0712345678' },
 ] as const
 const DEMO_PASSWORD = 'demo1234'
