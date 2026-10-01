@@ -20,7 +20,7 @@ function adminPhoneSets(): string[][] {
     .map((entry) => phoneCandidates(entry))
 }
 
-export function isAdminPhone(phone: string): boolean {
+function isAdminPhone(phone: string): boolean {
   return adminPhoneSets().some((candidates) => candidates.includes(phone))
 }
 

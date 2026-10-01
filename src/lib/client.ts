@@ -16,7 +16,7 @@ export function storeSessionToken(token: string): void {
   }
 }
 
-export function getStoredSessionToken(): string | null {
+function getStoredSessionToken(): string | null {
   try {
     return localStorage.getItem(SESSION_TOKEN_KEY)
   } catch {
@@ -117,7 +117,7 @@ export interface BusinessProfileT {
   lng: number | null
 }
 
-export interface ListingOwner {
+interface ListingOwner {
   id: string
   name: string
   phone: string
@@ -199,7 +199,7 @@ export interface ShopChecklistT {
   whatsapp: boolean
 }
 
-export interface ShopInfo {
+interface ShopInfo {
   id: string
   name: string
   photoUrl: string | null
@@ -262,7 +262,7 @@ export interface HomeData {
   }
 }
 
-export interface PriceTrendSeries {
+interface PriceTrendSeries {
   category: string
   categoryLabel: string
   unit: string
@@ -276,7 +276,7 @@ export interface PriceTrendsData {
   minSample: number
 }
 
-export interface ApiErrorShape {
+interface ApiErrorShape {
   error: string
   fields?: Record<string, string>
 }

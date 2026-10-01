@@ -75,7 +75,7 @@ const priceSchema = z
 // Photo URLs — the upload API returns /uploads/<file>; external https URLs are
 // allowed so sellers can paste a link instead of uploading. The API route
 // sanitizes entries again (never trust the client array shape).
-export const photoUrlSchema = z
+const photoUrlSchema = z
   .string()
   .trim()
   .min(1)
@@ -83,7 +83,6 @@ export const photoUrlSchema = z
   .refine((v) => v.startsWith('/uploads/') || /^https:\/\/\S+$/i.test(v) || /^http:\/\/\S+$/i.test(v), {
     message: 'Invalid photo link',
   })
-export const listingPhotosSchema = z.array(photoUrlSchema).max(4, 'Up to 4 photos per listing')
 
 const quantitySchema = z
   .number({ message: 'Quantity must be a number' })

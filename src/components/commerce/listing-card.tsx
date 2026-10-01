@@ -53,7 +53,7 @@ function ListingPhoto({ listing, className }: { listing: Listing; className?: st
 }
 
 // A real discount exists only when the "was" price beats the current one.
-export function isDiscounted(listing: Pick<Listing, 'price' | 'compareAtPrice'>): boolean {
+function isDiscounted(listing: Pick<Listing, 'price' | 'compareAtPrice'>): boolean {
   return listing.price !== null && listing.compareAtPrice !== null && listing.compareAtPrice > listing.price
 }
 
@@ -115,7 +115,7 @@ export function HeartButton({
   )
 }
 
-export function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice'>): number | null {
+function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice'>): number | null {
   if (!isDiscounted(listing) || listing.price === null || listing.compareAtPrice === null) return null
   return Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)
 }

@@ -179,13 +179,9 @@ export function removeShop(shopId: string): void {
   commit({ shops, lines })
 }
 
-export function clearBasket(): void {
-  commit(EMPTY)
-}
-
 // ---- The order message: the actual "checkout". -----------------------------
 
-export function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
+function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
   const rows = lines.map((line) => {
     const qty = formatQuantity(line.qty, line.unit) ?? `${line.qty}`
     const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'

@@ -19,7 +19,7 @@ function prune(key: string, windowMs: number): number[] {
   return hits
 }
 
-export interface RateVerdict {
+interface RateVerdict {
   ok: boolean
   retryAfterSeconds: number
 }

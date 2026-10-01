@@ -76,7 +76,7 @@ export async function clearSessionCookie(): Promise<void> {
 // Bearer fallback is explicitly opt-in per environment. Nothing set (and
 // anything other than "1") means cookie-only — the production posture.
 
-export function extractBearerToken(header: string | null): string | null {
+function extractBearerToken(header: string | null): string | null {
   if (!header) return null
   const match = /^Bearer\s+(.+)$/i.exec(header.trim())
   return match ? match[1]!.trim() : null
@@ -106,7 +106,7 @@ export async function getSessionUser(): Promise<User | null> {
 }
 
 // Public shape — never leaks passwordHash.
-export interface PublicUser {
+interface PublicUser {
   id: string
   name: string
   phone: string

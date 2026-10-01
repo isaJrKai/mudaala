@@ -4,7 +4,7 @@
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const
 export type ListingType = (typeof LISTING_TYPES)[number]
 
-export const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED'] as const
+const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED'] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
 
 // Deliberate status transitions. Anything not listed here is forbidden —
@@ -16,7 +16,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<ListingStatus, ListingStatus[]> 
   ARCHIVED: ['ACTIVE'],
 }
 
-export interface CategoryDef {
+interface CategoryDef {
   key: string
   label: string
   examples: string
@@ -43,7 +43,7 @@ export function categoryLabel(key: string): string {
   return CATEGORIES.find((c) => c.key === key)?.label ?? key
 }
 
-export interface UnitDef {
+interface UnitDef {
   key: string
   label: string
 }
@@ -107,7 +107,7 @@ export const COUNTIES = COUNTRIES.flatMap((c) => [...c.locations]) as unknown as
 
 // Currencies — UGX is zero-decimal in everyday trade, so amounts are
 // whole numbers.
-export interface CurrencyDef {
+interface CurrencyDef {
   key: 'UGX'
   symbol: string
   zeroDecimal: boolean
@@ -122,7 +122,6 @@ export function currencyDef(key: string): CurrencyDef {
 }
 
 export const CURRENCY_KEYS = CURRENCIES.map((c) => c.key)
-export const DEFAULT_CURRENCY = 'UGX'
 
 // Time-dependent business rules (single source of truth).
 export const LISTING_ACTIVE_DAYS = 30

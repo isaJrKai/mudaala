@@ -13,7 +13,7 @@ import { db } from '@/lib/db'
 export const MIN_SAMPLE = 5
 
 // The Home chart window: the last 7 recorded days.
-export const TREND_DAYS = 7
+const TREND_DAYS = 7
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10)
@@ -83,13 +83,13 @@ export async function recordPriceSnapshots(): Promise<number> {
   return written
 }
 
-export interface TrendPoint {
+interface TrendPoint {
   date: string
   medianPrice: number
   sampleSize: number
 }
 
-export interface TrendSeries {
+interface TrendSeries {
   category: string
   categoryLabel: string
   unit: string
@@ -99,7 +99,7 @@ export interface TrendSeries {
 
 // The category a user cares about most: counted from what they post and what
 // they save — the two real signals the product already has.
-export function topCategories(
+function topCategories(
   ownListings: { category: string }[],
   savedSearchCategories: (string | null | undefined)[],
   limit = 3,
@@ -121,7 +121,7 @@ export function topCategories(
 // Preference 2: the combo with the most recorded sample across the window
 // (what the market actually speaks in), so saved-search-only categories still
 // get a line when data exists.
-export function pickUnitCurrency(
+function pickUnitCurrency(
   userCombos: { unit: string | null; currency: string }[],
   snapshotCombos: { unit: string; currency: string; sample: number }[],
 ): { unit: string; currency: string } | null {

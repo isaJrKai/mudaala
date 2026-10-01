@@ -39,11 +39,6 @@ export function formatDateTime(date: string | Date): string {
   return d.toLocaleString('en', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-export function formatDate(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
 export function timeAgo(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const seconds = Math.floor((Date.now() - d.getTime()) / 1000)
@@ -58,7 +53,7 @@ export function timeAgo(date: string | Date): string {
   return `${months} ${months === 1 ? 'month' : 'months'} ago`
 }
 
-export function daysLeft(expiresAt: string | Date): number {
+function daysLeft(expiresAt: string | Date): number {
   const d = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt
   return Math.max(0, Math.ceil((d.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
 }

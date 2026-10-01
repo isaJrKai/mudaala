@@ -60,7 +60,7 @@ export function isLoved(list: string[], listingId: string): boolean {
   return list.includes(listingId)
 }
 
-export type LoveResult = 'loved' | 'unloved' | 'full'
+type LoveResult = 'loved' | 'unloved' | 'full'
 
 /** Toggle one listing. Returns what happened so the UI can animate only a
  *  REAL love (the pop never fakes success) and explain the cap honestly. */

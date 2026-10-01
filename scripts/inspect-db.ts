@@ -9,8 +9,8 @@ async function main() {
   console.log(users.map((u) => u.phone).join(', '))
   const listings = await db.listing.count()
   console.log('listings:', listings)
-  const shops = await db.shop?.count?.()
-  console.log('shops:', shops)
+  const profiles = await db.businessProfile.count()
+  console.log('businessProfiles:', profiles)
 }
 
 main()

@@ -3,7 +3,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Restrained skeletons mirroring the listing card layout.
-export function ListingCardSkeleton() {
+function ListingCardSkeleton() {
   return (
     <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function ListingListSkeleton({ count = 5 }: { count?: number }) {
 
 // Block skeleton mirrors the grid card: photo area on top, three text lines
 // under it — same proportions so loading never shifts the layout.
-export function ListingBlockSkeleton() {
+function ListingBlockSkeleton() {
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
       <Skeleton className="aspect-[4/3] w-full rounded-none" />

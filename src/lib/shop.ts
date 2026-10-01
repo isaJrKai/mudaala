@@ -34,7 +34,7 @@ export function shopChecklistComplete(checklist: ShopChecklist): boolean {
   return Object.values(checklist).every(Boolean)
 }
 
-export interface ShopPageData {
+interface ShopPageData {
   shop: {
     id: string
     name: string
@@ -183,18 +183,3 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
   }
 }
 
-// The shop's trade line for the hero (e.g. "Fresh Produce · Kampala").
-export function shopTradeLabel(profile: Pick<BusinessProfile, 'category'> | null): string | null {
-  if (!profile?.category) return null
-  return categoryLabel(profile.category)
-}
-
-// Type helper used by the API route's user select — keeps the public shop
-// payload free of password hashes by construction.
-export type ShopUserRow = Pick<User, 'id' | 'name' | 'phone' | 'country' | 'createdAt'> & {
-  profile: BusinessProfile | null
-}
-
-export function countryNameOf(country: string): string {
-  return countryDef(country).name
-}

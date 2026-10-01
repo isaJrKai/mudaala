@@ -8,7 +8,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 import { db } from '@/lib/db'
 import type { PostgresConfig } from '@/lib/validation'
 
-export const POSTGRES_SETTING_KEY = 'postgres_config'
+const POSTGRES_SETTING_KEY = 'postgres_config'
 
 export type StoredPostgresConfig = PostgresConfig & { configuredAt?: string }
 
@@ -27,14 +27,14 @@ function settingsKey(): Buffer {
   return createHash('sha256').update(material).digest()
 }
 
-export function encryptSecret(plain: string): string {
+function encryptSecret(plain: string): string {
   const iv = randomBytes(12)
   const cipher = createCipheriv('aes-256-gcm', settingsKey(), iv)
   const ciphertext = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
   return `${ENC_PREFIX}${iv.toString('base64')}:${cipher.getAuthTag().toString('base64')}:${ciphertext.toString('base64')}`
 }
 
-export function decryptSecret(value: string): string {
+function decryptSecret(value: string): string {
   if (!value.startsWith(ENC_PREFIX)) return value
   const [, ivB64, tagB64, dataB64] = value.split(':')
   const decipher = createDecipheriv('aes-256-gcm', settingsKey(), Buffer.from(ivB64!, 'base64'))
@@ -85,7 +85,7 @@ export function hasEmbeddedPassword(connectionString: string): boolean {
   return /:[^:@/\s]+@/.test(connectionString)
 }
 
-export interface ParsedTarget {
+interface ParsedTarget {
   host: string
   port: number
 }
@@ -107,7 +107,7 @@ export function resolveTarget(config: StoredPostgresConfig): ParsedTarget | null
   return null
 }
 
-export interface TcpTestResult {
+interface TcpTestResult {
   ok: boolean
   latencyMs?: number
   message: string

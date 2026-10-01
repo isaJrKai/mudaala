@@ -1,7 +1,7 @@
 // Mudaala — distance math, shared by the server (nearest-first ordering) and
 // the client (distance chips on cards). Pure functions, no dependencies.
 
-export interface LatLng {
+interface LatLng {
   lat: number
   lng: number
 }
