@@ -457,3 +457,21 @@ Work Log:
 
 Stage Summary:
 - https://github.com/isaJrKai/mudaala (PRIVATE) is live: main = complete project, mudaala-redesign = the five-task redesign. Real data (.env, db/custom.db) absent from every commit. User advised to scope down or delete the chat-shared PAT.
+---
+Task ID: 23
+Agent: main (Super Z)
+Task: Hardening pass — 8 items, one commit each, tsc+eslint+test-api after every item, UI untouched
+
+Work Log:
+- 1 postgres settings (7bb2a14): requireAdmin gate from ADMIN_PHONES (any dial format, empty env fails closed); GET/PUT/DELETE/test all 403 non-admins; password + connectionString now AES-256-GCM encrypted at rest (SETTINGS_ENC_KEY, machine-local fallback), legacy plaintext still reads. +6 tests.
+- 2 cron sweep (404c67e): x-cron-secret header vs CRON_SECRET, timing-safe compare, 503 fail-closed when unset. +3 tests.
+- 3 rate limits (efed654): in-memory sliding window lib; login 5 failed/15min per phone (all dial formats one bucket, success clears) + 30/15min per IP; register 20/15min per IP; friendly 429 + Retry-After. Tests prove 5 wrongs→401, 6th→429 even correct pw, format-normalization not a bypass, other phones unaffected. +7 tests.
+- 4 Bearer fallback (d87203f): AUTH_BEARER_FALLBACK=1 opt-in; default = httpOnly cookie only. Proven live both ways.
+- 5 (c8216a1): ignoreBuildErrors false; production build passes strict with zero fixes.
+- 6 (2de291e): depcheck + grep-verified removal of 14 unused deps; build passes; scaffolding-imported deps kept; socket.io example noise ignored.
+- 7 (738225e): uploads now sharp-piped — EXIF rotate, fit 1200x1200, WebP q82, .webp always; decode-failure rejected 400. Tests upload 4000x3000 PNG and inspect the stored file. +3 tests. Dev .env raises per-IP caps so repeated suite runs don't trip prod defaults.
+- 8 (f24f238): .github/workflows/ci.yml — fresh sqlite + seed + dev server + tsc + eslint . + 160-test suite + cleanup on every push/PR; YAML validated, first real run on GitHub.
+- Suite now 160/160 (was 142); fixtures 8 users / 16 listings after every run; final push of branch done.
+
+Stage Summary:
+- All 8 hardening items landed as separate commits on mudaala-redesign; UI untouched; 160/160 green. Chosen NOT to do: horizontally-shared rate-limit store (noted in lib for when it matters), rate-limit lockout of register per-phone (meaningless), removing scaffolding ui/ components that import kept deps, CI secrets hardened via GitHub Secrets (env is fixture-only, no real credentials).
