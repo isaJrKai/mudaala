@@ -138,6 +138,37 @@ export function BasketView() {
   )
 }
 
+// The qty number answers the stepper itself: a small scale pulse on every
+// change, so the eye finds the number that just moved. WAAPI one-shot on a
+// ref — external-system mutation, no React state, no cascading render.
+function QtyNumber({ qty, title }: { qty: number; title: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const prevRef = useRef<number | null>(null)
+  useEffect(() => {
+    const prev = prevRef.current
+    prevRef.current = qty
+    if (prev === null || prev === qty) return
+    if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    ref.current?.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.25)', offset: 0.5 },
+        { transform: 'scale(1)' },
+      ],
+      { duration: 180, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+    )
+  }, [qty])
+  return (
+    <span
+      ref={ref}
+      className="inline-block min-w-6 text-center text-sm font-semibold"
+      aria-label={`Quantity of ${title}: ${qty}`}
+    >
+      {qty}
+    </span>
+  )
+}
+
 function BasketShopSection({
   shopId,
   shop,
@@ -157,6 +188,33 @@ function BasketShopSection({
   const sendable = statuses.isLoading ? entries : fresh
   const sendableLines = sendable.map(([, line]) => line)
   const subtotal = basketSubtotal(sendableLines)
+
+  // The subtotal flash — Duuka's answer to the ticker-tape cue: when the
+  // number moves because the buyer edited a quantity, it flashes green for
+  // "went up" and the warm red for "went down", then settles. Direction,
+  // read at a glance without parsing digits. WAAPI on a ref (no re-render,
+  // no state), guarded for reduced motion like every other mover here.
+  const subtotalRef = useRef<HTMLSpanElement>(null)
+  const prevAmountRef = useRef<number | null>(null)
+  const subtotalAmount = subtotal?.amount ?? null
+  useEffect(() => {
+    const prev = prevAmountRef.current
+    prevAmountRef.current = subtotalAmount
+    if (subtotalAmount === null || prev === null || prev === subtotalAmount) return
+    if (typeof window === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const el = subtotalRef.current
+    if (!el) return
+    const settle = getComputedStyle(el).color
+    const flash = subtotalAmount > prev ? '#047857' : 'var(--destructive)'
+    el.animate(
+      [
+        { color: flash, offset: 0 },
+        { color: flash, offset: 0.55 },
+        { color: settle, offset: 1 },
+      ],
+      { duration: 900, easing: 'ease-out' },
+    )
+  }, [subtotalAmount])
 
   return (
     <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Basket for ${shop.name}`}>
@@ -223,9 +281,7 @@ function BasketShopSection({
                 >
                   <Minus className="size-3.5" aria-hidden />
                 </Button>
-                <span className="min-w-6 text-center text-sm font-semibold" aria-label={`Quantity of ${line.title}: ${line.qty}`}>
-                  {line.qty}
-                </span>
+                <QtyNumber qty={line.qty} title={line.title} />
                 <Button
                   type="button"
                   variant="outline"
@@ -256,7 +312,7 @@ function BasketShopSection({
 
         {subtotal ? (
           <p className="text-sm">
-            <span className="font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
+            <span ref={subtotalRef} className="inline-block font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
             <span className="text-xs text-muted-foreground">estimate — the seller confirms the final total</span>
           </p>
         ) : null}

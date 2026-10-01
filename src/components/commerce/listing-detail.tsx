@@ -23,6 +23,7 @@ import {
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
+import { HeartButton } from './listing-card'
 import { useAppStore } from '@/lib/store'
 import { useAddToBasket, useAddedFlash } from './basket-view'
 import { TypeBadge, StatusBadge } from './badges'
@@ -148,6 +149,16 @@ export function ListingDetail({ id }: { id: string }) {
               </>
             ) : null}
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
+            {/* The heart lives with the price: "come back to this one" sits
+                right next to "this is what it costs". OFFERs only, like the
+                basket — a shortlist of things you can actually take. */}
+            {listing.type === 'OFFER' ? (
+              <HeartButton
+                listingId={listing.id}
+                title={listing.title}
+                className="ml-auto self-center"
+              />
+            ) : null}
           </div>
 
           {/* The buy action, next to the price where buy intent lives.

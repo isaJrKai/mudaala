@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, MapPin, Info } from 'lucide-react'
+import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, Heart, MapPin, Info } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,16 +10,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPost } from '@/lib/client'
-import type { ListingsPage, ShopLookupResponse } from '@/lib/client'
+import type { ListingsPage, ShopLookupResponse, ListingDetail as ListingDetailT, Listing, ListingShopOwner as ListingShopOwnerT } from '@/lib/client'
 import { normalizeShopName, normalizeShopCode } from '@/lib/format'
 import { haversineMeters, formatDistance } from '@/lib/geo'
 import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
+import { unlove, useLovedIds } from '@/lib/loved'
 import { useAddToBasket } from './basket-view'
-import { ListingBlock } from './listing-card'
+import { ListingBlock, HeartButton } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
+import { TriangleAlert } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Two shops can legally share a name — when they appear in the SAME feed,
 // suffix each with their area so buyers tap the right one. The shop's own
@@ -67,15 +70,21 @@ const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
 export function ListingsBrowse() {
   const { filters, setFilters, resetFilters, navigate } = useAppStore()
   const addToBasket = useAddToBasket()
+  const lovedIds = useLovedIds()
+  const [lovedOnly, setLovedOnly] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState(filters.q)
   const [nearMe, setNearMe] = useState<NearMeState>(NEARME_IDLE)
   const nearOn = nearMe.status === 'on' && nearMe.lat !== null && nearMe.lng !== null
 
-  // Debounced search input → store
+  // Debounced search input → store. Typing is a different intent than
+  // shortlisting, so it also steps out of Loved mode.
   useEffect(() => {
     const t = setTimeout(() => {
-      if (searchInput !== filters.q) setFilters({ q: searchInput })
+      if (searchInput !== filters.q) {
+        setFilters({ q: searchInput })
+        setLovedOnly(false)
+      }
     }, 350)
     return () => clearTimeout(t)
   }, [searchInput, filters.q, setFilters])
@@ -212,6 +221,30 @@ export function ListingsBrowse() {
           {nearMe.status === 'locating' ? 'Finding you…' : nearOn ? 'Near me ✓' : 'Near me'}
         </Button>
         <SaveSearchButton />
+        {/* Loved — the buyer's shortlist. Same family as Near me: an explicit
+            mode chip, count visible at a glance, pressed state unambiguous. */}
+        <Button
+          type="button"
+          size="sm"
+          variant={lovedOnly ? 'default' : 'outline'}
+          className="shrink-0 gap-1.5"
+          onClick={() => setLovedOnly((v) => !v)}
+          aria-pressed={lovedOnly}
+          aria-label={lovedOnly ? 'Showing your loved items' : `Show your loved items${lovedIds.length > 0 ? ` (${lovedIds.length})` : ''}`}
+        >
+          <Heart className={cn('size-3.5', lovedOnly && 'fill-current')} aria-hidden />
+          Loved
+          {lovedIds.length > 0 ? (
+            <span
+              className={cn(
+                'flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                lovedOnly ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary',
+              )}
+            >
+              {lovedIds.length}
+            </span>
+          ) : null}
+        </Button>
         {activeFilterCount > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
             <X className="size-3.5" aria-hidden /> Clear all
@@ -231,10 +264,17 @@ export function ListingsBrowse() {
 
       <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
 
-      {/* A typed DK code replaces the whole feed: the buyer is asking for ONE
-          shop, exactly like dialing a till number — show that shop, or say
-          plainly that the number didn't match. */}
-      {codeQuery !== '' ? (
+      {/* Loved mode replaces the whole feed — the buyer asked for their
+          shortlist, not the market. Explicit intent wins over every other
+          mode (search, filters, code punch all wait their turn). */}
+      {lovedOnly ? (
+        <LovedShelf
+          onOpen={(id) => navigate({ name: 'listing', id })}
+          onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+          onAdd={addToBasket}
+          onBrowse={() => setLovedOnly(false)}
+        />
+      ) : codeQuery !== '' ? (
         codeLookup.isLoading ? (
           <p className="text-sm text-muted-foreground" role="status">
             Finding the shop for {codeQuery}…
@@ -307,6 +347,125 @@ export function ListingsBrowse() {
           {data.pageCount > 1 ? (
             <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// The Loved shelf — the shortlist, rendered as the same photo-first blocks
+// as the feed. Every item is re-fetched from the public API when the shelf
+// opens (the heart stores only an id), so what the buyer sees is what is
+// really there right now: sold-out items say so instead of pretending.
+function LovedShelf({
+  onOpen,
+  onOpenShop,
+  onAdd,
+  onBrowse,
+}: {
+  onOpen: (id: string) => void
+  onOpenShop: (shopId: string) => void
+  // Same shape ListingBlock hands every caller — blocks may come back from
+  // the public detail endpoint, but the add contract stays the wide one.
+  onAdd: (listing: Listing & { user?: ListingShopOwnerT }) => boolean | void
+  onBrowse: () => void
+}) {
+  const lovedIds = useLovedIds()
+
+  const itemsQuery = useQuery({
+    queryKey: ['loved-items', lovedIds.join(',')],
+    enabled: lovedIds.length > 0,
+    retry: false,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const results = await Promise.all(
+        lovedIds.map(async (id) => {
+          try {
+            const res = await apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`)
+            return res.listing
+          } catch (err) {
+            // A 404 means the seller deleted it — a heart on a ghost is
+            // clutter that also eats a shortlist slot, so it unloves itself.
+            if (err instanceof Error && /404|does not exist|removed/i.test(err.message)) {
+              unlove(id)
+              return null
+            }
+            throw err
+          }
+        }),
+      )
+      return results.filter((l): l is ListingDetailT => l !== null)
+    },
+  })
+
+  if (lovedIds.length === 0) {
+    return (
+      <EmptyState
+        icon={<Heart />}
+        title="Nothing loved yet"
+        description="Tap the heart on any item and it waits here for later — like a name scribbled on a price list. It lives on this phone, just like the basket."
+        action={<Button onClick={onBrowse}>Browse listings</Button>}
+      />
+    )
+  }
+
+  if (itemsQuery.isLoading) {
+    return <ListingGridSkeleton />
+  }
+
+  if (itemsQuery.isError || !itemsQuery.data) {
+    return <ErrorState message="Could not load your loved items" onRetry={() => itemsQuery.refetch()} />
+  }
+
+  const items = itemsQuery.data
+  const available = items.filter((l) => l.status === 'ACTIVE')
+  const unavailable = items.filter((l) => l.status !== 'ACTIVE')
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground" role="status">
+        Your shortlist · {items.length} {items.length === 1 ? 'item' : 'items'}, newest first — lives on this phone
+      </p>
+
+      {available.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+          {available.map((listing) => (
+            <ListingBlock
+              key={listing.id}
+              listing={listing}
+              onOpen={onOpen}
+              onOpenShop={onOpenShop}
+              onAdd={onAdd}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* Honest shelf: what expired or sold out is said out loud, with the
+          one action that fixes it. */}
+      {unavailable.length > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3">
+          <p className="flex items-start gap-1.5 text-xs font-medium text-amber-800">
+            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            {unavailable.length === 1
+              ? '1 loved item is no longer available:'
+              : `${unavailable.length} loved items are no longer available:`}
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {unavailable.map((listing) => (
+              <li key={listing.id} className="flex items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => onOpen(listing.id)}
+                  className="min-w-0 flex-1 truncate text-left hover:underline"
+                >
+                  {listing.title}
+                </button>
+                <HeartButton listingId={listing.id} title={listing.title} className="size-7 shrink-0 border-0 bg-transparent hover:bg-transparent" />
+                <span className="shrink-0 text-xs text-amber-800">tap the heart to forget it</span>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
     </div>

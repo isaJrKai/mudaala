@@ -65,7 +65,9 @@
   --muted-foreground: oklch(0.51 0.014 90);
   --accent: oklch(0.94 0.025 150);            /* light green tint */
   --accent-foreground: oklch(0.34 0.07 155);
-  --destructive: oklch(0.577 0.215 27.325);
+  /* Warm brick red — earthy, not alarm-neon. Darker than the shadcn stock
+     value, so white badge text on it clears WCAG AA properly. */
+  --destructive: oklch(0.55 0.17 26);
   --border: oklch(0.906 0.008 85);
   --input: oklch(0.885 0.008 85);
   --ring: oklch(0.48 0.075 155);
@@ -99,7 +101,9 @@
   --muted-foreground: oklch(0.68 0.01 90);
   --accent: oklch(0.30 0.03 155);
   --accent-foreground: oklch(0.93 0.03 150);
-  --destructive: oklch(0.65 0.18 25);
+  /* Darkened just enough that white badge text on it clears WCAG AA
+     (4.63:1) — the stock-shadcn-style value sat at 3.62 and failed. */
+  --destructive: oklch(0.58 0.16 26);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.60 0.09 155);
@@ -171,12 +175,39 @@
   transform: scale(0.97);
 }
 
+/* The heart pop: one bounce on a REAL love (the caller remounts the icon
+   via key so the animation replays every time). Pure transform; fill color
+   still changes instantly without motion, so nothing depends on it. */
+@keyframes heart-pop {
+  0% { transform: scale(0.55); }
+  45% { transform: scale(1.28); }
+  70% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.heart-pop {
+  animation: heart-pop 340ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Touch screens: slightly thicker icon strokes read better at small sizes
+   (fat fingers, cheap panels, sunlight). CSS presentation properties beat
+   the SVG stroke-width attribute, so one rule covers every lucide icon and
+   every hand-drawn glyph that ships at stroke 2 — no component changes. */
+@media (pointer: coarse) {
+  .lucide,
+  svg[stroke-width="2"] {
+    stroke-width: 2.25px;
+  }
+}
+
 /* Reduced motion: keep the state change (fill jumps to its level, colors
    still ease), drop the movement and the press scale. Fewer and gentler,
    never broken. */
 @media (prefers-reduced-motion: reduce) {
   .basket-fill {
     transition: none;
+  }
+  .heart-pop {
+    animation: none;
   }
   .press,
   .press:active {
