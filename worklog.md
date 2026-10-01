@@ -576,3 +576,22 @@ Work Log:
 
 Stage Summary:
 - Mudaala is Uganda-only end to end and every WhatsApp contact carries the real logo. Commit e1bd3e1 on main (now ahead 5 of origin: 57453f3, f331a10, 4175508, f2eb692, e1bd3e1). Push still blocked on user PAT.
+
+---
+Task ID: 28
+Agent: main (Super Z)
+Task: Disaster recovery. User: "THE CHANGES WE HAD BUILT ON THE UI/UX ARE NOT THERE AT ALL, HAVE YOU LOST THEM?" Workspace had been reprovisioned from a Task-14-era platform snapshot.
+
+Work Log:
+- Impact assessment: current repo = fresh platform lineage (22 UUID commits, no remote). Named commits 57453f3/f331a10/4175508/f2eb692/e1bd3e1 (Tasks 25-27) unrecoverable as git objects; they were never pushed (push was blocked on user PAT, and the reprovision dropped the origin config entirely). worklog.md on disk ended at Task 14; home-view.tsx / brand-icons.tsx absent; 111 src files instead of 132.
+- Recovery source found: /tmp/my-project — a platform temp copy of the workspace dated Oct 1 14:53 (.initial_snapshot.json manifest present) holding the COMPLETE post-Task-27 state: full src tree (132 files), Task-27 worklog (104KB), Uganda-only seed + validation, updated schema/db, package-lock. rsync-restored everything except node_modules/.next/.zscripts/tool-results.
+- Snapshot hygiene: the temp copy had resurrected 4 dead Sep-29 components (country-picker, category-visual, seller-view, shop-image-picker) plus the old /api/me route (meUpdateSchema + User.currency no longer exist; nothing imports any of them). Deleted all 5 → tsc 0.
+- .env was never in any snapshot (both copies only had DATABASE_URL). Rebuilt: ADMIN_PHONES=+256712000001 (Uganda fixture admin per Task 27), fresh CRON_SECRET, fresh SETTINGS_ENC_KEY (AES-256-GCM settings key), AUTH_BEARER_FALLBACK=1. Untracked .env via git rm --cached (platform's initial commit had it tracked; only ever held DATABASE_URL so history stays clean) — .gitignore already covers .env*.
+- Deps + db: npm install against restored package.json, prisma db push, prisma generate, seed.ts (Uganda-only 8/16 + 2 saved searches). First suite run failed on stale data from an earlier crashed run (median tests polluted, check-name exclude broken) — full cleanup-test-data + server restart (in-memory login IP limiter) before rerun.
+- LESSON (repeat of Task 12's): untracked/unpushed work dies with the workspace. The entire Task 15-27 era survived ONLY because a platform temp copy happened to exist in /tmp. Push to GitHub is the real backup; PAT still pending from user.
+- LESSON 2: run cleanup-test-data between suite runs even when the run crashed mid-way — stale test listings shifted PriceSnapshot medians and broke shop check-name exclude (4 false failures).
+- Verification: tsc 0, eslint clean, suite 202/202 (expected count after Task 27's deliberate consolidation), cleanup restored 8/16, uploads webp residue deleted. Browser (1280x900): guest welcome view, sign-in dialog with Uganda copy ("Any Ugandan format works") + Gulu Agri Supplies fixture, signed-in home dashboard ("Good evening, Nakato", stats, best offers, 4 wa.me links / 4 real WhatsApp glyphs), My Business checklist 5/5 with MD-7273, shop page with WhatsApp glyph button, poster overlay = full mockup anatomy (mudaala header, QR with leaf badge, "Scan to shop on Mudaala", MD-7273 + SHOP CODE, call band "+256 772 123 456" + "Real shops, direct calls"). Screenshots: scripts/verify-restore-home.png, verify-restore-home-tab.png, verify-restore-home-signedin.png, verify-restore-shop.png, verify-restore-poster.png.
+- Committed c0bd29f on the new platform lineage (restore commit). No remote configured yet; push blocked until user supplies the PAT value.
+
+Stage Summary:
+- Nothing was lost after all: every UI/UX change (home dashboard, real WhatsApp logos, mockup poster, Uganda-only pivot) is restored and re-verified green at 202/202. The repo is a fresh lineage with the full state in c0bd29f; pushing it to GitHub the moment the user pastes their PAT so this can never happen again.
