@@ -1,0 +1,740 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useMemo, useState } from 'react'
+     4→import { useQuery, useQueryClient } from '@tanstack/react-query'
+     5→import { Search, SlidersHorizontal, Bookmark, X, ChevronLeft, ChevronRight, Hash, Heart, MapPin, Info } from 'lucide-react'
+     6→import { Input } from '@/components/ui/input'
+     7→import { Button } from '@/components/ui/button'
+     8→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+     9→import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+    10→import { Label } from '@/components/ui/label'
+    11→import { useToast } from '@/hooks/use-toast'
+    12→import { apiGet, apiPost } from '@/lib/client'
+    13→import type { ListingsPage, ShopLookupResponse, ListingDetail as ListingDetailT, Listing, ListingShopOwner as ListingShopOwnerT } from '@/lib/client'
+    14→import { normalizeShopName, normalizeShopCode } from '@/lib/format'
+    15→import { haversineMeters, formatDistance } from '@/lib/geo'
+    16→import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
+    17→import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
+    18→import { useSession } from '@/hooks/use-session'
+    19→import { unlove, useLovedIds } from '@/lib/loved'
+    20→import { useAddToBasket } from './basket-view'
+    21→import { ListingBlock, HeartButton } from './listing-card'
+    22→import { ListingGridSkeleton } from './skeletons'
+    23→import { EmptyState } from './empty-state'
+    24→import { TriangleAlert } from 'lucide-react'
+    25→import { cn } from '@/lib/utils'
+    26→
+    27→// Two shops can legally share a name — when they appear in the SAME feed,
+    28→// suffix each with their area so buyers tap the right one. The shop's own
+    29→// location wins (profile area → district), falling back to the listing's.
+    30→function computeShopLabels(items: ListingsPage['items'] | undefined): Map<string, string> {
+    31→  const labels = new Map<string, string>()
+    32→  if (!items) return labels
+    33→
+    34→  const ownerIdsByName = new Map<string, Set<string>>()
+    35→  for (const listing of items) {
+    36→    const owner = listing.user
+    37→    const name = owner?.profile?.businessName?.trim() || owner?.name
+    38→    if (!owner || !name) continue
+    39→    const key = normalizeShopName(name)
+    40→    const ids = ownerIdsByName.get(key) ?? new Set<string>()
+    41→    ids.add(owner.id)
+    42→    ownerIdsByName.set(key, ids)
+    43→  }
+    44→
+    45→  for (const listing of items) {
+    46→    const owner = listing.user
+    47→    const name = owner?.profile?.businessName?.trim() || owner?.name
+    48→    if (!owner || !name) continue
+    49→    const ids = ownerIdsByName.get(normalizeShopName(name))
+    50→    if (!ids || ids.size < 2) continue
+    51→    const area = owner.profile?.area || owner.profile?.county || listing.county
+    52→    labels.set(listing.id, area ? `${name} · ${area}` : name)
+    53→  }
+    54→  return labels
+    55→}
+    56→
+    57→// "Near me" state machine: idle → locating → on. Denied/unsupported falls
+    58→// back to idle with a gentle hint — browsing works fully without location.
+    59→type NearMeStatus = 'idle' | 'locating' | 'on' | 'denied'
+    60→
+    61→interface NearMeState {
+    62→  status: NearMeStatus
+    63→  lat: number | null
+    64→  lng: number | null
+    65→}
+    66→
+    67→const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
+    68→
+    69→// Browse — the primary user task: find who buys/sells what, nearby.
+    70→export function ListingsBrowse() {
+    71→  const { filters, setFilters, resetFilters, navigate } = useAppStore()
+    72→  const addToBasket = useAddToBasket()
+    73→  const lovedIds = useLovedIds()
+    74→  const [lovedOnly, setLovedOnly] = useState(false)
+    75→  const [showFilters, setShowFilters] = useState(false)
+    76→  const [searchInput, setSearchInput] = useState(filters.q)
+    77→  const [nearMe, setNearMe] = useState<NearMeState>(NEARME_IDLE)
+    78→  const nearOn = nearMe.status === 'on' && nearMe.lat !== null && nearMe.lng !== null
+    79→
+    80→  // Debounced search input → store. Typing is a different intent than
+    81→  // shortlisting, so it also steps out of Loved mode.
+    82→  useEffect(() => {
+    83→    const t = setTimeout(() => {
+    84→      if (searchInput !== filters.q) {
+    85→        setFilters({ q: searchInput })
+    86→        setLovedOnly(false)
+    87→      }
+    88→    }, 350)
+    89→    return () => clearTimeout(t)
+    90→  }, [searchInput, filters.q, setFilters])
+    91→
+    92→  // Location is requested ONLY on this tap — never on app open, so nobody is
+    93→  // greeted by a permission wall. Denial keeps the whole feed usable.
+    94→  function toggleNearMe() {
+    95→    if (nearMe.status === 'locating') return
+    96→    if (nearOn) {
+    97→      setNearMe(NEARME_IDLE)
+    98→      if (filters.sort === 'nearest') setFilters({ sort: 'newest' })
+    99→      return
+   100→    }
+   101→    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+   102→      setNearMe({ status: 'denied', lat: null, lng: null })
+   103→      return
+   104→    }
+   105→    setNearMe({ status: 'locating', lat: null, lng: null })
+   106→    navigator.geolocation.getCurrentPosition(
+   107→      (pos) => {
+   108→        setNearMe({ status: 'on', lat: pos.coords.latitude, lng: pos.coords.longitude })
+   109→        setFilters({ sort: 'nearest' })
+   110→      },
+   111→      () => setNearMe({ status: 'denied', lat: null, lng: null }),
+   112→      // Low accuracy is a feature: network positioning is faster and kinder
+   113→      // to cheap-phone batteries than GPS, and market-level blur is all the
+   114→      // "nearest first" ordering needs.
+   115→      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+   116→    )
+   117→  }
+   118→
+   119→  const query = filtersToQuery(filters)
+   120→  // A code-shaped query ("dk 2623", "DK-2623") is a till-number punch, not a
+   121→  // text search — canonicalize it and look the shop up directly. Anything
+   122→  // else keeps flowing through the normal listing search.
+   123→  const codeQuery = useMemo(() => (filters.q ? (normalizeShopCode(filters.q) ?? '') : ''), [filters.q])
+   124→  // Buyer coordinates ride on the URL (never persisted anywhere) and are part
+   125→  // of the cache key so toggling Near me refetches in the new order.
+   126→  const nearParams =
+   127→    nearOn && nearMe.lat !== null && nearMe.lng !== null ? `&lat=${nearMe.lat}&lng=${nearMe.lng}` : ''
+   128→  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+   129→    queryKey: ['listings', query, nearParams],
+   130→    queryFn: () => apiGet<ListingsPage>(`/api/listings?${query}${nearParams}`),
+   131→    placeholderData: (prev) => prev,
+   132→  })
+   133→
+   134→  const codeLookup = useQuery({
+   135→    queryKey: ['shop-code', codeQuery],
+   136→    queryFn: () => apiGet<ShopLookupResponse>(`/api/shops/lookup?code=${encodeURIComponent(codeQuery)}`),
+   137→    enabled: codeQuery !== '',
+   138→    // A code either exists or it doesn't — the first honest answer is final.
+   139→    retry: false,
+   140→  })
+   141→  const codeShop = codeQuery !== '' && codeLookup.data ? codeLookup.data.shop : null
+   142→
+   143→  const shopLabels = useMemo(() => computeShopLabels(data?.items), [data])
+   144→
+   145→  // Distance chips — computed from the same blurred coords the server used,
+   146→  // so the label a buyer reads always matches the order they see.
+   147→  const distanceLabels = useMemo(() => {
+   148→    const map = new Map<string, string>()
+   149→    if (!data || nearMe.lat === null || nearMe.lng === null) return map
+   150→    for (const listing of data.items) {
+   151→      const spot = listing.user?.profile
+   152→      if (!spot || spot.lat === null || spot.lng === null) continue
+   153→      map.set(listing.id, formatDistance(haversineMeters({ lat: nearMe.lat, lng: nearMe.lng }, { lat: spot.lat, lng: spot.lng })))
+   154→    }
+   155→    return map
+   156→  }, [data, nearMe.lat, nearMe.lng])
+   157→
+   158→  const activeFilterCount = [
+   159→    filters.type !== 'any' ? 1 : 0,
+   160→    filters.category !== 'any' ? 1 : 0,
+   161→    filters.county !== 'any' ? 1 : 0,
+   162→    filters.unit !== 'any' ? 1 : 0,
+   163→    filters.minPrice !== '' ? 1 : 0,
+   164→    filters.maxPrice !== '' ? 1 : 0,
+   165→  ].reduce<number>((a, b) => a + b, 0)
+   166→
+   167→  return (
+   168→    <div className="space-y-3">
+   169→      <div className="flex gap-2">
+   170→        <div className="relative flex-1">
+   171→          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+   172→          <Input
+   173→            type="search"
+   174→            placeholder="Search copper, flour, maize…"
+   175→            className="pl-9"
+   176→            value={searchInput}
+   177→            onChange={(e) => setSearchInput(e.target.value)}
+   178→            aria-label="Search listings"
+   179→          />
+   180→        </div>
+   181→        <Button
+   182→          type="button"
+   183→          variant="outline"
+   184→          onClick={() => setShowFilters(true)}
+   185→          className="shrink-0 gap-1.5 px-3"
+   186→          aria-label="Open filters"
+   187→        >
+   188→          <SlidersHorizontal className="size-4" aria-hidden />
+   189→          <span className="hidden sm:inline">Filters</span>
+   190→          {activeFilterCount > 0 ? (
+   191→            <span className="flex size-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+   192→              {activeFilterCount}
+   193→            </span>
+   194→          ) : null}
+   195→        </Button>
+   196→      </div>
+   197→
+   198→      {/* Active filter chips + sort */}
+   199→      <div className="flex items-center gap-2 overflow-x-auto scrollbar-slim pb-0.5">
+   200→        <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v as typeof filters.sort })}>
+   201→          <SelectTrigger size="sm" className="shrink-0 border-dashed text-muted-foreground" aria-label="Sort results">
+   202→            <SelectValue />
+   203→          </SelectTrigger>
+   204→          <SelectContent>
+   205→            <SelectItem value="newest">Newest first</SelectItem>
+   206→            {nearOn ? <SelectItem value="nearest">Nearest first</SelectItem> : null}
+   207→            <SelectItem value="price_asc">Price: low to high</SelectItem>
+   208→            <SelectItem value="price_desc">Price: high to low</SelectItem>
+   209→          </SelectContent>
+   210→        </Select>
+   211→        <Button
+   212→          type="button"
+   213→          size="sm"
+   214→          variant={nearOn ? 'default' : 'outline'}
+   215→          className="shrink-0 gap-1.5"
+   216→          onClick={toggleNearMe}
+   217→          disabled={nearMe.status === 'locating'}
+   218→          aria-pressed={nearOn}
+   219→        >
+   220→          <MapPin className="size-3.5" aria-hidden />
+   221→          {nearMe.status === 'locating' ? 'Finding you…' : nearOn ? 'Near me ✓' : 'Near me'}
+   222→        </Button>
+   223→        <SaveSearchButton />
+   224→        {/* Loved — the buyer's shortlist. Same family as Near me: an explicit
+   225→            mode chip, count visible at a glance, pressed state unambiguous. */}
+   226→        <Button
+   227→          type="button"
+   228→          size="sm"
+   229→          variant={lovedOnly ? 'default' : 'outline'}
+   230→          className="shrink-0 gap-1.5"
+   231→          onClick={() => setLovedOnly((v) => !v)}
+   232→          aria-pressed={lovedOnly}
+   233→          aria-label={lovedOnly ? 'Showing your loved items' : `Show your loved items${lovedIds.length > 0 ? ` (${lovedIds.length})` : ''}`}
+   234→        >
+   235→          <Heart className={cn('size-3.5', lovedOnly && 'fill-current')} aria-hidden />
+   236→          Loved
+   237→          {lovedIds.length > 0 ? (
+   238→            <span
+   239→              className={cn(
+   240→                'flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+   241→                lovedOnly ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary',
+   242→              )}
+   243→            >
+   244→              {lovedIds.length}
+   245→            </span>
+   246→          ) : null}
+   247→        </Button>
+   248→        {activeFilterCount > 0 ? (
+   249→          <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
+   250→            <X className="size-3.5" aria-hidden /> Clear all
+   251→          </Button>
+   252→        ) : null}
+   253→      </div>
+   254→
+   255→      {nearMe.status === 'denied' ? (
+   256→        <p
+   257→          role="status"
+   258→          className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+   259→        >
+   260→          <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+   261→          <span>Location is off — allow it when the browser asks and shops closest to you come first. You can still browse everything.</span>
+   262→        </p>
+   263→      ) : null}
+   264→
+   265→      <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
+   266→
+   267→      {/* Loved mode replaces the whole feed — the buyer asked for their
+   268→          shortlist, not the market. Explicit intent wins over every other
+   269→          mode (search, filters, code punch all wait their turn). */}
+   270→      {lovedOnly ? (
+   271→        <LovedShelf
+   272→          onOpen={(id) => navigate({ name: 'listing', id })}
+   273→          onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+   274→          onAdd={addToBasket}
+   275→          onBrowse={() => setLovedOnly(false)}
+   276→        />
+   277→      ) : codeQuery !== '' ? (
+   278→        codeLookup.isLoading ? (
+   279→          <p className="text-sm text-muted-foreground" role="status">
+   280→            Finding the shop for {codeQuery}…
+   281→          </p>
+   282→        ) : codeLookup.isError ? (
+   283→          <p
+   284→            role="status"
+   285→            className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
+   286→          >
+   287→            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+   288→            <span>
+   289→              {codeLookup.error instanceof Error
+   290→                ? codeLookup.error.message
+   291→                : 'Could not check that code — check the number with the shop.'}
+   292→            </span>
+   293→          </p>
+   294→        ) : codeShop ? (
+   295→          <div className="space-y-2">
+   296→            <p className="text-sm text-muted-foreground" role="status">
+   297→              Shop for code {codeQuery}
+   298→            </p>
+   299→            <ShopCodeCard shop={codeShop} onOpen={() => navigate({ name: 'shop', id: codeShop.id })} />
+   300→          </div>
+   301→        ) : null
+   302→      ) : isLoading ? (
+   303→        <ListingGridSkeleton />
+   304→      ) : isError ? (
+   305→        <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
+   306→      ) : data && data.items.length === 0 ? (
+   307→        <EmptyState
+   308→          icon={<Search />}
+   309→          title="No listings found"
+   310→          description={
+   311→            activeFilterCount > 0 || filters.q
+   312→              ? 'Nothing matches your current search and filters. Try fewer filters or a different word.'
+   313→              : 'There are no listings yet. Be the first to post what you sell or need.'
+   314→          }
+   315→          action={
+   316→            activeFilterCount > 0 || filters.q ? (
+   317→              <Button variant="outline" onClick={resetFilters}>
+   318→                Clear search & filters
+   319→              </Button>
+   320→            ) : (
+   321→              <Button onClick={() => navigate({ name: 'publish' })}>Post a listing</Button>
+   322→            )
+   323→          }
+   324→        />
+   325→      ) : data ? (
+   326→        <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
+   327→          <p className="text-sm text-muted-foreground" role="status">
+   328→            {data.total} {data.total === 1 ? 'listing' : 'listings'} found
+   329→            {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
+   330→          </p>
+   331→          {/* Blocks, not rows: photo-first cards in a grid are how a market
+   332→              feed should scan — four pictures beat four paragraphs. */}
+   333→          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+   334→            {data.items.map((listing) => (
+   335→              <ListingBlock
+   336→                key={listing.id}
+   337→                listing={listing}
+   338→                shopLabel={shopLabels.get(listing.id)}
+   339→                distanceLabel={distanceLabels.get(listing.id)}
+   340→                onOpen={(id) => navigate({ name: 'listing', id })}
+   341→                onOpenShop={(shopId) => navigate({ name: 'shop', id: shopId })}
+   342→                onAdd={addToBasket}
+   343→              />
+   344→            ))}
+   345→          </div>
+   346→
+   347→          {data.pageCount > 1 ? (
+   348→            <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
+   349→          ) : null}
+   350→        </div>
+   351→      ) : null}
+   352→    </div>
+   353→  )
+   354→}
+   355→
+   356→// The Loved shelf — the shortlist, rendered as the same photo-first blocks
+   357→// as the feed. Every item is re-fetched from the public API when the shelf
+   358→// opens (the heart stores only an id), so what the buyer sees is what is
+   359→// really there right now: sold-out items say so instead of pretending.
+   360→function LovedShelf({
+   361→  onOpen,
+   362→  onOpenShop,
+   363→  onAdd,
+   364→  onBrowse,
+   365→}: {
+   366→  onOpen: (id: string) => void
+   367→  onOpenShop: (shopId: string) => void
+   368→  // Same shape ListingBlock hands every caller — blocks may come back from
+   369→  // the public detail endpoint, but the add contract stays the wide one.
+   370→  onAdd: (listing: Listing & { user?: ListingShopOwnerT }) => boolean | void
+   371→  onBrowse: () => void
+   372→}) {
+   373→  const lovedIds = useLovedIds()
+   374→
+   375→  const itemsQuery = useQuery({
+   376→    queryKey: ['loved-items', lovedIds.join(',')],
+   377→    enabled: lovedIds.length > 0,
+   378→    retry: false,
+   379→    staleTime: 15_000,
+   380→    queryFn: async () => {
+   381→      const results = await Promise.all(
+   382→        lovedIds.map(async (id) => {
+   383→          try {
+   384→            const res = await apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`)
+   385→            return res.listing
+   386→          } catch (err) {
+   387→            // A 404 means the seller deleted it — a heart on a ghost is
+   388→            // clutter that also eats a shortlist slot, so it unloves itself.
+   389→            if (err instanceof Error && /404|does not exist|removed/i.test(err.message)) {
+   390→              unlove(id)
+   391→              return null
+   392→            }
+   393→            throw err
+   394→          }
+   395→        }),
+   396→      )
+   397→      return results.filter((l): l is ListingDetailT => l !== null)
+   398→    },
+   399→  })
+   400→
+   401→  if (lovedIds.length === 0) {
+   402→    return (
+   403→      <EmptyState
+   404→        icon={<Heart />}
+   405→        title="Nothing loved yet"
+   406→        description="Tap the heart on any item and it waits here for later — like a name scribbled on a price list. It lives on this phone, just like the basket."
+   407→        action={<Button onClick={onBrowse}>Browse listings</Button>}
+   408→      />
+   409→    )
+   410→  }
+   411→
+   412→  if (itemsQuery.isLoading) {
+   413→    return <ListingGridSkeleton />
+   414→  }
+   415→
+   416→  if (itemsQuery.isError || !itemsQuery.data) {
+   417→    return <ErrorState message="Could not load your loved items" onRetry={() => itemsQuery.refetch()} />
+   418→  }
+   419→
+   420→  const items = itemsQuery.data
+   421→  const available = items.filter((l) => l.status === 'ACTIVE')
+   422→  const unavailable = items.filter((l) => l.status !== 'ACTIVE')
+   423→
+   424→  return (
+   425→    <div className="space-y-3">
+   426→      <p className="text-sm text-muted-foreground" role="status">
+   427→        Your shortlist · {items.length} {items.length === 1 ? 'item' : 'items'}, newest first — lives on this phone
+   428→      </p>
+   429→
+   430→      {available.length > 0 ? (
+   431→        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+   432→          {available.map((listing) => (
+   433→            <ListingBlock
+   434→              key={listing.id}
+   435→              listing={listing}
+   436→              onOpen={onOpen}
+   437→              onOpenShop={onOpenShop}
+   438→              onAdd={onAdd}
+   439→            />
+   440→          ))}
+   441→        </div>
+   442→      ) : null}
+   443→
+   444→      {/* Honest shelf: what expired or sold out is said out loud, with the
+   445→          one action that fixes it. */}
+   446→      {unavailable.length > 0 ? (
+   447→        <div className="rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3">
+   448→          <p className="flex items-start gap-1.5 text-xs font-medium text-amber-800">
+   449→            <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+   450→            {unavailable.length === 1
+   451→              ? '1 loved item is no longer available:'
+   452→              : `${unavailable.length} loved items are no longer available:`}
+   453→          </p>
+   454→          <ul className="mt-1.5 space-y-1">
+   455→            {unavailable.map((listing) => (
+   456→              <li key={listing.id} className="flex items-center gap-2 text-sm">
+   457→                <button
+   458→                  type="button"
+   459→                  onClick={() => onOpen(listing.id)}
+   460→                  className="min-w-0 flex-1 truncate text-left hover:underline"
+   461→                >
+   462→                  {listing.title}
+   463→                </button>
+   464→                <HeartButton listingId={listing.id} title={listing.title} className="size-7 shrink-0 border-0 bg-transparent hover:bg-transparent" />
+   465→                <span className="shrink-0 text-xs text-amber-800">tap the heart to forget it</span>
+   466→              </li>
+   467→            ))}
+   468→          </ul>
+   469→        </div>
+   470→      ) : null}
+   471→    </div>
+   472→  )
+   473→}
+   474→
+   475→// The result of punching a DK code into search — one shop, whole card taps
+   476→// through, same affordance as a listing card. The code chip repeats so the
+   477→// buyer can confirm the number they typed matches the shop they got.
+   478→function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOpen: () => void }) {
+   479→  return (
+   480→    <button
+   481→      type="button"
+   482→      onClick={onOpen}
+   483→      className="flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+   484→      aria-label={`Open shop: ${shop.name}`}
+   485→    >
+   486→      {shop.photoUrl ? (
+   487→        <img src={shop.photoUrl} alt="" className="size-14 shrink-0 rounded-lg border object-cover" />
+   488→      ) : (
+   489→        <span className="flex size-14 shrink-0 items-center justify-center rounded-lg border bg-accent text-xl font-bold text-accent-foreground">
+   490→          {shop.name.charAt(0).toUpperCase()}
+   491→        </span>
+   492→      )}
+   493→      <span className="min-w-0 flex-1">
+   494→        <span className="block truncate font-semibold">{shop.name}</span>
+   495→        <span className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+   496→          <MapPin className="size-3.5 shrink-0" aria-hidden />
+   497→          {[shop.area, shop.county].filter(Boolean).join(', ') || 'Shop on Duuka'}
+   498→        </span>
+   499→        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+   500→          <Hash className="size-3" aria-hidden /> <span className="font-mono tracking-wide">{shop.shopCode}</span>
+   501→        </span>
+   502→      </span>
+   503→      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+   504→    </button>
+   505→  )
+   506→}
+   507→
+   508→function Pagination({ page, pageCount, onPage }: { page: number; pageCount: number; onPage: (p: number) => void }) {
+   509→  return (
+   510→    <nav className="flex items-center justify-center gap-2 pt-2" aria-label="Pagination">
+   511→      <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+   512→        <ChevronLeft className="size-4" aria-hidden /> Prev
+   513→      </Button>
+   514→      <span className="px-2 text-sm text-muted-foreground">
+   515→        {page} / {pageCount}
+   516→      </span>
+   517→      <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
+   518→        Next <ChevronRight className="size-4" aria-hidden />
+   519→      </Button>
+   520→    </nav>
+   521→  )
+   522→}
+   523→
+   524→function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+   525→  const { filters, setFilters } = useAppStore()
+   526→
+   527→  return (
+   528→    <Dialog open={open} onOpenChange={onOpenChange}>
+   529→      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
+   530→        <DialogHeader>
+   531→          <DialogTitle>Filters</DialogTitle>
+   532→          <DialogDescription>Narrow results by type, category, location and price.</DialogDescription>
+   533→        </DialogHeader>
+   534→        <div className="space-y-4">
+   535→          <div className="space-y-1.5">
+   536→            <Label>Type</Label>
+   537→            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Listing type">
+   538→              {(['any', 'OFFER', 'REQUEST'] as const).map((t) => (
+   539→                <Button
+   540→                  key={t}
+   541→                  type="button"
+   542→                  variant={filters.type === t ? 'default' : 'outline'}
+   543→                  size="sm"
+   544→                  onClick={() => setFilters({ type: t })}
+   545→                  aria-pressed={filters.type === t}
+   546→                >
+   547→                  {t === 'any' ? 'All' : t}
+   548→                </Button>
+   549→              ))}
+   550→            </div>
+   551→          </div>
+   552→
+   553→          <div className="space-y-1.5">
+   554→            <Label htmlFor="f-category">Category</Label>
+   555→            <Select value={filters.category} onValueChange={(v) => setFilters({ category: v })}>
+   556→              <SelectTrigger id="f-category">
+   557→                <SelectValue />
+   558→              </SelectTrigger>
+   559→              <SelectContent className="max-h-64">
+   560→                <SelectItem value="any">All categories</SelectItem>
+   561→                {CATEGORIES.map((c) => (
+   562→                  <SelectItem key={c.key} value={c.key}>
+   563→                    {c.label}
+   564→                  </SelectItem>
+   565→                ))}
+   566→              </SelectContent>
+   567→            </Select>
+   568→          </div>
+   569→
+   570→          <div className="space-y-1.5">
+   571→            <Label htmlFor="f-county">District / Region</Label>
+   572→            <Select value={filters.county} onValueChange={(v) => setFilters({ county: v })}>
+   573→              <SelectTrigger id="f-county">
+   574→                <SelectValue />
+   575→              </SelectTrigger>
+   576→              <SelectContent className="max-h-64">
+   577→                <SelectItem value="any">All districts</SelectItem>
+   578→                {COUNTIES.map((c) => (
+   579→                  <SelectItem key={c} value={c}>
+   580→                    {c}
+   581→                  </SelectItem>
+   582→                ))}
+   583→              </SelectContent>
+   584→            </Select>
+   585→          </div>
+   586→
+   587→          <div className="grid grid-cols-2 gap-3">
+   588→            <div className="space-y-1.5">
+   589→              <Label htmlFor="f-min">Min price</Label>
+   590→              <Input
+   591→                id="f-min"
+   592→                type="number"
+   593→                inputMode="numeric"
+   594→                min={0}
+   595→                value={filters.minPrice}
+   596→                onChange={(e) => setFilters({ minPrice: e.target.value })}
+   597→                placeholder="Any"
+   598→              />
+   599→            </div>
+   600→            <div className="space-y-1.5">
+   601→              <Label htmlFor="f-max">Max price</Label>
+   602→              <Input
+   603→                id="f-max"
+   604→                type="number"
+   605→                inputMode="numeric"
+   606→                min={0}
+   607→                value={filters.maxPrice}
+   608→                onChange={(e) => setFilters({ maxPrice: e.target.value })}
+   609→                placeholder="Any"
+   610→              />
+   611→            </div>
+   612→          </div>
+   613→
+   614→          <div className="space-y-1.5">
+   615→            <Label htmlFor="f-unit">Price unit</Label>
+   616→            <Select value={filters.unit} onValueChange={(v) => setFilters({ unit: v })}>
+   617→              <SelectTrigger id="f-unit">
+   618→                <SelectValue />
+   619→              </SelectTrigger>
+   620→              <SelectContent>
+   621→                <SelectItem value="any">Any unit</SelectItem>
+   622→                {UNITS.map((u) => (
+   623→                  <SelectItem key={u.key} value={u.key}>
+   624→                    per {u.label}
+   625→                  </SelectItem>
+   626→                ))}
+   627→              </SelectContent>
+   628→            </Select>
+   629→          </div>
+   630→        </div>
+   631→        <DialogFooter>
+   632→          <Button
+   633→            type="button"
+   634→            variant="ghost"
+   635→            onClick={() => {
+   636→              setFilters({ ...DEFAULT_FILTERS, q: filters.q, sort: filters.sort })
+   637→            }}
+   638→          >
+   639→            Reset
+   640→          </Button>
+   641→          <Button type="button" onClick={() => onOpenChange(false)}>
+   642→            Show results
+   643→          </Button>
+   644→        </DialogFooter>
+   645→      </DialogContent>
+   646→    </Dialog>
+   647→  )
+   648→}
+   649→
+   650→function SaveSearchButton() {
+   651→  const { filters } = useAppStore()
+   652→  const { user } = useSession()
+   653→  const setAuthOpen = useAppStore((s) => s.setAuthOpen)
+   654→  const { toast } = useToast()
+   655→  const queryClient = useQueryClient()
+   656→  const [open, setOpen] = useState(false)
+   657→  const [name, setName] = useState('')
+   658→  const [busy, setBusy] = useState(false)
+   659→
+   660→  function openDialog() {
+   661→    if (!user) {
+   662→      setAuthOpen(true)
+   663→      return
+   664→    }
+   665→    // Suggest an honest, readable name from current filters.
+   666→    const bits: string[] = []
+   667→    if (filters.type !== 'any') bits.push(filters.type === 'OFFER' ? 'Offers' : 'Requests')
+   668→    if (filters.category !== 'any') bits.push(CATEGORIES.find((c) => c.key === filters.category)?.label ?? filters.category)
+   669→    if (filters.county !== 'any') bits.push(filters.county)
+   670→    if (filters.q) bits.push(`"${filters.q}"`)
+   671→    setName(bits.join(' · ') || 'Everything')
+   672→    setOpen(true)
+   673→  }
+   674→
+   675→  async function save() {
+   676→    if (!name.trim()) return
+   677→    setBusy(true)
+   678→    try {
+   679→      await apiPost('/api/saved-searches', {
+   680→        name: name.trim(),
+   681→        query: {
+   682→          q: filters.q || undefined,
+   683→          type: filters.type !== 'any' ? filters.type : undefined,
+   684→          category: filters.category !== 'any' ? filters.category : undefined,
+   685→          county: filters.county !== 'any' ? filters.county : undefined,
+   686→          unit: filters.unit !== 'any' ? filters.unit : undefined,
+   687→          minPrice: filters.minPrice !== '' ? Number(filters.minPrice) : undefined,
+   688→          maxPrice: filters.maxPrice !== '' ? Number(filters.maxPrice) : undefined,
+   689→        },
+   690→      })
+   691→      await queryClient.invalidateQueries({ queryKey: ['saved-searches'] })
+   692→      toast({ title: 'Search saved', description: 'You will get alerts when new listings match.' })
+   693→      setOpen(false)
+   694→    } catch (err) {
+   695→      toast({ title: 'Could not save search', description: err instanceof Error ? err.message : undefined, variant: 'destructive' })
+   696→    } finally {
+   697→      setBusy(false)
+   698→    }
+   699→  }
+   700→
+   701→  return (
+   702→    <>
+   703→      <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={openDialog}>
+   704→        <Bookmark className="size-3.5" aria-hidden /> Save this search
+   705→      </Button>
+   706→      <Dialog open={open} onOpenChange={setOpen}>
+   707→        <DialogContent className="sm:max-w-sm">
+   708→          <DialogHeader>
+   709→            <DialogTitle>Save this search</DialogTitle>
+   710→            <DialogDescription>We will alert you when new listings match these filters.</DialogDescription>
+   711→          </DialogHeader>
+   712→          <div className="space-y-1.5">
+   713→            <Label htmlFor="ss-name">Search name</Label>
+   714→            <Input id="ss-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+   715→          </div>
+   716→          <DialogFooter>
+   717→            <Button type="button" onClick={save} disabled={busy || !name.trim()}>
+   718→              {busy ? 'Saving…' : 'Save search'}
+   719→            </Button>
+   720→          </DialogFooter>
+   721→        </DialogContent>
+   722→      </Dialog>
+   723→    </>
+   724→  )
+   725→}
+   726→
+   727→export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+   728→  return (
+   729→    <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
+   730→      <p className="text-sm font-medium">{message}</p>
+   731→      <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
+   732→      {onRetry ? (
+   733→        <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+   734→          Try again
+   735→        </Button>
+   736→      ) : null}
+   737→    </div>
+   738→  )
+   739→}
+   740→

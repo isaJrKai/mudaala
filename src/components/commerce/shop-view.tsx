@@ -19,6 +19,7 @@ import { telLink, whatsappLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { useAddToBasket } from './basket-view'
+import { DukaCurve } from './duka-curve'
 import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -478,23 +479,6 @@ export function ShopView({ id }: { id: string }) {
         </div>
       ) : null}
     </div>
-  )
-}
-
-// The Duka curve — the brand's sweeping edge, the one shape that belongs to
-// no template. It appears ONLY on doorway surfaces (shop cover photo,
-// lettermark signboard, printed poster) and NEVER on functional ones (cards,
-// forms, lists stay rectangles — a signature that shows up everywhere is
-// just decoration again). One path, one direction — the colored mass sits
-// low on the left and sweeps up to the right — so every surface carries the
-// same edge. Filled with currentColor: text-card where the seam meets the
-// identity card, text-primary where it meets the printed band. Pure paint —
-// no text rides on it, nothing animates, aria-hidden everywhere.
-function DukaCurve({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 10" preserveAspectRatio="none" className={className} aria-hidden="true">
-      <path d="M0 7.2 C 26 8.8, 58 2.6, 100 1.6 L 100 10 L 0 10 Z" fill="currentColor" />
-    </svg>
   )
 }
 

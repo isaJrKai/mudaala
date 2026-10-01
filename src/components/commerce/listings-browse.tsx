@@ -21,6 +21,7 @@ import { useAddToBasket } from './basket-view'
 import { ListingBlock, HeartButton } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
+import { DukaCurve } from './duka-curve'
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -166,6 +167,28 @@ export function ListingsBrowse() {
 
   return (
     <div className="space-y-3">
+      {/* The front door — the poster, translated into the app. One green
+          ribbon that rises out of the page through the curve on top and
+          flows back in below: the same stroke, twice, framing the words.
+          This is the surface every buyer lands on, so it carries the brand
+          the way the printed poster does in the market. Compact on purpose:
+          the search stays one glance away. */}
+      <section aria-labelledby="browse-heading">
+        <DukaCurve className="block h-5 w-full text-primary sm:h-6" />
+        <div className="bg-primary px-5 py-4 text-primary-foreground sm:px-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
+            Karibu · Uganda · Tanzania
+          </p>
+          <h1 id="browse-heading" className="mt-1 font-display text-[22px] font-semibold leading-tight tracking-tight sm:text-3xl">
+            The market, on your phone.
+          </h1>
+          <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
+            Real shops post what they sell and what they need — you call or message them direct, no middleman.
+          </p>
+        </div>
+        <DukaCurve className="block h-5 w-full text-background sm:h-6" />
+      </section>
+
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />

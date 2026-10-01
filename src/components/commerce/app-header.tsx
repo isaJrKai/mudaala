@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Store, Search, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
+import { Search, PlusCircle, Tag, Bell, Bookmark, Settings, LogOut, User } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { apiGet } from '@/lib/client'
@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useBellShake } from '@/hooks/use-bell-shake'
 import { basketCount, basketUnits, useBasket } from '@/lib/basket'
 import { BasketGlyph } from './basket-icon'
+import { DukaCurve } from './duka-curve'
 
 // How full the basket icon looks, as a fraction of the basket body. A sqrt
 // curve so the FIRST item is already clearly visible (~27% of the body) and
@@ -110,8 +111,11 @@ export function AppHeader() {
     <header className="sticky top-0 z-40 border-b bg-card">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
         <button type="button" onClick={() => navigate({ name: 'browse' })} className="flex items-center gap-2" aria-label="Duuka home">
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Store className="size-4" aria-hidden />
+          {/* The mark IS the curve — no generic icon. Green chip, white sweep:
+              the same stroke the poster carries into the market, sitting in
+              the header on every page. Wordmark beside it carries the name. */}
+          <span className="relative flex size-7 items-center justify-center overflow-hidden rounded-md bg-primary">
+            <DukaCurve className="absolute inset-x-0 bottom-0 block h-2.5 w-full text-primary-foreground" />
           </span>
           <span className="text-[15px] font-semibold tracking-tight">Duuka</span>
         </button>
