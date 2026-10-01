@@ -140,23 +140,29 @@ export function ShopView({ id }: { id: string }) {
           the cover and the name is the signboard: serif, in the brand green,
           the way a market shop paints its name, with the painter's stroke
           under it. Guests are greeted the way East Africa greets — Karibu.
-          Text never overlays the photo — we do not control what sellers
-          upload, so the name sits on our card where contrast is always ours
-          to keep. */}
+          The photo meets the signboard through the Duka curve — the brand's
+          sweeping edge. Text never overlays the photo — we do not control
+          what sellers upload, so the name sits on our card where contrast is
+          always ours to keep; the curve shapes the seam, it carries no text. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
         {shop.photoUrl ? (
-          <img
-            src={shop.photoUrl}
-            alt={`Photo of ${shop.name}`}
-            className="h-36 w-full object-cover object-center sm:h-48"
-          />
+          <div className="relative">
+            <img
+              src={shop.photoUrl}
+              alt={`Photo of ${shop.name}`}
+              className="h-36 w-full object-cover object-center sm:h-48"
+            />
+            <DukaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
+          </div>
         ) : (
           // No photo yet: a flat green signboard with the shop's initial —
-          // a designed, honest placeholder, not a broken-looking gap.
-          <div className="flex h-36 w-full items-center justify-center bg-primary sm:h-44" aria-hidden>
+          // a designed, honest placeholder, not a broken-looking gap. Same
+          // curve at the seam, so the doorway keeps its shape either way.
+          <div className="relative flex h-36 w-full items-center justify-center bg-primary sm:h-44" aria-hidden>
             <span className="font-display text-6xl font-semibold text-primary-foreground sm:text-7xl">
               {shop.name.charAt(0).toUpperCase()}
             </span>
+            <DukaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
           </div>
         )}
         <div className="p-4 sm:p-5">
@@ -432,26 +438,37 @@ export function ShopView({ id }: { id: string }) {
               <X className="size-4" aria-hidden /> Close
             </Button>
           </div>
-          <div className="mx-auto max-w-md rounded-lg border-2 border-neutral-900 p-8 text-center">
-            {shop.photoUrl ? (
-              <img src={shop.photoUrl} alt="" className="mx-auto size-24 rounded-lg border border-neutral-300 object-cover" />
-            ) : (
-              <span className="mx-auto flex size-24 items-center justify-center rounded-lg border border-neutral-300 text-3xl font-bold text-neutral-800">
-                {shop.name.charAt(0).toUpperCase()}
-              </span>
-            )}
-            <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-neutral-900">{shop.name}</h2>
-            {shop.area || shop.county ? (
-              <p className="mt-1 text-sm text-neutral-600">{[shop.area, shop.county].filter(Boolean).join(', ')}</p>
-            ) : null}
-            <div className="mx-auto mt-6 w-fit bg-white p-3">
-              {shopUrl ? <QRCode value={shopUrl} size={200} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
+          <div className="mx-auto max-w-md overflow-hidden rounded-lg border-2 border-neutral-900 bg-white text-center">
+            {/* The paper carries the Duka curve too — this poster is the
+                brand's PHYSICAL surface. A shopper in the market should
+                recognize a Duuka poster from across the row, the same way
+                they recognize the app. The code itself stays black-on-white
+                above the band: the one number that must survive any printer
+                gets the most reliable ink. */}
+            <div className="p-8 pb-6">
+              {shop.photoUrl ? (
+                <img src={shop.photoUrl} alt="" className="mx-auto size-24 rounded-lg border border-neutral-300 object-cover" />
+              ) : (
+                <span className="mx-auto flex size-24 items-center justify-center rounded-lg border border-neutral-300 text-3xl font-bold text-neutral-800">
+                  {shop.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-neutral-900">{shop.name}</h2>
+              {shop.area || shop.county ? (
+                <p className="mt-1 text-sm text-neutral-600">{[shop.area, shop.county].filter(Boolean).join(', ')}</p>
+              ) : null}
+              <div className="mx-auto mt-6 w-fit bg-white p-3">
+                {shopUrl ? <QRCode value={shopUrl} size={200} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
+              </div>
+              <p className="mt-3 font-mono text-3xl font-bold tracking-widest text-neutral-900">{shop.shopCode}</p>
+              <p className="mt-1 text-xs uppercase tracking-wider text-neutral-500">Shop code</p>
+              <p className="mt-2 text-sm text-neutral-600">Can't scan? Type the code in Duuka search.</p>
             </div>
-            <p className="mt-5 text-base font-semibold text-neutral-900">Scan to see our shop on Duuka</p>
-            <p className="mt-3 font-mono text-3xl font-bold tracking-widest text-neutral-900">{shop.shopCode}</p>
-            <p className="mt-1 text-xs uppercase tracking-wider text-neutral-500">Shop code</p>
-            <p className="mt-2 text-sm text-neutral-600">Can't scan? Type the code in Duuka search.</p>
-            <p className="mt-6 text-sm text-neutral-600">Or call us: {shop.phone}</p>
+            <DukaCurve className="block h-6 w-full text-primary" />
+            <div className="bg-primary px-8 pb-7 pt-2.5 text-primary-foreground">
+              <p className="text-base font-semibold">Scan to see our shop on Duuka</p>
+              <p className="mt-1.5 text-sm text-primary-foreground/85">Or call us: {shop.phone}</p>
+            </div>
           </div>
           <div className="no-print mx-auto max-w-md pt-4">
             <Button className="w-full gap-1.5" onClick={() => window.print()}>
@@ -461,6 +478,23 @@ export function ShopView({ id }: { id: string }) {
         </div>
       ) : null}
     </div>
+  )
+}
+
+// The Duka curve — the brand's sweeping edge, the one shape that belongs to
+// no template. It appears ONLY on doorway surfaces (shop cover photo,
+// lettermark signboard, printed poster) and NEVER on functional ones (cards,
+// forms, lists stay rectangles — a signature that shows up everywhere is
+// just decoration again). One path, one direction — the colored mass sits
+// low on the left and sweeps up to the right — so every surface carries the
+// same edge. Filled with currentColor: text-card where the seam meets the
+// identity card, text-primary where it meets the printed band. Pure paint —
+// no text rides on it, nothing animates, aria-hidden everywhere.
+function DukaCurve({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 10" preserveAspectRatio="none" className={className} aria-hidden="true">
+      <path d="M0 7.2 C 26 8.8, 58 2.6, 100 1.6 L 100 10 L 0 10 Z" fill="currentColor" />
+    </svg>
   )
 }
 
