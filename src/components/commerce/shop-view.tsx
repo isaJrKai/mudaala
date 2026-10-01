@@ -10,7 +10,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, Clock, Hash, MapPin, MessageCircle, Package, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Check, Clock, Copy, MapPin, MessageCircle, Package, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
@@ -29,6 +29,9 @@ export function ShopView({ id }: { id: string }) {
   const { user, isLoading: sessionLoading } = useSession()
   const addToBasket = useAddToBasket()
   const [posterOpen, setPosterOpen] = useState(false)
+  // Copy-the-code feedback: the button itself becomes the receipt — it swaps
+  // to a check + "Copied" for a beat, the same swap pattern as Add to basket.
+  const [copied, setCopied] = useState(false)
   // The QR encodes an absolute URL, which only exists in the browser.
   // useSyncExternalStore gives '' during SSR/hydration and the real origin
   // after mount — hydration-safe without setState-in-effect (the origin of a
@@ -74,12 +77,31 @@ export function ShopView({ id }: { id: string }) {
   const whatsappNumber = shop.whatsapp ?? shop.phone
   const doneCount = Object.values(shop.checklist).filter(Boolean).length
   const isOwner = !sessionLoading && user?.id === shop.id
-  // Owner's WhatsApp broadcast: opens WhatsApp with the message pre-written
-  // (wa.me with no recipient → the seller picks the chat or status). The code
-  // rides in the text so the shop stays findable even after forwarding.
+  // Copy the till-style code. If the clipboard refuses (permissions), nothing
+  // breaks — the code sits right there in big monospace; typing it was always
+  // the honest fallback.
+  const copyShopCode = async () => {
+    if (!shop.shopCode) return
+    try {
+      await navigator.clipboard.writeText(shop.shopCode)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // No clipboard permission — nothing to fix, the code is on screen.
+    }
+  }
+  // Share link: opens WhatsApp with the text pre-written (wa.me with no
+  // recipient → the sender picks the chat or status). The code rides along so
+  // the shop stays findable even after forwarding. Owner says "our"; a buyer
+  // forwarding the shop says "found" — same link, honest voice for whoever
+  // is tapping share.
   const shareHref =
     shopUrl && shop.shopCode
-      ? `https://wa.me/?text=${encodeURIComponent(`Find ${shop.name} on Duuka — our code is ${shop.shopCode} — ${shopUrl}`)}`
+      ? `https://wa.me/?text=${encodeURIComponent(
+          isOwner
+            ? `Find ${shop.name} on Duuka — our code is ${shop.shopCode} — ${shopUrl}`
+            : `Found ${shop.name} on Duuka — shop code ${shop.shopCode} — ${shopUrl}`,
+        )}`
       : null
 
   return (
@@ -88,81 +110,82 @@ export function ShopView({ id }: { id: string }) {
         <ArrowLeft className="size-4" aria-hidden /> Back to browse
       </Button>
 
-      {/* Shop identity — the seller's own space, named by them */}
+      {/* Shop identity — the seller's own space, named by them. The photo is
+          the cover and the name is the signboard: serif, in the brand green,
+          the way a market shop paints its name. Text never overlays the photo
+          — we do not control what sellers upload, so the name sits on our card
+          where contrast is always ours to keep. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
-        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5">
-          {shop.photoUrl ? (
-            <img
-              src={shop.photoUrl}
-              alt={`Photo of ${shop.name}`}
-              className="size-20 shrink-0 rounded-lg border object-cover sm:size-24"
-            />
-          ) : (
-            <span className="flex size-20 shrink-0 items-center justify-center rounded-lg border bg-accent text-2xl font-bold text-accent-foreground sm:size-24">
+        {shop.photoUrl ? (
+          <img
+            src={shop.photoUrl}
+            alt={`Photo of ${shop.name}`}
+            className="h-36 w-full object-cover object-center sm:h-48"
+          />
+        ) : (
+          // No photo yet: a flat green signboard with the shop's initial —
+          // a designed, honest placeholder, not a broken-looking gap.
+          <div className="flex h-36 w-full items-center justify-center bg-primary sm:h-44" aria-hidden>
+            <span className="font-display text-6xl font-semibold text-primary-foreground sm:text-7xl">
               {shop.name.charAt(0).toUpperCase()}
             </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">{shop.name}</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
-              {shop.area || shop.county ? (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-3.5" aria-hidden /> {[shop.area, shop.county].filter(Boolean).join(', ')}
-                </span>
-              ) : null}
-              {shop.hours ? (
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="size-3.5" aria-hidden /> {shop.hours}
-                </span>
-              ) : null}
-            </p>
-
-            {/* Honest trust chips — what buyers can verify themselves */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              {shop.complete ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
-                  <BadgeCheck className="size-3.5" aria-hidden /> Complete shop profile
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  Profile {doneCount}/5 complete
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                <Package className="size-3" aria-hidden /> {shop.activeCount} {shop.activeCount === 1 ? 'listing' : 'listings'}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                <Store className="size-3" aria-hidden /> Since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
-              </span>
-              {shop.shopCode ? (
-                <span
-                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20"
-                  title="This shop's code on Duuka — every shop has its own"
-                >
-                  <Hash className="size-3" aria-hidden /> Shop code <span className="font-mono tracking-wide">{shop.shopCode}</span>
-                </span>
-              ) : null}
-            </div>
           </div>
-        </div>
+        )}
+        <div className="p-4 sm:p-5">
+          <h1 className="font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
+            {shop.name}
+          </h1>
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
+            {shop.area || shop.county ? (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="size-3.5" aria-hidden /> {[shop.area, shop.county].filter(Boolean).join(', ')}
+              </span>
+            ) : null}
+            {shop.hours ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="size-3.5" aria-hidden /> {shop.hours}
+              </span>
+            ) : null}
+          </p>
 
-        {shop.description ? (
-          <p className="border-t px-4 py-3 text-sm leading-relaxed text-foreground/90 sm:px-5">{shop.description}</p>
-        ) : null}
+          {/* Honest trust chips — one green star ("Phone confirmed", which the
+              API only sets when the number shown IS the seller's login line),
+              the rest quiet facts. No "verified" claims we cannot back. */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {shop.phoneConfirmed ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground ring-1 ring-inset ring-primary/15">
+                <BadgeCheck className="size-3.5" aria-hidden /> Phone confirmed
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {shop.complete ? 'Complete shop profile' : `Profile ${doneCount}/5 complete`}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <Package className="size-3" aria-hidden /> {shop.activeCount} {shop.activeCount === 1 ? 'listing' : 'listings'}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <Store className="size-3" aria-hidden /> Since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+
+          {shop.description ? (
+            <p className="mt-3 text-sm leading-relaxed text-foreground/90">{shop.description}</p>
+          ) : null}
+        </div>
 
         {/* Shop contact — the same direct links buyers get everywhere */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button asChild className="h-11 flex-1 text-[15px]">
+            <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(shop.phone)} aria-label={`Call ${shop.name}`}>
-                <Phone className="size-4" aria-hidden /> Call {shop.name}
+                <Phone className="size-4" aria-hidden /> Call shop
               </a>
             </Button>
             {whatsappNumber ? (
               <Button
                 asChild
                 variant="outline"
-                className="h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
+                className="press h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
               >
                 <a
                   href={whatsappLink(whatsappNumber, shop.name, 'OFFER')}
@@ -177,6 +200,57 @@ export function ShopView({ id }: { id: string }) {
           </div>
         </div>
       </section>
+
+      {/* The bridge for buyers: the code IS the address. Someone who landed
+          here from a shared link can carry the shop away — copy the till-style
+          code, or forward the page on WhatsApp. The owner gets the poster tool
+          below instead; two QRs on one page is one too many. */}
+      {!isOwner && shop.shopCode ? (
+        <section aria-label="Find this shop again" className="rounded-lg border bg-card p-4 sm:p-5">
+          <div className="flex items-center gap-3.5">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-md border bg-white p-1.5">
+              {shopUrl ? <QRCode value={shopUrl} size={48} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold">Find this shop again</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Scan the code, or type it into Duuka search like a till number.
+              </p>
+              <p className="mt-1 font-mono text-lg font-bold tracking-widest text-primary">{shop.shopCode}</p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <Button variant="outline" size="sm" className="press h-8 gap-1 px-2.5 text-xs" onClick={copyShopCode}>
+                {copied ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-700" aria-hidden /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5" aria-hidden /> Copy
+                  </>
+                )}
+              </Button>
+              {shareHref ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="press h-8 gap-1 border-emerald-600 px-2.5 text-xs text-emerald-800 hover:bg-emerald-50"
+                >
+                  <a
+                    href={shareHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Share ${shop.name} on WhatsApp`}
+                  >
+                    <Share2 className="size-3.5" aria-hidden /> Share
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Owner tool: the printable QR poster. Buyers never see this — they are
           already on the page. The seller prints it for the stall, a wheelbarrow
@@ -268,7 +342,7 @@ export function ShopView({ id }: { id: string }) {
                 {shop.name.charAt(0).toUpperCase()}
               </span>
             )}
-            <h2 className="mt-4 text-2xl font-bold tracking-tight text-neutral-900">{shop.name}</h2>
+            <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-neutral-900">{shop.name}</h2>
             {shop.area || shop.county ? (
               <p className="mt-1 text-sm text-neutral-600">{[shop.area, shop.county].filter(Boolean).join(', ')}</p>
             ) : null}

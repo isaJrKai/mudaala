@@ -210,6 +210,8 @@ export interface ShopInfo {
   country: string
   phone: string
   whatsapp: string | null
+  /** True only when the displayed phone IS the seller's login line. */
+  phoneConfirmed: boolean
   /** Public identity code ("DK-4821") — stable for the life of the shop. */
   shopCode: string | null
   memberSince: string

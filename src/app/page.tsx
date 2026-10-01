@@ -23,7 +23,7 @@ export default function Home() {
               <Store className="size-3.5" aria-hidden />
               Duuka — discover offers and requests near you
             </p>
-            <p>Every contact action connects you directly with the other party.</p>
+            <p>Local shops. Bigger opportunities. Every contact connects you directly.</p>
           </div>
         </footer>
       </div>

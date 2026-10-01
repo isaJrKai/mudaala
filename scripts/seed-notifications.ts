@@ -1,7 +1,7 @@
 // Task 16 E2E helper: insert real notifications for the Nakato seller so the
 // bell/badge/clear flow has something honest to show. Phone-keyed, safe to
 // re-run (skips if an unread notification with the same title exists).
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, type User } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -13,7 +13,7 @@ async function main() {
   const local = digits.startsWith('256') ? '0' + digits.slice(3) : digits
   const e164 = '+256' + local.slice(1)
   const variants = Array.from(new Set([raw, local, e164, digits]))
-  let user = null
+  let user: User | null = null
   for (const phone of variants) {
     user = await prisma.user.findFirst({ where: { phone } })
     if (user) break
