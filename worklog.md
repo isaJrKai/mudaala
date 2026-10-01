@@ -657,3 +657,21 @@ Work Log:
 
 Stage Summary:
 - Jiji audit delivered in chat with sources; item one (per-listing ad pages) spec is sharpened by evidence: slug+id URLs, WhatsApp preview tags, and honest trust signals. Awaiting user go signal for the build.
+
+---
+Task ID: 32
+Agent: main (Super Z)
+Task: Item one of the gap roadmap — public ad pages (user: "steal refine and improve... i needa new feeling so yh go").
+
+Work Log:
+- New route src/app/listing/[slug]/page.tsx: a server-rendered public ad page deliberately OUTSIDE the app shell. Slug format "<title-words>-<id>" (Jiji's proven pattern, refined): the id after the LAST hyphen is the only identity, so bare ids and wrong slugs 307-redirect to the canonical slug URL; ARCHIVED listings 404 (removal honored), FULFILLED/EXPIRED render with a banner and robots noindex.
+- SEO stack: generateMetadata with title template ("<title> for sale|wanted in <county> | Mudaala"), description with price/quantity/location, canonical, og:image from the first photo, twitter cards, and Product+Offer JSON-LD for OFFERs only (a REQUEST dressed as a Product offer would fabricate facts, so requests get none). Root layout gained metadataBase from NEXT_PUBLIC_SITE_URL (added to .env + .env.example).
+- The "new feeling" (what no incumbent has): 1) honest median band — the latest PriceSnapshot for the listing's category+unit+currency shows the real median asking price with its sampleSize, plus a "Priced below the median" chip when true; no snapshot (under 5 samples) renders NOTHING, silence over fabricated benchmarks. 2) unit economics up front: big per-unit price + quantity chip. 3) the title set in the Fraunces display serif like a painted shop signboard. 4) plain-spoken safety line in the brand voice.
+- Share row (client island share-buttons.tsx): WhatsApp share via wa.me without a phone (opens the chooser — one tap forwarding, the Uganda growth loop) + Copy link with toast. ViewPing island pings the existing detail endpoint once per browser so crawler SSR never inflates viewCount. The in-app listing detail gained a "Share this ad" button that opens the WhatsApp share with the public URL (built at click time).
+- Discovery infrastructure: src/app/sitemap.ts (homepage + every ACTIVE listing, revalidate 3600) and src/app/robots.ts (replaces static public/robots.txt, declares the sitemap on the deployment's own domain).
+- Tests: new suite section 3b2 (14 assertions): page 200 with title, og/canonical/site_name tags, JSON-LD offer, wa.me share link, safety line, tel link, id-only redirect, wrong-slug redirect, unknown 404, sitemap lists the ad, robots declares sitemap, archive → 404. Baseline 202 → 216/216 green after a fresh server start (limiter lesson applied: restart + cleanup before the run).
+- Browser verified (agent-browser): bare id → canonical redirect live; desktop + mobile full-page screenshots (verify-adpage-*.png, clean layout, sticky footer, toast on copy); REQUEST variant shows "wanted in <county>" metadata and NO JSON-LD; in-app detail intact with share button; viewCount 47 → 49 from real visits; dev.log clean.
+- Skipped running the platform fullstack init script on purpose: it extracts a fresh scaffold tarball over the project and would have destroyed 30 tasks of state; environment was already provisioned and verified.
+
+Stage Summary:
+- Mudaala now has what both audits called the number one gap: a real, shareable, indexable ad page with the honest-price layer as its differentiator. 216/216 green, pushed with screenshots. Next item when approved: report button + admin moderation queue.

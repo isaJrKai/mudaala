@@ -76,6 +76,27 @@ export function whatsappLink(phone: string, listingTitle: string, listingType: '
   return `https://wa.me/${digits}?text=${encodeURIComponent(intro)}`
 }
 
+// Public ad-page slug: the title's first words (readable, search-friendly)
+// followed by the id, which is the only identity that matters. Old links keep
+// working after a title edit because the id tail still resolves.
+export function listingSlug(title: string, id: string): string {
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 8)
+  return `${words.join('-')}-${id}`
+}
+
+// WhatsApp share — no phone number on purpose: opening this URL lets a buyer
+// forward the listing to anyone (a chat, a group, a relative abroad). This is
+// how trade actually spreads in Uganda, so sharing costs one tap.
+export function whatsappShareUrl(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`
+}
+
 export function telLink(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
 }

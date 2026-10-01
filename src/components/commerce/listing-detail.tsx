@@ -5,7 +5,7 @@
 // pickup), and direct contact. No login needed for any of it.
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Check, MapPin, Navigation, Package, Phone, Plus, Store } from 'lucide-react'
+import { ArrowLeft, Check, MapPin, Navigation, Package, Phone, Plus, Share2, Store } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -21,6 +21,8 @@ import {
   telLink,
   formatPhonePretty,
   mapsSearchUrl,
+  listingSlug,
+  whatsappShareUrl,
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { CategoryGlyph, categoryTint } from './category-icons'
@@ -290,6 +292,21 @@ export function ListingDetail({ id }: { id: string }) {
               <Navigation className="size-4" aria-hidden /> Get directions
               <span className="text-xs font-normal text-muted-foreground">(Google Maps — for pickup)</span>
             </a>
+          </Button>
+          {/* Share sends the PUBLIC ad page (the one Google and WhatsApp
+              previews know), assembled at click time so the address bar of
+              whatever context opens it never pollutes the link. */}
+          <Button
+            variant="outline"
+            className="press mt-2 h-11 w-full gap-1.5 text-[15px]"
+            onClick={() => {
+              const url = `${window.location.origin}/listing/${listingSlug(listing.title, listing.id)}`
+              const text = `${listing.title} — on Mudaala: ${url}`
+              window.open(whatsappShareUrl(text), '_blank', 'noopener')
+            }}
+            aria-label="Share this listing on WhatsApp"
+          >
+            <Share2 className="size-4" aria-hidden /> Share this ad
           </Button>
         </div>
       </article>

@@ -22,6 +22,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute-URL base for every metadata tag (OG images, canonical links).
+  // Set NEXT_PUBLIC_SITE_URL to the real domain when the deployment lands.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: "Mudaala — Trade locally, discover more",
   description:
     "Mudaala connects local buyers and sellers: find OFFERs and REQUESTs near you, compare prices and quantities, and contact sellers or buyers directly on WhatsApp or by phone.",

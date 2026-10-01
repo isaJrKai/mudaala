@@ -9,7 +9,8 @@
  * transition rules, refresh cooldown, expiry sweep, saved-search matching +
  * permissions, notification permissions, postgres settings masking, photos +
  * shop identity, public shop catalogue, discount (old-price) rules, shop
- * completeness checklist.
+ * completeness checklist, public ad pages (SEO metadata, slug redirects,
+ * share links, sitemap/robots, removal honoring).
  */
 import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
@@ -378,6 +379,51 @@ async function main() {
     ok('profile rejects hostile photoUrl → 400', badPhotoProfile.status === 400)
 
     await call('DELETE', `/api/listings/${withPhotos.json.listing.id}`, undefined, alice)
+  }
+
+  console.log('\n== 3b2. Public ad pages (share links + SEO) ==')
+  {
+    const pubCreate = await call('POST', '/api/listings', { ...validListing, title: 'Public page test maize offer', price: 2000, unit: 'kg', quantity: 500, area: 'Ntinda' }, alice)
+    ok('create fixture for public page → 201 (precondition)', pubCreate.status === 201)
+    const pubId: string = pubCreate.json?.listing?.id ?? ''
+
+    // Canonical slug URL renders full HTML with the metadata that makes
+    // WhatsApp previews and Google indexing work.
+    const slugUrl = `/listing/public-page-test-maize-offer-${pubId}`
+    const page = await fetch(`${BASE}${slugUrl}`)
+    const html = await page.text()
+    ok('public page renders 200 HTML with the title', page.status === 200 && html.includes('Public page test maize offer'))
+    ok('og:title + canonical + og:site_name present', html.includes('property="og:title"') && html.includes('rel="canonical"') && html.includes('og:site_name'))
+    ok('Product JSON-LD with UGX offer', html.includes('application/ld+json') && html.includes('"priceCurrency":"UGX"') && html.includes('schema.org'))
+    ok('WhatsApp share link present (wa.me without phone)', html.includes('wa.me/?text='))
+    ok('honest safety line rendered', html.includes('check the goods before you pay'))
+    ok('contact buttons are real (tel: link)', html.includes('href="tel:+256712345678"'))
+
+    // The id is the identity: bare and wrong-slug URLs resolve to canonical.
+    const idOnly = await fetch(`${BASE}/listing/${pubId}`, { redirect: 'manual' })
+    const loc = idOnly.headers.get('location') ?? ''
+    ok('id-only URL redirects to the slug URL', idOnly.status >= 300 && idOnly.status < 400 && loc.includes('/listing/public-page-test-maize-offer-') && loc.includes(pubId))
+    const wrongSlug = await fetch(`${BASE}/listing/totally-different-words-${pubId}`, { redirect: 'manual' })
+    ok('wrong slug redirects to canonical too', wrongSlug.status >= 300 && wrongSlug.status < 400 && (wrongSlug.headers.get('location') ?? '').includes('public-page-test-maize-offer'))
+
+    const missing = await fetch(`${BASE}/listing/nada-${pubId}x`)
+    ok('unknown listing id → 404', missing.status === 404)
+
+    // Sitemap carries active ads; robots declares the sitemap.
+    const sitemap = await fetch(`${BASE}/sitemap.xml`)
+    const smText = await sitemap.text()
+    ok('sitemap.xml is 200 and lists the ad', sitemap.status === 200 && smText.includes(`/listing/public-page-test-maize-offer-${pubId}`))
+    const robots = await fetch(`${BASE}/robots.txt`)
+    const robotsText = await robots.text()
+    ok('robots.txt declares the sitemap', robots.status === 200 && robotsText.includes('Sitemap:') && robotsText.includes('sitemap.xml'))
+
+    // Ownership removal is honored on the public web: archived → gone.
+    const archive = await call('PATCH', `/api/listings/${pubId}`, { status: 'ARCHIVED' }, alice)
+    ok('archive the fixture listing (precondition)', archive.status === 200)
+    const gone = await fetch(`${BASE}${slugUrl}`)
+    ok('archived listing page → 404 (removal honored)', gone.status === 404)
+
+    await call('DELETE', `/api/listings/${pubId}`, undefined, alice)
   }
 
   console.log('\n== 3c. Shop page (public catalogue), discounts & checklist ==')
