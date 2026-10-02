@@ -988,3 +988,25 @@ Stage Summary:
 - Deliverable: download/Mudaala-API-Security-Test-Coverage-Report.docx (21 pages). Generation scripts persisted: scripts/report-data.js, scripts/report-kit.js, scripts/gen-final-report.js, scripts/patch-report-docx.py (edit + re-run to revise).
 - The ALL-FIVE-TASKS package is complete; the final report closes the DONE-WHEN definition.
 - For the user: regenerate the GitHub PAT (was pasted in chat); the launch checklist inside the report sequences the remaining owner actions.
+
+---
+Task ID: apphas-BUGS
+Agent: main (Super Z)
+Task: User reported "app has BUGS". Full bug hunt: suite re-run, every major UI flow browser-tested, test-data pollution removed.
+
+Work Log:
+- Runtime state: platform had reaped the dev server; Postgres was up. Built scripts/bugprobe.sh — single-call harness that boots the canonical server (tee dev.log, which the suite's SMS-code reader requires) and pkill-restarts squatters (fuser is not installed — first restart attempt silently no-op'd, causing a false EADDRINUSE-vs-alive confusion).
+- Suite baseline run: 384/389, 5 failures. Triage:
+  - Section 12 (4 failures: Twitter card, OG image, sitemap listing, paged sitemap): ROOT CAUSE — the suite's OFFER picker took the newest listing with photos, which after the restore+reseed was a SEED listing; the app deliberately filters /uploads/seed/ photos from OG/Twitter metadata and excludes seed rows from the sitemap. App behavior CORRECT; suite was not seed-aware. Fixed the picker (and its hermetic fallback) to require non-seed photos.
+  - Section 15.32 (X-Frame-Options): assertion hard-coded SAMEORIGIN but the sandbox .env sets FRAME_ANCESTORS to the preview allowlist, where next.config deliberately omits XFO (XFO cannot express a list). Made the assertion env-aware (SAMEORIGIN/'none'→DENY/custom→absent+CSP check), mirroring next.config semantics. NOTE: the preview-fix session knowingly skipped the suite run, which is why this stale assertion survived.
+  - Section 14's earlier SMS failures were harness artifacts (server logging to /tmp instead of dev.log).
+- Suite after fixes: 389 passed / 0 failed; tsc --noEmit clean; eslint clean (test-api.ts).
+- Browser sweep (agent-browser, desktop 1280x900 + mobile 390x844), zero console/page errors everywhere: home+hero, browse feed, search (API + UI agree: q=maize → Dry maize), category pills, listing detail (photo, price, basket, seller card), auth dialog (sign-in + create-account with 18+/terms checkbox; registration E2E with onboarding dialog), publish flow E2E (validation catches missing district/unit; keyboard typeahead needed for below-the-fold select options; listing created ACTIVE in DB and page navigates to it), basket (quantity stepper, WhatsApp/Call actions), saved searches ("Search saved" toast), alerts view, My Listings (refresh cooldown, edit/fulfilled/archive/delete controls), My Business (0/5 completeness checklist), Settings (401/403 admin-gated messaging is deliberate), legal pages 200, /admin 403 for non-admins, /l/unknown 404, /s/{code} 200, robots/sitemap fine.
+- Tooling gotchas documented: cross-call server reaping reloads the SPA and wipes React state (all UI flows must complete within one harness call); Radix select options below the fold need keyboard typeahead (g + Enter), pointer clicks on clipped options hit the covering sibling item.
+- Preview DB de-pollution (the visible "bugs"): 95 suite-fixture users ("Reg Flood", "CSRF Target", "Owner A/B", "PG Search Fixture", my "Bug Hunt Tester") + 152 fixture listings + 144 dangling notifications + 2 stale price snapshots removed via scripts/cleanup-test-data.ts; 71 orphan files in public/uploads removed via new scripts/clean-orphan-uploads.ts (seed/ untouched, referenced files kept). Verified visually: home now shows 14 clean seed listings with photos, real shop names, discount badge, featured shop QR.
+- Committed e415610 on main (aligned with starter-launch lineage).
+
+Stage Summary:
+- No app-code bugs found — the shipped surface is functionally sound; the real "bugs" were two stale suite assertions (now fixed, suite 389/0) and a preview database full of test fixtures (now clean).
+- Insurance: commits on main; nothing orphaned this session.
+- For the user: if a specific broken screen remains, name the page/action and I'll target it; next real launch step remains scripts/remove-seed-data.ts --yes when the demo shops should vanish.
