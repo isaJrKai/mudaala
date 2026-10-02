@@ -51,3 +51,12 @@ export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 30)
 // Register: 20 accounts per IP per window (one device onboarding a market
 // stall's worth of sellers stays clear; a script farm does not).
 export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 20)
+
+// Reports: 10 ACCEPTED reports per day per reporter (a sliding 24h window,
+// not a calendar day — consistent with the other windows here). Signed-in
+// reporters are keyed by user id; guests by IP. The guest cap is env-tunable
+// so a shared dev box / CI runner (one IP for the whole suite) can raise it
+// without touching the per-user limit the product actually promises.
+export const REPORT_DAY_MAX = 10
+export const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000
+export const REPORT_IP_DAY_MAX = Number(process.env.RATE_LIMIT_REPORT_IP_MAX ?? REPORT_DAY_MAX)

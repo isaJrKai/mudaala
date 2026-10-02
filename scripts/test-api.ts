@@ -9,12 +9,16 @@
  * transition rules, refresh cooldown, expiry sweep, saved-search matching +
  * permissions, notification permissions, postgres settings masking, photos +
  * shop identity, public shop catalogue, discount (old-price) rules, shop
- * completeness checklist.
+ * completeness checklist, reports & moderation (guest + signed-in reporting,
+ * dedupe, daily cap, auto-hide at 3 distinct reporters, admin 403 walls,
+ * hide/restore/dismiss with audit trail, prohibited-items filter, safety
+ * card, report control).
  */
 import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
 import path from 'node:path'
 import * as fs from 'node:fs'
+import { SUPPORT_EMAIL } from '../src/lib/constants'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -1276,6 +1280,173 @@ async function main() {
       ok('non-numeric sitemap page → 404', (await fetch(`${BASE}/sitemap.xml?page=abc`)).status === 404)
       ok('robots.txt exposes the sitemap', (await (await fetch(`${BASE}/robots.txt`)).text()).includes('/sitemap.xml'))
     }
+  }
+
+  console.log('\n== 13. Reports & moderation ==')
+  {
+    // Roles: a seller whose ads get reported, three independent buyers, one
+    // volume reporter for the daily cap, and the seeded admin (ADMIN_PHONES).
+    const owner: Jar = { cookie: '' }
+    const repA: Jar = { cookie: '' }
+    const repB: Jar = { cookie: '' }
+    const repC: Jar = { cookie: '' }
+    const volume: Jar = { cookie: '' }
+    await register(owner, uniquePhone(), 'Mod Owner', 'password789')
+    await register(repA, uniquePhone(), 'Rep Alpha', 'password789')
+    await register(repB, uniquePhone(), 'Rep Bravo', 'password789')
+    await register(repC, uniquePhone(), 'Rep Charlie', 'password789')
+    await register(volume, uniquePhone(), 'Volume Victor', 'password789')
+
+    const admin: Jar = { cookie: '' }
+    const adminLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' }, admin)
+    storeCookie(admin, adminLogin)
+    admin.token = adminLogin.json?.sessionToken
+    admin.user = adminLogin.json?.user
+    ok('admin signs in (precondition)', adminLogin.status === 200)
+
+    const ownerListing = await call('POST', '/api/listings', { ...validListing, title: 'Moderation target oven', description: 'Clean test stove for the moderation flow.', contactPhone: '+256700000555' }, owner)
+    ok('owner publishes the moderation target (201)', ownerListing.status === 201 && Boolean(ownerListing.json?.listing?.id))
+    const targetId: string = ownerListing.json?.listing?.id ?? ''
+    const fixtureListings: string[] = targetId ? [targetId] : []
+
+    // ---- Guest reporting + dedupe + validation ----
+    const guestReport = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM', details: 'looks fake' })
+    ok('guest report → 201', guestReport.status === 201 && Boolean(guestReport.json?.report?.id))
+    const guestDup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM' })
+    ok('same guest reporting again → 409 with a friendly message', guestDup.status === 409 && typeof guestDup.json?.error === 'string' && guestDup.json.error.length > 10)
+    const badReason = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'JUST_BECAUSE' })
+    ok('unknown reason → 400', badReason.status === 400)
+    const longDetails = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'OTHER', details: 'x'.repeat(501) })
+    ok('501-char details → 400', longDetails.status === 400)
+    const ghost = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: 'does-not-exist', reason: 'OTHER' })
+    ok('report on a missing ad → 404', ghost.status === 404)
+
+    // ---- Auto-hide at 3 distinct reporters ----
+    const repA1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'WRONG_INFO' }, repA)
+    ok('signed-in report → 201', repA1.status === 201)
+    const midFetch = await call('GET', `/api/listings/${targetId}`)
+    ok('two distinct reports do not hide the ad', midFetch.status === 200)
+    const repB1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM' }, repB)
+    const repC1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'PROHIBITED_ITEM' }, repC)
+    ok('third and fourth distinct reporters accepted', repB1.status === 201 && repC1.status === 201)
+
+    const hiddenFetch = await call('GET', `/api/listings/${targetId}`)
+    ok('auto-hidden ad → 404 on the public API', hiddenFetch.status === 404)
+    const hiddenPage = await fetch(`${BASE}/l/${targetId}`)
+    const hiddenHtml = await hiddenPage.text()
+    ok('auto-hidden ad page → 404', hiddenPage.status === 404)
+    ok('hidden ad shows the no-longer-available page', hiddenHtml.includes('no longer available'))
+    const hiddenBrowse = await call('GET', '/api/listings?q=moderation%20target%20oven')
+    ok('hidden ad vanishes from browse', !(hiddenBrowse.json?.items ?? []).some((l: any) => l.id === targetId))
+    const sitemapText = await (await fetch(`${BASE}/sitemap.xml`)).text()
+    ok('hidden ad leaves the sitemap', !sitemapText.includes(`/l/${targetId}<`))
+
+    const ownerNote = await db.notification.findFirst({ where: { userId: owner.user?.id ?? '', type: 'LISTING_HIDDEN' }, orderBy: { createdAt: 'desc' } })
+    ok('owner notified about the hiding', Boolean(ownerNote))
+    ok('notification explains why and gives the support email', Boolean(ownerNote && ownerNote.body.includes(SUPPORT_EMAIL)))
+    const ownerView = await call('GET', `/api/listings/${targetId}`, undefined, owner)
+    ok('owner can still fetch their hidden ad (appeal path)', ownerView.status === 200 && ownerView.json?.listing?.status === 'HIDDEN')
+    const adminView = await call('GET', `/api/listings/${targetId}`, undefined, admin)
+    ok('admin can still fetch the hidden ad', adminView.status === 200)
+    const autoHideLog = await db.auditLog.findFirst({ where: { targetType: 'LISTING', targetId, action: 'AUTO_HIDE_LISTING' } })
+    ok('auto-hide logged with a system actor', Boolean(autoHideLog && autoHideLog.actorId === null))
+
+    // ---- The admin queue and its 403 walls ----
+    const queue = await call('GET', '/api/admin/reports?status=OPEN', undefined, admin)
+    ok('admin queue → 200 and lists the target’s reports', queue.status === 200 && (queue.json?.reports ?? []).some((r: any) => r.targetId === targetId))
+    const queueRow = (queue.json?.reports ?? []).find((r: any) => r.targetId === targetId && r.status === 'OPEN')
+    ok('queue row carries the ad, the reporter and the note', Boolean(queueRow?.listing?.title) && Boolean(queueRow?.reporter))
+
+    const pageDenied = await fetch(`${BASE}/admin`, { headers: { cookie: alice.cookie } })
+    ok('non-admin /admin page → 403', pageDenied.status === 403)
+    const listDenied = await call('GET', '/api/admin/reports', undefined, alice)
+    ok('non-admin queue list → 403', listDenied.status === 403)
+    const actionDenied = queueRow ? await call('POST', `/api/admin/reports/${queueRow.id}/action`, { action: 'DISMISS' }, alice) : { status: 0 }
+    ok('non-admin action → 403', actionDenied.status === 403)
+
+    // ---- Admin actions: restore, hide, dismiss (each logged) ----
+    const restore = queueRow ? await call('POST', `/api/admin/reports/${queueRow.id}/action`, { action: 'RESTORE' }, admin) : { status: 0 }
+    const restored = await call('GET', `/api/listings/${targetId}`)
+    ok('admin RESTORE → the ad is ACTIVE again', restore.status === 200 && restored.status === 200 && restored.json?.listing?.status === 'ACTIVE')
+    const restoreLog = await db.auditLog.findFirst({ where: { targetType: 'LISTING', targetId, action: 'RESTORE_LISTING' }, orderBy: { createdAt: 'desc' } })
+    ok('restore logged with the admin as actor', Boolean(restoreLog && restoreLog.actorId === admin.user?.id))
+
+    const hide = queueRow ? await call('POST', `/api/admin/reports/${queueRow.id}/action`, { action: 'HIDE' }, admin) : { status: 0 }
+    const reHidden = await call('GET', `/api/listings/${targetId}`)
+    ok('admin HIDE → the ad is HIDDEN again', hide.status === 200 && reHidden.status === 404)
+    const hideLog = await db.auditLog.findFirst({ where: { targetType: 'LISTING', targetId, action: 'HIDE_LISTING' }, orderBy: { createdAt: 'desc' } })
+    ok('admin hide logged with the admin as actor', Boolean(hideLog && hideLog.actorId === admin.user?.id))
+
+    const dismiss = queueRow ? await call('POST', `/api/admin/reports/${queueRow.id}/action`, { action: 'DISMISS' }, admin) : { status: 0 }
+    ok('admin DISMISS → 200', dismiss.status === 200)
+    const openAfter = await call('GET', '/api/admin/reports?status=OPEN', undefined, admin)
+    ok('dismissed report left the OPEN queue', queueRow && !(openAfter.json?.reports ?? []).some((r: any) => r.id === queueRow.id))
+
+    // ---- Shop reports: dismissible, not hideable ----
+    const aliceShop = await db.businessProfile.findUnique({ where: { userId: alice.user?.id ?? '' } })
+    const shopReport = await call('POST', '/api/reports', { targetType: 'SHOP', targetId: aliceShop?.id ?? 'missing', reason: 'WRONG_INFO' }, repA)
+    ok('shop report → 201', shopReport.status === 201 && Boolean(shopReport.json?.report?.id))
+    const shopReportId: string = shopReport.json?.report?.id ?? ''
+    const shopHide = shopReportId ? await call('POST', `/api/admin/reports/${shopReportId}/action`, { action: 'HIDE' }, admin) : { status: 0 }
+    ok('hiding a shop is not a thing → 409', shopHide.status === 409)
+    const shopDismiss = shopReportId ? await call('POST', `/api/admin/reports/${shopReportId}/action`, { action: 'DISMISS' }, admin) : { status: 0 }
+    ok('shop report dismisses', shopDismiss.status === 200)
+
+    // ---- Daily cap: 10 accepted, the 11th refused ----
+    let capAccepted = 0
+    for (let i = 1; i <= 10; i++) {
+      const made = await call('POST', '/api/listings', { ...validListing, title: `Moderation cap target ${i}` }, owner)
+      const capId: string = made.status === 201 ? made.json?.listing?.id : ''
+      if (capId) fixtureListings.push(capId)
+      const rep = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: capId || 'missing', reason: 'OTHER' }, volume)
+      if (rep.status === 201) capAccepted++
+    }
+    ok('ten accepted reports in a day for one reporter', capAccepted === 10)
+    const overCap = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'OTHER' }, volume)
+    ok('11th report in a day → 429 with a friendly message', overCap.status === 429 && typeof overCap.json?.error === 'string' && overCap.json.error.length > 10)
+
+    // ---- Prohibited items at publish time ----
+    const weaponsTry = await call('POST', '/api/listings', { ...validListing, title: 'AK47 rifle for sale' }, owner)
+    ok('weapons listing rejected, with the reason stated', weaponsTry.status === 400 && (weaponsTry.json?.error ?? '').includes('Weapons'))
+    const bannedSamples = ['cheap cocaine delivery', 'stolen iPhone, no papers', 'transformer parts, cheap', 'manhole covers, 10 pieces', 'fake Nike shoes']
+    let rejected = 0
+    for (const title of bannedSamples) {
+      const res = await call('POST', '/api/listings', { ...validListing, title }, owner)
+      if (res.status === 400 && typeof res.json?.error === 'string' && res.json.error.length > 20) rejected++
+    }
+    ok(`all ${bannedSamples.length} other prohibited samples rejected with a friendly reason`, rejected === bannedSamples.length)
+    const stillAllowed = await call('POST', '/api/listings', { ...validListing, title: 'Clean copper scrap, honest stock' }, owner)
+    ok('a clean listing still publishes', stillAllowed.status === 201)
+    const cleanId: string = stillAllowed.status === 201 ? stillAllowed.json?.listing?.id : ''
+    if (cleanId) fixtureListings.push(cleanId)
+
+    // ---- Safety card before Call/Chat, and the report button on the page ----
+    const livePage = await fetch(`${BASE}/l/${cleanId}`)
+    const liveHtml = await livePage.text()
+    ok('ad page carries the safety card before contact', liveHtml.indexOf('Before you call') !== -1 && liveHtml.indexOf('Before you call') < liveHtml.indexOf('Call seller'))
+    ok('safety card says never pay in advance', liveHtml.includes('Never pay in advance'))
+    ok('ad page carries the report control', liveHtml.includes('aria-label="Report this ad"'))
+
+    // ---- Hermetic cleanup: this section's fixtures never outlive the run ----
+    const sectionReporterIds = [repA.user?.id, repB.user?.id, repC.user?.id, volume.user?.id].filter(Boolean) as string[]
+    const sectionReports = await db.report.findMany({
+      where: {
+        OR: [
+          { reporterId: { in: sectionReporterIds } },
+          { reporterId: null, reporterIp: 'local' },
+          { targetType: 'LISTING', targetId: { in: fixtureListings } },
+        ],
+      },
+      select: { id: true },
+    })
+    const sectionReportIds = sectionReports.map((r) => r.id)
+    await db.auditLog.deleteMany({
+      where: { OR: [{ targetType: 'LISTING', targetId: { in: fixtureListings } }, { targetType: 'REPORT', targetId: { in: sectionReportIds } }] },
+    })
+    await db.report.deleteMany({ where: { id: { in: sectionReportIds } } })
+    await db.notification.deleteMany({ where: { listingId: { in: fixtureListings } } })
+    await db.listing.deleteMany({ where: { id: { in: fixtureListings } } })
+    console.log('  (section 13 fixtures cleaned up)')
   }
 
   console.log(`\n========================================`)

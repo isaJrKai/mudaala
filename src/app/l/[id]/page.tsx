@@ -16,11 +16,13 @@
 import type { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { cache } from 'react'
-import { MapPin, Navigation, Package, Phone, ShieldCheck, Store } from 'lucide-react'
+import { MapPin, Navigation, Package, Phone, Store } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { StatusBadge, TypeBadge } from '@/components/commerce/badges'
 import { CategoryGlyph, categoryTint } from '@/components/commerce/category-icons'
 import { ShareAdRow } from '@/components/commerce/share-row'
+import { SafetyCard } from '@/components/commerce/safety-card'
+import { ReportButton } from '@/components/commerce/report-button'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { db } from '@/lib/db'
@@ -351,10 +353,13 @@ export default async function AdPage({ params }: Params) {
         </section>
 
         {/* Contact — owner-provided details only, same as everywhere in the
-            app. Plus the one-line safety habit every ad repeats. */}
+            app. The safety card comes FIRST: read before contact happens. */}
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Contact">
           <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
+          <div className="mt-3">
+            <SafetyCard />
+          </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
@@ -379,10 +384,9 @@ export default async function AdPage({ params }: Params) {
               <span className="text-xs font-normal text-muted-foreground">(Google Maps — for pickup)</span>
             </a>
           </Button>
-          <p className="mt-3 flex items-start gap-1.5 text-[13px] leading-snug text-muted-foreground">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-700" aria-hidden />
-            Meet in a public place and check the goods before you pay.
-          </p>
+          <div className="mt-3">
+            <ReportButton targetType="LISTING" targetId={listing.id} noun="ad" />
+          </div>
         </section>
 
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Share this ad">

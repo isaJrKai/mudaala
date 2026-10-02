@@ -3,7 +3,7 @@
 // Never duplicate these rules elsewhere.
 
 import { z } from 'zod'
-import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, type ListingStatus } from './constants'
+import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, REPORT_REASONS, type ListingStatus } from './constants'
 
 // Uganda phone normalization. Accepted inputs: 07XX XXX XXX, 7XXXXXXXX,
 // +2567XXXXXXXX, 2567XXXXXXXX...
@@ -210,6 +210,28 @@ export const postgresConfigSchema = z.object({
 })
 
 export type PostgresConfig = z.infer<typeof postgresConfigSchema>
+
+// ---- Reports & moderation ----
+
+export const reportCreateSchema = z.object({
+  targetType: z.enum(['LISTING', 'SHOP'], { message: 'Choose what you are reporting' }),
+  targetId: z.string().trim().min(1).max(64),
+  reason: z.enum(REPORT_REASONS, { message: 'Choose a reason for the report' }),
+  details: z
+    .string()
+    .trim()
+    .max(500, 'Please keep the details under 500 characters')
+    .optional()
+    .nullable(),
+})
+
+export const reportActionSchema = z.object({
+  action: z.enum(['HIDE', 'RESTORE', 'DISMISS'], { message: 'Choose an action' }),
+})
+
+export const adminReportsQuerySchema = z.object({
+  status: z.enum(['OPEN', 'ACTIONED', 'DISMISSED', 'ALL']).default('OPEN'),
+})
 
 // Turn a ZodError into { field: message } for API error payloads.
 export function fieldErrors(error: z.ZodError): Record<string, string> {

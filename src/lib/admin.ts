@@ -29,3 +29,9 @@ export async function requireAdmin(message = 'Only the shop admin can change dep
   if (!isAdminPhone(user.phone)) throw new ApiError(403, message)
   return user
 }
+
+/** Boolean form for surfaces that branch instead of throwing — e.g. the
+ *  public listing API lets admins see their own hidden listings back. */
+export function isAdminUser(user: Pick<User, 'phone'>): boolean {
+  return isAdminPhone(user.phone)
+}

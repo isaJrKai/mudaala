@@ -4,6 +4,8 @@ import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErr
 import { db } from '@/lib/db'
 import { expireOverdueListings, getOwnedListingOr404, buildSearchText, sanitizePhotos, serializeListing } from '@/lib/listings'
 import { LISTING_ACTIVE_DAYS, countryDef } from '@/lib/constants'
+import { getSessionUser } from '@/lib/auth'
+import { isAdminUser } from '@/lib/admin'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -15,6 +17,15 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const listing = await db.listing.findUnique({ where: { id }, include: { user: { include: { profile: true } } } })
     if (!listing) throw new ApiError(404, 'This listing does not exist or has been removed')
+
+    // Moderation: a HIDDEN listing is invisible to everyone except its owner
+    // (checking their appeal) and an admin (reviewing reports). The response
+    // is the same 404 as a missing ad — moderation state is never leaked.
+    if (listing.status === 'HIDDEN') {
+      const viewer = await getSessionUser()
+      const privileged = viewer && (viewer.id === listing.userId || isAdminUser(viewer))
+      if (!privileged) throw new ApiError(404, 'This listing does not exist or has been removed')
+    }
 
     // Fire-and-forget view counter; failures never break the response.
     db.listing.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => undefined)

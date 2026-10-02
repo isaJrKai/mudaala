@@ -89,7 +89,7 @@ model Listing {
   contactPhone     String // normalized E.164
   contactWhatsapp  String?
   photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
-  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED
+  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation)
   searchText       String    @default("") // lowercased title+description+category+area for SQLite case-insensitive search
   viewCount        Int       @default(0)
   publishedAt      DateTime  @default(now())
@@ -139,6 +139,42 @@ model AppSetting {
   key       String   @id
   value     String // JSON-encoded
   updatedAt DateTime @updatedAt
+}
+
+// A buyer's flag on an ad or a shop. Guests can report (identified by IP);
+// signed-in reporters are identified by user id. One OPEN report per
+// reporter per target — duplicates are answered with a friendly 409.
+// status: OPEN (awaiting review) | ACTIONED (admin acted on it) | DISMISSED
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String? // signed-in reporter; null = guest
+  reporterIp  String? // guest identifier for dedupe + daily cap (never rendered anywhere)
+  targetType  String // LISTING | SHOP
+  targetId    String
+  reason      String // SCAM | STOLEN_GOODS | PROHIBITED_ITEM | WRONG_INFO | OTHER
+  details     String? // optional free text, max 500 chars
+  status      String   @default("OPEN") // OPEN | ACTIONED | DISMISSED
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId, status])
+  @@index([status, createdAt])
+  @@index([reporterId, status])
+  @@index([reporterIp, status])
+}
+
+// Every moderation action leaves a row: who did it, what, on what. The
+// auto-hide (3 distinct reporters) logs with a null actorId — the system
+// itself acted. Admin hides, restores and dismisses log the admin's id.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String? // admin user id; null = automated (auto-hide)
+  action     String // HIDE_LISTING | RESTORE_LISTING | DISMISS_REPORT | AUTO_HIDE_LISTING
+  targetType String // LISTING | SHOP | REPORT
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
 }
 
 // Daily median asking price per category+unit, recorded by the cron sweep

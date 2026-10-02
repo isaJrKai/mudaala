@@ -24,6 +24,8 @@ import {
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { ShareAdRow } from './share-row'
+import { SafetyCard } from './safety-card'
+import { ReportButton } from './report-button'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { HeartButton } from './listing-card'
 import { useAppStore } from '@/lib/store'
@@ -265,11 +267,15 @@ export function ListingDetail({ id }: { id: string }) {
           </dl>
         </div>
 
-        {/* Contact — only real, owner-provided contact details. Plus directions
+        {/* Contact — only real, owner-provided contact details. The safety
+            card comes FIRST: read before contact happens. Plus directions
             for the "can I pick it up myself?" decision. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
           <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
+          <div className="mt-3">
+            <SafetyCard />
+          </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
@@ -299,6 +305,9 @@ export function ListingDetail({ id }: { id: string }) {
               <span className="text-xs font-normal text-muted-foreground">(Google Maps — for pickup)</span>
             </a>
           </Button>
+          <div className="mt-3">
+            <ReportButton targetType="LISTING" targetId={listing.id} noun="ad" />
+          </div>
         </div>
       </article>
 

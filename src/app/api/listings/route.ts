@@ -11,7 +11,7 @@ import {
   sanitizePhotos,
   serializeListing,
 } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS, countryDef, currencyDef } from '@/lib/constants'
+import { LISTING_ACTIVE_DAYS, countryDef, currencyDef, findProhibitedItem } from '@/lib/constants'
 
 // Public search — filter, sort and paginate in the database, not the browser.
 export async function GET(request: NextRequest) {
@@ -45,6 +45,16 @@ export async function POST(request: Request) {
   return route(async () => {
     const user = await requireUser('Sign in to publish a listing')
     const data = await parseBody(request, listingCreateSchema)
+
+    // Prohibited items: check the words a seller chose BEFORE anything is
+    // written. The list lives in constants.ts and is meant to be edited;
+    // the rejection says plainly what is not allowed and why.
+    const banned = findProhibitedItem(data.title, data.description ?? '')
+    if (banned) {
+      throw new ApiError(400, banned.message, {
+        title: 'This listing cannot be published — ' + banned.label.toLowerCase(),
+      })
+    }
 
     // Country comes from the account (the client may also send it); currency
     // defaults to that country's currency unless the listing picks one.
