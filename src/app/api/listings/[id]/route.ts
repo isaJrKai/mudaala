@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
 import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
+import { getSessionUser } from '@/lib/auth'
 import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
 import { expireOverdueListings, getOwnedListingOr404, buildSearchText, sanitizePhotos, serializeListing } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS, countryDef } from '@/lib/constants'
+import { LISTING_ACTIVE_DAYS, countryDef, findProhibitedItem } from '@/lib/constants'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -15,6 +16,16 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const listing = await db.listing.findUnique({ where: { id }, include: { user: { include: { profile: true } } } })
     if (!listing) throw new ApiError(404, 'This listing does not exist or has been removed')
+
+    // Hidden by moderation: gone for everyone except the owner, who needs to
+    // see the state their listing is in (the banner explains it). Buyers and
+    // guests get the same honest 404 any removed ad gets.
+    if (listing.status === 'HIDDEN') {
+      const viewer = await getSessionUser()
+      if (!viewer || viewer.id !== listing.userId) {
+        throw new ApiError(404, 'This listing is no longer available')
+      }
+    }
 
     // Fire-and-forget view counter; failures never break the response.
     db.listing.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => undefined)
@@ -98,6 +109,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       throw new ApiError(400, 'Enter a valid WhatsApp number for the selected country', {
         contactWhatsapp: 'Invalid WhatsApp number for the selected country',
       })
+    }
+
+    // Edits re-publish content — run the prohibited-items filter when the
+    // words change (same list, same friendly rejection as publish time).
+    if (data.title !== undefined || data.description !== undefined) {
+      const prohibited = findProhibitedItem(`${data.title ?? listing.title} ${data.description ?? listing.description}`)
+      if (prohibited) {
+        throw new ApiError(
+          400,
+          `Mudaala does not allow ads for ${prohibited.rule.label}. Remove that part and try again.`,
+        )
+      }
     }
 
     const merged = {

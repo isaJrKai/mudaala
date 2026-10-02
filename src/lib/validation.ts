@@ -3,7 +3,7 @@
 // Never duplicate these rules elsewhere.
 
 import { z } from 'zod'
-import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, type ListingStatus } from './constants'
+import { CATEGORY_KEYS, LISTING_TYPES, UNIT_KEYS, COUNTRY_KEYS, CURRENCY_KEYS, ALLOWED_STATUS_TRANSITIONS, REPORT_REASONS, REPORT_TARGET_TYPES, type ListingStatus } from './constants'
 
 // Uganda phone normalization. Accepted inputs: 07XX XXX XXX, 7XXXXXXXX,
 // +2567XXXXXXXX, 2567XXXXXXXX...
@@ -220,3 +220,21 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out
 }
+
+// ---------------------------------------------------------------------------
+// Reports (Task 2) — one flag per person per target, guests included.
+// The server attaches the reporter identity (account id or coarse IP); the
+// client never sends one, so there is nothing to spoof here.
+// ---------------------------------------------------------------------------
+export const reportCreateSchema = z.object({
+  targetType: z.enum(REPORT_TARGET_TYPES, { message: 'What are you reporting?' }),
+  targetId: z.string().trim().min(1, 'Missing report target').max(40, 'Invalid report target'),
+  reason: z.enum(REPORT_REASONS, { message: 'Choose a reason' }),
+  details: z.string().trim().max(500, 'Details must be 500 characters or fewer').optional().nullable(),
+})
+
+// Admin actions on an open report. HIDE/RESTORE operate on the report's
+// LISTING target; DISMISS closes the report itself.
+export const reportActionSchema = z.object({
+  action: z.enum(['HIDE', 'RESTORE', 'DISMISS'], { message: 'Choose an action' }),
+})

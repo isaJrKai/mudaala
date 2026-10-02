@@ -11,7 +11,7 @@ import {
   sanitizePhotos,
   serializeListing,
 } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS, countryDef, currencyDef } from '@/lib/constants'
+import { LISTING_ACTIVE_DAYS, countryDef, currencyDef, findProhibitedItem } from '@/lib/constants'
 
 // Public search — filter, sort and paginate in the database, not the browser.
 export async function GET(request: NextRequest) {
@@ -68,6 +68,16 @@ export async function POST(request: Request) {
       throw new ApiError(400, `Choose a district or region in ${def.name}`, {
         county: `Choose a district or region in ${def.name}`,
       })
+    }
+
+    // Prohibited items filter (publish time). The list lives in constants.ts
+    // and is meant to be edited; the rejection explains itself in plain words.
+    const prohibited = findProhibitedItem(`${data.title} ${data.description}`)
+    if (prohibited) {
+      throw new ApiError(
+        400,
+        `Mudaala does not allow ads for ${prohibited.rule.label}. Remove that part and try again.`,
+      )
     }
 
     const now = new Date()

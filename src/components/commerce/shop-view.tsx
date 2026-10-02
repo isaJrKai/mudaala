@@ -21,6 +21,7 @@ import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { useAddToBasket } from './basket-view'
 import { MudaalaCurve } from './mudaala-curve'
+import { ReportButton } from './report-dialog'
 import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
@@ -301,6 +302,9 @@ export function ShopView({ id }: { id: string }) {
               </Button>
             ) : null}
           </div>
+          {!isOwner ? (
+            <ReportButton targetType="SHOP" targetId={shop.id} label="Report this shop" className="mt-2 self-start" />
+          ) : null}
         </div>
       </section>
 

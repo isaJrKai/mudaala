@@ -4,16 +4,21 @@
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const
 export type ListingType = (typeof LISTING_TYPES)[number]
 
-const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED'] as const
+const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED', 'HIDDEN'] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
 
 // Deliberate status transitions. Anything not listed here is forbidden —
 // a fulfilled listing must never silently become active through an unrelated edit.
+// HIDDEN is the moderation takedown state: owners have NO self-service way out
+// (the appeal path is the support email in the owner's notification); only the
+// admin Restore action returns a hidden listing to ACTIVE, and it writes an
+// AuditLog row when it does.
 export const ALLOWED_STATUS_TRANSITIONS: Record<ListingStatus, ListingStatus[]> = {
   ACTIVE: ['FULFILLED', 'ARCHIVED'],
   FULFILLED: ['ACTIVE', 'ARCHIVED'],
   EXPIRED: ['ACTIVE', 'ARCHIVED'],
   ARCHIVED: ['ACTIVE'],
+  HIDDEN: [],
 }
 
 interface CategoryDef {
@@ -140,4 +145,99 @@ export const STATUS_UI: Record<ListingStatus, { label: string; badge: string }> 
   FULFILLED: { label: 'Fulfilled', badge: 'bg-stone-200 text-stone-700 border-stone-300' },
   EXPIRED: { label: 'Expired', badge: 'bg-red-50 text-red-800 border-red-200' },
   ARCHIVED: { label: 'Archived', badge: 'bg-stone-100 text-stone-600 border-stone-200' },
+  HIDDEN: { label: 'Hidden', badge: 'bg-red-100 text-red-900 border-red-200' },
+}
+
+// ---------------------------------------------------------------------------
+// Reports & moderation (Task 2)
+// ---------------------------------------------------------------------------
+
+// [SUPPORT EMAIL] — placeholder pending the real support address. Every
+// owner-facing moderation notice points appeals here; replace the value once
+// and every notice is correct.
+export const SUPPORT_EMAIL = '[SUPPORT EMAIL]'
+
+// A listing is auto-hidden at this many OPEN reports from DISTINCT reporters
+// (a reporter is one account, or one guest IP).
+export const AUTO_HIDE_REPORT_COUNT = 3
+
+// Reports per calendar day (UTC) per reporter — one account OR one guest IP.
+export const REPORT_DAILY_LIMIT = 10
+
+export const REPORT_REASONS = ['SCAM', 'STOLEN_GOODS', 'PROHIBITED_ITEM', 'WRONG_INFO', 'OTHER'] as const
+export type ReportReason = (typeof REPORT_REASONS)[number]
+
+// Friendly words for the report dialog and the admin queue.
+export const REPORT_REASONS_UI: Record<ReportReason, { label: string; hint: string }> = {
+  SCAM: { label: 'Scam or fraud', hint: 'Fake goods, fake prices, asks for money in advance' },
+  STOLEN_GOODS: { label: 'Stolen goods', hint: 'The item looks stolen or the story does not add up' },
+  PROHIBITED_ITEM: { label: 'Not allowed on Mudaala', hint: 'Weapons, drugs, prohibited or counterfeit items' },
+  WRONG_INFO: { label: 'Wrong information', hint: 'Wrong price, wrong place, or not what the photos show' },
+  OTHER: { label: 'Something else', hint: 'Tell us what is wrong in your own words' },
+}
+
+export const REPORT_TARGET_TYPES = ['LISTING', 'SHOP'] as const
+export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number]
+
+// ---------------------------------------------------------------------------
+// Prohibited items — the publish-time filter.
+// This list is MEANT to be edited: add a term (lowercase) and every new or
+// edited listing containing it is rejected with the rule's friendly label.
+// Terms match as whole words/phrases, so "gunia" (sacks) never trips "gun".
+// ---------------------------------------------------------------------------
+export interface ProhibitedRule {
+  key: string
+  // The friendly explanation shown to the seller — name what is not allowed
+  // and why, never shame the person.
+  label: string
+  terms: string[]
+}
+
+export const PROHIBITED_ITEMS: ProhibitedRule[] = [
+  {
+    key: 'weapons',
+    label: 'weapons or ammunition',
+    terms: ['gun', 'guns', 'rifle', 'pistol', 'shotgun', 'revolver', 'ak47', 'ak-47', 'ammo', 'ammunition', 'bullet', 'bullets', 'cartridge'],
+  },
+  {
+    key: 'drugs',
+    label: 'drugs or narcotics',
+    terms: ['cocaine', 'heroin', 'marijuana', 'opium', 'methamphetamine', 'mdma', 'ecstasy', 'khat', 'muguka'],
+  },
+  {
+    key: 'stolen',
+    label: 'stolen goods — every item on Mudaala must be yours to sell, with papers on request',
+    terms: ['stolen', 'no papers', 'without papers', 'no receipt', 'without receipt', 'no origin', 'hot goods', 'quick sale no questions'],
+  },
+  {
+    key: 'authority',
+    label: 'government, police or military property',
+    terms: ['police uniform', 'military uniform', 'army uniform', 'updf', 'police property', 'government property', 'state house', 'prison', 'number plate', 'number plates', 'road sign', 'street sign', 'court seal'],
+  },
+  {
+    key: 'infrastructure',
+    label: 'public infrastructure materials — electric cable, transformer parts, manhole covers and railway metal belong to the utility, and trading them puts everyone at risk',
+    terms: ['electric cable', 'electrical cable', 'power cable', 'copper cable', 'electric wire', 'transformer', 'manhole', 'railway metal', 'railway line', 'rail metal', 'train track', 'umeme pole', 'utility pole'],
+  },
+  {
+    key: 'counterfeit',
+    label: 'counterfeit goods',
+    terms: ['counterfeit', 'knockoff', 'knock-off', 'fake original', 'replica', 'first copy', 'fake iphone', 'fake samsung'],
+  },
+]
+
+/** Find the first prohibited rule whose term appears in the text as a whole
+ *  word or phrase. Case-insensitive; returns null for clean text. Client-safe
+ *  (pure string work) so forms can pre-warn, but the API is the enforcer. */
+export function findProhibitedItem(text: string): { rule: ProhibitedRule; term: string } | null {
+  const haystack = text.toLowerCase()
+  for (const rule of PROHIBITED_ITEMS) {
+    for (const term of rule.terms) {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (new RegExp(`(^|\\W)${escaped}($|\\W)`).test(haystack)) {
+        return { rule, term }
+      }
+    }
+  }
+  return null
 }

@@ -12,6 +12,7 @@ import { cache } from 'react'
 import { Clock, MapPin } from 'lucide-react'
 import { CategoryGlyph, categoryTint } from '@/components/commerce/category-icons'
 import { ShareAdRow } from '@/components/commerce/share-row'
+import { ReportButton } from '@/components/commerce/report-dialog'
 import { db } from '@/lib/db'
 import { expireOverdueListings } from '@/lib/listings'
 import { normalizeShopCode } from '@/lib/format'
@@ -202,6 +203,8 @@ export default async function ShopPage({ params }: Params) {
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Share this shop">
           <ShareAdRow title={name} url={shareUrl} priceLabel={null} noun="shop" label="Share this shop" />
         </section>
+
+        <ReportButton targetType="SHOP" targetId={shop.user.id} label="Report this shop" className="self-start" />
       </main>
 
       <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">

@@ -1246,6 +1246,148 @@ async function main() {
     }
   }
 
+
+  console.log('\n== 13. Reports & moderation ==')
+  {
+    // Fixture: an owner whose listing gets ganged up on, plus fresh listings
+    // for the daily-ceiling sweep. All guest reporters send explicit
+    // x-forwarded-for values — the server keys guest dedupe/limits on IP.
+    const owner: Jar = { cookie: '' }
+    await register(owner, uniquePhone(), 'Report Owner', 'password123')
+    const mkListing = async (title: string): Promise<string> => {
+      const res = await call('POST', '/api/listings', { ...validListing, title, contactPhone: owner.user?.phone }, owner)
+      return res.json?.listing?.id
+    }
+    const victim = await mkListing('Fresh beans from Mbale bulk')
+    ok('fixture listing published (precondition)', Boolean(victim))
+
+    // 13.1 shape and targets
+    const ghost = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: 'nonexistent', reason: 'SCAM' }, undefined, { 'x-forwarded-for': '10.99.0.1' })
+    ok('report on a missing listing → 404', ghost.status === 404)
+    const badReason = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'SPAM' }, undefined, { 'x-forwarded-for': '10.99.0.2' })
+    ok('invalid reason → 400', badReason.status === 400)
+
+    // 13.2 guests may report; one OPEN report per reporter per target
+    const g1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'SCAM', details: 'Asked for money before showing the goods' }, undefined, { 'x-forwarded-for': '10.0.0.1' })
+    ok('guest report accepted (201)', g1.status === 201 && g1.json?.report?.id)
+    ok('report response never echoes reporter identity', !JSON.stringify(g1.json).toLowerCase().includes('ip'))
+    const g1dup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'OTHER' }, undefined, { 'x-forwarded-for': '10.0.0.1' })
+    ok('same guest reporting again → 409 (one open report per reporter)', g1dup.status === 409)
+
+    // 13.3 auto-hide at three DISTINCT reporters + the owner notice
+    const g2 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'STOLEN_GOODS' }, undefined, { 'x-forwarded-for': '10.0.0.2' })
+    ok('second distinct guest report accepted (201)', g2.status === 201)
+    const second: Jar = { cookie: '' }
+    await register(second, uniquePhone(), 'Second Reporter', 'password123')
+    const u1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'WRONG_INFO' }, second)
+    ok('signed-in report accepted (201)', u1.status === 201)
+    const victimAfter = await db.listing.findUnique({ where: { id: victim } })
+    ok('listing auto-hidden at 3 distinct reporters', victimAfter?.status === 'HIDDEN')
+    const ownerNotified = await db.notification.findFirst({ where: { userId: owner.user!.id, type: 'LISTING_HIDDEN' } })
+    ok('owner notified with the support-email appeal path', Boolean(ownerNotified) && ownerNotified!.body.includes('[SUPPORT EMAIL]'))
+
+    const direct = await call('GET', `/api/listings/${victim}`)
+    ok('hidden listing direct fetch → 404', direct.status === 404 && direct.json?.error === 'This listing is no longer available')
+    const ownerFetch = await call('GET', `/api/listings/${victim}`, undefined, owner)
+    ok('owner still sees their hidden listing (with status)', ownerFetch.status === 200 && ownerFetch.json?.listing?.status === 'HIDDEN')
+    const searchRes = await call('GET', `/api/listings?q=${encodeURIComponent('Fresh beans from Mbale bulk')}`)
+    ok('hidden listing gone from browse/search', !JSON.stringify(searchRes.json).includes(victim))
+    const sitemapXml = await (await fetch(`${BASE}/sitemap.xml`)).text()
+    ok('hidden listing gone from the sitemap', !sitemapXml.includes(`/l/${victim}<`))
+    const selfRestore = await call('PATCH', `/api/listings/${victim}`, { status: 'ACTIVE' }, owner)
+    ok('owner cannot self-restore a hidden listing (409)', selfRestore.status === 409)
+
+    // 13.4 the admin gate: /api/admin/* is 401/403 for everyone else
+    const anonQueue = await call('GET', '/api/admin/reports')
+    ok('admin queue signed out → 401', anonQueue.status === 401)
+    const civilian: Jar = { cookie: '' }
+    await register(civilian, uniquePhone(), 'Civilian Reporter', 'password123')
+    const nonAdminQueue = await call('GET', '/api/admin/reports', undefined, civilian)
+    ok('admin queue non-admin → 403', nonAdminQueue.status === 403)
+    const nonAdminAct = await call('PATCH', `/api/admin/reports/${g1.json.report.id}`, { action: 'DISMISS' }, civilian)
+    ok('admin action non-admin → 403', nonAdminAct.status === 403)
+
+    const admin: Jar = { cookie: '' }
+    const adminLogin = await call('POST', '/api/auth/login', { phone: '0712000001', password: 'demo1234' }, admin)
+    storeCookie(admin, adminLogin)
+    admin.token = adminLogin.json?.sessionToken
+    ok('admin signs in (precondition)', adminLogin.status === 200)
+
+    const queue = await call('GET', '/api/admin/reports', undefined, admin)
+    ok('admin queue opens (200)', queue.status === 200)
+    const queueRows: any[] = queue.json?.reports ?? []
+    ok('queue lists the victim reports', queueRows.some((r) => r.targetId === victim))
+    ok('queue rows carry reason + details', queueRows.some((r) => r.targetId === victim && r.reason === 'SCAM' && typeof r.details === 'string'))
+    ok('queue never contains reporter IPs or identities', !JSON.stringify(queue.json).includes('10.0.0.'))
+
+    // 13.5 the three actions, audited
+    const dismissOne = await call('PATCH', `/api/admin/reports/${g1.json.report.id}`, { action: 'DISMISS' }, admin)
+    ok('dismiss report works (200)', dismissOne.status === 200)
+    const afterDismiss = await db.listing.findUnique({ where: { id: victim } })
+    ok('dismiss alone does not restore the listing', afterDismiss?.status === 'HIDDEN')
+    ok('dismiss action audited', Boolean(await db.auditLog.findFirst({ where: { action: 'DISMISS_REPORT', targetId: g1.json.report.id } })))
+
+    const hideAct = await call('PATCH', `/api/admin/reports/${g2.json.report.id}`, { action: 'HIDE' }, admin)
+    ok('admin hide works (200, idempotent on hidden)', hideAct.status === 200)
+    ok('hide action audited', Boolean(await db.auditLog.findFirst({ where: { action: 'HIDE_LISTING', targetId: victim } })))
+    const restoreAct = await call('PATCH', `/api/admin/reports/${g2.json.report.id}`, { action: 'RESTORE' }, admin)
+    ok('admin restore works (200)', restoreAct.status === 200)
+    ok('restore action audited', Boolean(await db.auditLog.findFirst({ where: { action: 'RESTORE_LISTING', targetId: victim } })))
+    const afterRestore = await db.listing.findUnique({ where: { id: victim } })
+    ok('restore returns the listing to ACTIVE', afterRestore?.status === 'ACTIVE')
+    const restoreFetch = await call('GET', `/api/listings/${victim}`)
+    ok('restored listing fetchable again (200)', restoreFetch.status === 200)
+    const openAfterRestore = await db.report.count({ where: { targetType: 'LISTING', targetId: victim, status: 'OPEN' } })
+    ok('restore dismisses the remaining open reports', openAfterRestore === 0)
+    const restoreAgain = await call('PATCH', `/api/admin/reports/${g2.json.report.id}`, { action: 'RESTORE' }, admin)
+    ok('restore on a live listing → 409', restoreAgain.status === 409)
+
+    // 13.6 the daily ceiling: 10 reports per day per reporter (guest IP here)
+    const targets: string[] = []
+    for (let i = 0; i < 12; i++) targets.push(await mkListing(`Bulk floor maize lot number ${i}`))
+    ok('ceiling sweep fixtures published (precondition)', targets.every(Boolean))
+    let limitAt: number | null = null
+    for (let i = 0; i < targets.length; i++) {
+      const res = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: targets[i], reason: 'OTHER', details: `sweep ${i}` }, undefined, { 'x-forwarded-for': '10.5.5.5' })
+      if (res.status === 429) {
+        limitAt = i
+        break
+      }
+      ok(`sweep report ${i + 1} accepted`, res.status === 201)
+    }
+    ok('11th report in a day → 429', limitAt === 10)
+    const third: Jar = { cookie: '' }
+    await register(third, uniquePhone(), 'Third Reporter', 'password123')
+    const separateBudget = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: targets[0], reason: 'OTHER' }, third)
+    ok('signed-in reporter has a separate daily budget (201)', separateBudget.status === 201)
+
+    // 13.7 shop reports — Dismiss-only in V1 (HIDDEN is a listing state)
+    const shopReport = await call('POST', '/api/reports', { targetType: 'SHOP', targetId: owner.user!.id, reason: 'SCAM' }, undefined, { 'x-forwarded-for': '10.7.7.7' })
+    ok('shop report accepted (201)', shopReport.status === 201)
+    const hideShop = await call('PATCH', `/api/admin/reports/${shopReport.json.report.id}`, { action: 'HIDE' }, admin)
+    ok('hide on a shop report → 409 (dismiss-only in V1)', hideShop.status === 409)
+    const dismissShop = await call('PATCH', `/api/admin/reports/${shopReport.json.report.id}`, { action: 'DISMISS' }, admin)
+    ok('dismiss shop report works (200)', dismissShop.status === 200)
+
+    // 13.8 prohibited items at publish time (and on edits)
+    const gun = await call('POST', '/api/listings', { ...validListing, title: 'Clean rust gun metal piece', description: 'Heavy metal piece for the workshop, solid and ready for pickup today.' }, owner)
+    ok('weapon wording rejected with a friendly explanation', gun.status === 400 && gun.json.error.includes('does not allow'))
+    const stolen = await call('POST', '/api/listings', { ...validListing, title: 'Cheap laptop deal today', description: 'Laptop for sale, no papers, cash only — genuine and working.' }, owner)
+    ok('stolen-goods wording rejected (no papers)', stolen.status === 400)
+    const cable = await call('POST', '/api/listings', { ...validListing, title: 'Electric cable rolls for sale', description: 'Electric cable on rolls, best price in the market this week.' }, owner)
+    ok('public-infrastructure items rejected (electric cable)', cable.status === 400)
+    const cleanOk = await call('POST', '/api/listings', { ...validListing, title: 'Roofing sheets clean stock', description: 'Twenty pieces of iron sheets, clean and ready for pickup.' }, owner)
+    ok('clean listing still publishes (201)', cleanOk.status === 201 && cleanOk.json?.listing?.id)
+    const editBad = await call('PATCH', `/api/listings/${cleanOk.json.listing.id}`, { description: 'Iron sheets, stolen last week, very cheap for you.' }, owner)
+    ok('editing stolen wording into a listing → 400', editBad.status === 400)
+
+    // 13.9 the /admin page: friendly gate for humans (APIs are the real 403)
+    const adminPage = await fetch(`${BASE}/admin`)
+    const adminPageText = await adminPage.text()
+    ok('/admin page reachable with an admins-only screen for guests', adminPage.status === 200 && adminPageText.includes('Admins only'))
+    ok('/admin page asks crawlers to stay away (noindex)', adminPageText.toLowerCase().includes('noindex'))
+  }
+
   console.log(`\n========================================`)
   console.log(`RESULT: ${passed} passed, ${failed} failed`)
   if (failures.length > 0) {

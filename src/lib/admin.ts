@@ -24,6 +24,13 @@ function isAdminPhone(phone: string): boolean {
   return adminPhoneSets().some((candidates) => candidates.includes(phone))
 }
 
+/** Non-throwing check for pages: is this signed-in user an admin? Pages
+ *  cannot emit 403, so the /admin page uses this to render a friendly
+ *  "admins only" screen instead — the API routes stay the real gate. */
+export function isAdminUser(user: Pick<User, 'phone'> | null): boolean {
+  return user !== null && isAdminPhone(user.phone)
+}
+
 export async function requireAdmin(message = 'Only the shop admin can change deployment settings'): Promise<User> {
   const user = await requireUser('Sign in to view deployment settings')
   if (!isAdminPhone(user.phone)) throw new ApiError(403, message)

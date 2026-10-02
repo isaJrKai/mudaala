@@ -89,7 +89,7 @@ model Listing {
   contactPhone     String // normalized E.164
   contactWhatsapp  String?
   photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
-  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED
+  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation takedown; owner cannot self-restore)
   searchText       String    @default("") // lowercased title+description+category+area for SQLite case-insensitive search
   viewCount        Int       @default(0)
   publishedAt      DateTime  @default(now())
@@ -159,4 +159,39 @@ model PriceSnapshot {
   @@unique([date, category, unit, currency]) // upsert target — sweeps are idempotent
   @@index([date])
   @@index([category, unit, currency])
+}
+
+// A report is one person (signed-in or guest) flagging one listing or shop.
+// Dedupe and rate limits live in the report service; the reporter identity is
+// deliberately minimal: the account id when signed in, else the coarse client
+// IP. IPs are NEVER rendered, never logged, and never sent back to clients.
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String? // signed-in reporter's user id (null for guests)
+  reporterIp String? // guest reporter's client IP (x-forwarded-for first hop)
+  targetType String // LISTING | SHOP
+  targetId   String // listing id, or the shop owner's user id (shops are addressed by owner id everywhere else too)
+  reason     String // SCAM | STOLEN_GOODS | PROHIBITED_ITEM | WRONG_INFO | OTHER
+  details    String? // free text, max 500, optional
+  status     String   @default("OPEN") // OPEN | ACTIONED | DISMISSED
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, status])
+  @@index([status, createdAt])
+  @@index([reporterId, status])
+  @@index([reporterIp, status])
+}
+
+// Moderation paper trail: every admin action on a report or listing is one
+// immutable row. Ids only — no phones, no report details, no free text.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String // the admin user's id
+  action     String // HIDE_LISTING | RESTORE_LISTING | DISMISS_REPORT
+  targetType String // LISTING | REPORT
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
 }
