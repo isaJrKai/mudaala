@@ -1,0 +1,222 @@
+// Commerce OS — data model
+// The database is the single source of truth for listings, ownership and status.
+// PostgreSQL is the runtime store (Task 5): local dev and production both
+// point DATABASE_URL at a real Postgres server.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String           @id @default(cuid())
+  phone        String           @unique // normalized E.164: +2567XXXXXXXX (Uganda)
+  name         String
+  country      String           @default("UG") // UG (Uganda is the launch market)
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
+
+  // Task 4 — legal acceptance: when the user confirmed "18+ and accept the
+  // Terms and Privacy Policy" and WHICH version they saw. NULL for accounts
+  // created before versioned terms existed.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
+  sessions      Session[]
+  passwordResets PasswordReset[]
+  listings      Listing[]
+  savedSearches SavedSearch[]
+  notifications Notification[]
+  profile       BusinessProfile?
+}
+
+model Session {
+  id        String   @id // opaque random token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// One row per issued password-reset code. The 6-digit code is stored ONLY as
+// a salted sha256 hash ("salt:hash") — a leaked database yields no working
+// codes. expiresAt = createdAt + 10 minutes; attempts counts WRONG entries
+// (the code dies at 5); usedAt burns the code the moment it succeeds. A
+// successful reset revokes every session of the user in the same transaction.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
+}
+
+model BusinessProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName String
+  photoUrl     String? // shop photo shown on listings and the About-the-seller card
+  category     String?
+  description  String?
+  county       String?
+  area         String?
+  phone        String
+  whatsapp     String?
+  hours        String?
+  // Verification is NOT offered in V1. This flag stays false and no verified
+  // badge is rendered anywhere until a real verification process exists.
+  verified     Boolean @default(false)
+  // Public shop identity code (e.g. "MD-4821"). Auto-assigned once, then
+  // NEVER changed — buyers and printed QR posters rely on its stability.
+  shopCode     String? @unique
+  // Optional shop spot. The seller taps "Add my shop location" while standing
+  // AT the shop; the API rounds to 3 decimals (~100 m) BEFORE storing, so a
+  // precise home/private position can never exist server-side. Buyers only
+  // ever receive this blurred pair — enough to order "nearest" results.
+  lat          Float?
+  lng          Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Listing {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String // OFFER | REQUEST
+  title            String
+  description      String
+  category         String
+  price            Float? // in the listing's currency, null = "ask seller" / not disclosed
+  compareAtPrice   Float? // optional "was" price — shown struck-through as a discount when higher than price
+  currency         String    @default("UGX") // UGX
+  priceNegotiable  Boolean   @default(false)
+  unit             String? // per kg, per bag, ... (null when price is null)
+  quantity         Float?
+  county           String // district/region name (validated against the listing's country)
+  country          String    @default("UG") // UG
+  area             String?
+  contactPhone     String // normalized E.164
+  contactWhatsapp  String?
+  photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
+  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation takedown; owner cannot self-restore)
+  viewCount        Int       @default(0)
+  publishedAt      DateTime  @default(now())
+  refreshedAt      DateTime  @default(now()) // drives freshness ordering
+  expiresAt        DateTime // refreshedAt + LISTING_ACTIVE_DAYS
+  expiringNotifiedAt DateTime? // dedup for "expiring soon" notifications
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, refreshedAt])
+  @@index([type, status])
+  @@index([category, status])
+  @@index([county, status])
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+model SavedSearch {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  queryJson      String // serialized ListingQuery (shared schema with browse filters)
+  lastMatchCount Int      @default(0)
+  lastCheckedAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // NEW_MATCH | LISTING_EXPIRED | LISTING_EXPIRING
+  title     String
+  body      String
+  listingId String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+model AppSetting {
+  key       String   @id
+  value     String // JSON-encoded
+  updatedAt DateTime @updatedAt
+}
+
+// Daily median asking price per category+unit, recorded by the cron sweep
+// from ACTIVE listings (only combos with sampleSize >= 5 — thinner samples
+// would trade honesty for a fuller chart). currency is part of the key on
+// purpose: a median across two currencies would be a fabricated number,
+// and the whole product refuses those.
+model PriceSnapshot {
+  id          String   @id @default(cuid())
+  date        String // "YYYY-MM-DD" (day the median was computed)
+  category    String
+  unit        String
+  currency    String // UGX
+  medianPrice Float
+  sampleSize  Int
+  createdAt   DateTime @default(now())
+
+  @@unique([date, category, unit, currency]) // upsert target — sweeps are idempotent
+  @@index([date])
+  @@index([category, unit, currency])
+}
+
+// A report is one person (signed-in or guest) flagging one listing or shop.
+// Dedupe and rate limits live in the report service; the reporter identity is
+// deliberately minimal: the account id when signed in, else the coarse client
+// IP. IPs are NEVER rendered, never logged, and never sent back to clients.
+model Report {
+  id         String   @id @default(cuid())
+  reporterId String? // signed-in reporter's user id (null for guests)
+  reporterIp String? // guest reporter's client IP (x-forwarded-for first hop)
+  targetType String // LISTING | SHOP
+  targetId   String // listing id, or the shop owner's user id (shops are addressed by owner id everywhere else too)
+  reason     String // SCAM | STOLEN_GOODS | PROHIBITED_ITEM | WRONG_INFO | OTHER
+  details    String? // free text, max 500, optional
+  status     String   @default("OPEN") // OPEN | ACTIONED | DISMISSED
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, status])
+  @@index([status, createdAt])
+  @@index([reporterId, status])
+  @@index([reporterIp, status])
+}
+
+// Moderation paper trail: every admin action on a report or listing is one
+// immutable row. Ids only — no phones, no report details, no free text.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String // the admin user's id
+  action     String // HIDE_LISTING | RESTORE_LISTING | DISMISS_REPORT
+  targetType String // LISTING | REPORT
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+}
