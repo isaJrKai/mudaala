@@ -1967,6 +1967,46 @@ async function main() {
     const stillThere = await db.user.count({ where: { isSeed: true } })
     ok('17.10 the dry-run left every seed row in place', stillThere === 8)
 
+    // OG share image: an ad without a real photo must still preview well —
+    // the neutral Mudaala card (cream, wordmark, category name) is its
+    // og:image. Never a seed photo, never an empty preview, never a broken
+    // share card, whatever junk arrives on the card endpoint's query.
+    const expectedCard = `${BASE}/api/og/listing?category=${encodeURIComponent(validListing.category)}`
+    await db.listing.update({ where: { id: ph17Id }, data: { photos: '[]' } })
+    const noPhotoHtml = await (await fetch(`${BASE}/l/${ph17Id}`)).text()
+    ok('17.11 a no-photo ad ships the neutral Mudaala card as og:image', noPhotoHtml.includes(`property="og:image" content="${expectedCard}"`))
+    ok('17.12 the card og:image references no upload or seed path', !/property="og:image" content="[^"]*\/uploads\//.test(noPhotoHtml))
+
+    const cardRes = await fetch(expectedCard)
+    ok(
+      '17.13 the card endpoint renders a long-cached image',
+      cardRes.status === 200 &&
+        (cardRes.headers.get('content-type') ?? '').includes('image/') &&
+        (cardRes.headers.get('cache-control') ?? '').includes('immutable'),
+    )
+
+    const junkCard = await fetch(`${BASE}/api/og/listing?category=${encodeURIComponent('<script>alert(1)</script>')}`)
+    const traversalCard = await fetch(`${BASE}/api/og/listing?category=${encodeURIComponent('../../etc/passwd')}`)
+    ok(
+      '17.14 junk and traversal categories get a valid generic card (allowlist, nothing reflected)',
+      junkCard.status === 200 &&
+        traversalCard.status === 200 &&
+        (junkCard.headers.get('content-type') ?? '').includes('image/') &&
+        (traversalCard.headers.get('content-type') ?? '').includes('image/'),
+    )
+
+    await db.listing.update({ where: { id: ph17Id }, data: { photos: JSON.stringify(['/uploads/seed/listing-matooke.png']) } })
+    const seedOgHtml = await (await fetch(`${BASE}/l/${ph17Id}`)).text()
+    ok(
+      '17.15 a seed-only-photo ad ships the card as its share image, never a seed photo',
+      seedOgHtml.includes(`property="og:image" content="${expectedCard}"`) &&
+        !/property="og:image" content="[^"]*\/uploads\/seed\//.test(seedOgHtml),
+    )
+
+    // Restore the control state 17.6/17.7 verified, so the fixture stays
+    // exactly as earlier assertions left it.
+    await db.listing.update({ where: { id: ph17Id }, data: { isSeed: false, photos: originalPhotos } })
+
     // Section cleanup: the fixture listing + its user never persist.
     await db.listing.delete({ where: { id: ph17Id } }).catch(() => undefined)
     await db.user.delete({ where: { id: ph17.user?.id ?? '' } }).catch(() => undefined)

@@ -1045,3 +1045,19 @@ Stage Summary:
 - Navigation was never broken in the app; the "broken browse screen" was fixture pollution on top of the market feed.
 - The suite is now hermetic at the run level (391/0), the preview DB is clean, and the cleanup tooling is safe (no more blanket non-seed deletion without --yes + dry-run report).
 - Commits on main (current working line; fast-forwardable to starter-launch).
+
+---
+Task ID: og-card-fallback
+Agent: main (Super Z)
+Task: User requirement — the Open Graph image falls back to a neutral Mudaala placeholder card (plain cream background, "mudaala" wordmark, category name) when a listing has no real photo. Never use seed photos as the share image.
+
+Work Log:
+- Audited the ad page metadata (src/app/l/[id]/page.tsx): real photo → og:image; NO photo → no og:image at all (Twitter fell back to 'summary'). Seed photos were already filtered out of share images (17.1–17.3).
+- Built the card: src/app/api/og/listing/route.tsx — next/og ImageResponse, 1200x630, the app's own light palette flattened to hex (cream #f9f7f4 background, dark-green #205335 lowercase "mudaala" wordmark, muted category label, hairline frame). Input deliberately allowlisted: only CATEGORY_KEYS render a category line; unknown/junk/traversal params get the generic wordmark-only card — no free-text surface, nothing reflected. Response caches immutable for a year (bytes are a pure function of the allowlisted category, ~13 variants total). Visually verified the PNG in-context.
+- Wired the fallback: shareImage = first real photo ?? /api/og/listing?category={slug}; og:image and twitter:summary_large_image always ship now. JSON-LD product image stays real-photos-only (the card is a share preview, not product imagery). Route placed under /api/* per repo convention — proxy CSRF only guards state-changing methods, headers pass through.
+- Tests (section 17, +5 → suite 396): 17.11 no-photo ad ships the card URL as og:image with the right category; 17.12 that og:image references no /uploads/ path at all; 17.13 card endpoint 200 + image/* + immutable cache; 17.14 junk (<script>) and traversal (../../etc/passwd) categories → valid generic image, nothing reflected; 17.15 seed-only-photo ad ships the card, never a seed path (absolute-URL regex, not naive substring).
+- Verified: tsc clean, eslint . clean, suite 396/0 via bugprobe.sh, post-run DB recon still 8 seed users / 16 seed listings (hermetic sweep held).
+
+Stage Summary:
+- Photo-less ads now share a proper preview: cream card, wordmark, category — seed photos excluded end to end, junk input can't poison the image, first real photo still wins when present.
+- 396/391 suite green; files: src/app/api/og/listing/route.tsx (new), src/app/l/[id]/page.tsx, scripts/test-api.ts.

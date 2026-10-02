@@ -84,6 +84,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // even an unflagged row that still points at /uploads/seed/ stays out.
   const publicPhotos = photos.filter((p) => !p.includes('/uploads/seed/'))
   const firstPhoto = publicPhotos.length > 0 ? absolutePhoto(publicPhotos[0]) : undefined
+  // No real photo → the neutral Mudaala card (cream background, wordmark,
+  // category name) stands in as the share image, so a photo-less ad still
+  // previews properly and never falls back to a placeholder photo.
+  const shareImage = firstPhoto ?? `${siteUrl}/api/og/listing?category=${encodeURIComponent(listing.category)}`
   const title = metaTitle(listing)
   const description = metaDescription(listing)
 
@@ -98,14 +102,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       url: `/l/${listing.id}`,
       siteName: 'Mudaala',
       type: 'website',
-      // The first photo is the preview — WhatsApp picks it up for link chats.
-      ...(firstPhoto ? { images: [firstPhoto] } : {}),
+      // The first real photo is the preview — WhatsApp picks it up for link
+      // chats. Without one, the neutral card renders instead.
+      images: [shareImage],
     },
     twitter: {
-      card: firstPhoto ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(firstPhoto ? { images: [firstPhoto] } : {}),
+      images: [shareImage],
     },
   }
 }
