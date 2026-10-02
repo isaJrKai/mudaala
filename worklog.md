@@ -968,3 +968,23 @@ Stage Summary:
 - Preview fix is on disk and verified; needs only a platform app boot (user reopens preview or restarts session) to take effect.
 - NOT done: no code changes this session (env-only fix), so no tsc/eslint/suite run needed; nothing else outstanding from the user's message.
 - For the user: the PAT was pasted in chat — regenerate it once the push is confirmed. If the preview pane still refuses, use the session restart button; any fresh boot now serves the fixed headers.
+
+---
+Task ID: sandbox-restore-recovery + final-report
+Agent: main (Super Z)
+Task: User approved the final report ("go for it"). During the work the platform restored the sandbox from the ORIGINAL GitHub lineage, wiping the working tree, branches, bundles, .env, embedded postgres and the running app. Recovered everything from the GitHub push, then produced the final report.
+
+Work Log:
+- Recovered an Explore-agent inventory that had silently audited a STALE tree (pre-Task-2 lineage: no Report/AuditLog/PasswordReset, 215 assertions, no middleware/headers, missing /api/upload). Diagnosis: reflog showed the restored original history ("Item one...", "Task 29-31..."); local starter-launch/backup branches and download/ bundles were GONE; only GitHub held the real lineage.
+- Recovery from insurance: git fetch from GitHub with the PAT -> checkout starter-launch @ e7fbac2, main re-aligned (HEAD flips between main/starter-launch are now harmless, both at the same commit). .env rebuilt verbatim from the known-good contents (incl. FRAME_ANCESTORS allowlist).
+- Postgres re-provisioned from scratch: bun install in .pgtool (embedded-postgres binaries), ICU fix (symlinked libicu*.so.60 + LD_LIBRARY_PATH - the binaries need libicuuc.so.60, system only has 76), initdb -U mudaala --auth=trust on 127.0.0.1:5433, CREATE DATABASE mudaala via prisma db execute against the default postgres db (the minimal package ships no createdb), prisma migrate deploy, seed (8 demo traders / 16 listings / 2 saved searches, isSeed-stamped).
+- Platform race caught: the async restore clobbered schema.prisma/.env mid-recovery (seed failed with provider=sqlite); files settled at e7fbac2 moments later - regenerated the prisma client and reseeded. A platform-started server squatting :3000 with the stale clobbered .env caused a false "database down" + missing frame-ancestors; killed it and started one clean instance: root 200, /api/health app+database UP, frame-ancestors allowlist live, POST /api/reports 400 (validation alive), /api/admin/reports 401 (admin gate alive).
+- Insurance rebuilt: backup/task1, backup/starter-t3, backup/firstrun-t4, backup/firstrun-t5 re-created from origin refs; download/mudaala-insurance.bundle (32 MB, all six refs).
+- Final report (the last package deliverable) produced per the docx skill: R1 cover recipe + DM-1 palette, 3-section page numbering (cover / Roman TOC / Arabic body), TOC placeholders + refresh hint, footer format switches post-patched, empty pgNumType stripped. Content: executive summary; scope; cross-cutting controls (auth, full rate-limit table, CSRF, headers, env validation, validation rulebook, PII hygiene, seed rule); the 41-handler route matrix in 7 group tables (auth/ownership/rate-limit/validation/notes, file:line-cited); test coverage map with exact assertion names; 15-entry risk register (P1: XFF-spoofable guest identity enabling fabricated distinct-reporter auto-hide; P2: in-memory limiter, reset-password unthrottled, lockout DoS, nonce-less CSP, viewCount inflation, sessionToken in bodies; P3 x7); launch checklist; suite section map; env-var reference.
+- Verified: postcheck.py 0 errors (1 acceptable warning: the mandated TOC PageBreak pattern); LibreOffice render inspected page-by-page (cover, TOC+hint on one page after compressing the injected TOC styles, matrix tables, headers/footers); 21 pages; PDF preview checked then removed.
+
+Stage Summary:
+- Sandbox fully restored to e7fbac2 runtime (Postgres + seed + app + preview headers); GitHub remains the source of truth (main = starter-launch @ e7fbac2 + this commit).
+- Deliverable: download/Mudaala-API-Security-Test-Coverage-Report.docx (21 pages). Generation scripts persisted: scripts/report-data.js, scripts/report-kit.js, scripts/gen-final-report.js, scripts/patch-report-docx.py (edit + re-run to revise).
+- The ALL-FIVE-TASKS package is complete; the final report closes the DONE-WHEN definition.
+- For the user: regenerate the GitHub PAT (was pasted in chat); the launch checklist inside the report sequences the remaining owner actions.
