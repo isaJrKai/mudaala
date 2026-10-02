@@ -66,6 +66,58 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+// ---- The one password rulebook (register AND reset share it) ----
+// Why a function and not schema refinements: the "not your phone number" rule
+// needs the NORMALIZED phone, and normalization happens after the raw body is
+// parsed. Both routes call passwordProblem() with the normalized phone.
+const COMMON_PASSWORDS = new Set([
+  'password',
+  'password1',
+  'password123',
+  '12345678',
+  '123456789',
+  '1234567890',
+  'qwerty123',
+  '11111111',
+  '00000000',
+  'iloveyou',
+  'letmein1',
+  'admin1234',
+])
+
+/** Returns the friendly problem with the password, or null when it is fine. */
+export function passwordProblem(password: string, phone?: string | null): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters'
+  if (password.length > 100) return 'Password is too long'
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return 'That password is too easy to guess — please choose a different one'
+  }
+  if (phone) {
+    // Every everyday form of the number is off-limits: +2567…, 07… and the
+    // bare local digits — people really do type their own number as a password.
+    const local = phone.replace(/^\+\d{3}/, '')
+    if (password === phone || password === `0${local}` || password === local) {
+      return 'Your password cannot be your phone number'
+    }
+  }
+  return null
+}
+
+// ---- Forgot / reset password ----
+
+export const forgotPasswordSchema = z.object({
+  phone: rawPhone,
+})
+
+export const resetPasswordSchema = z.object({
+  phone: rawPhone,
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Enter the 6-digit code from the SMS'),
+  newPassword: z.string().min(1, 'Choose a new password'),
+})
+
 const priceSchema = z
   .number({ message: 'Price must be a number' })
   .min(0, 'Price cannot be negative')

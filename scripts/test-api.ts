@@ -12,7 +12,9 @@
  * completeness checklist, reports & moderation (guest + signed-in reporting,
  * dedupe, daily cap, auto-hide at 3 distinct reporters, admin 403 walls,
  * hide/restore/dismiss with audit trail, prohibited-items filter, safety
- * card, report control).
+ * card, report control), password reset by SMS (anti-enumeration, code
+ * lifecycle: wrong/expired/reused/killed, shared password rulebook, session
+ * revocation, per-phone rate cap).
  */
 import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
@@ -123,11 +125,11 @@ async function main() {
     const bad = await call('POST', '/api/auth/register', { phone: 'not-a-phone', name: 'X Y', password: 'short' })
     ok('register rejects invalid phone + short password (400)', bad.status === 400 && bad.json.fields)
 
-    const res = await register(alice, alicePhone, 'Alice Tester', 'password123')
+    const res = await register(alice, alicePhone, 'Alice Tester', 'password321')
     ok('register creates account (201)', res.status === 201 && res.json?.user?.id)
     ok('register response never contains passwordHash', !JSON.stringify(res.json).includes('passwordHash'))
 
-    const dup = await register({ cookie: '' }, alicePhone, 'Alice Again', 'password123')
+    const dup = await register({ cookie: '' }, alicePhone, 'Alice Again', 'password321')
     ok('register rejects duplicate phone (409)', dup.status === 409)
 
     const wrongPw = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'wrongpassword' })
@@ -136,7 +138,7 @@ async function main() {
     const ghost = await call('POST', '/api/auth/login', { phone: '+256700111222', password: 'whatever123' })
     ok('login with unknown phone → same 401 message', ghost.status === 401 && ghost.json.error === wrongPw.json.error)
 
-    const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
+    const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password321' }, alice)
     ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('mudaala_session'))
     ok('login returns sessionToken for the Bearer channel', typeof login.json?.sessionToken === 'string' && login.json.sessionToken.length > 0)
 
@@ -160,7 +162,7 @@ async function main() {
     // Register a Ugandan account with country declared.
     const ug: Jar = { cookie: '' }
     const ugPhone = `077${String(Math.floor(1000000 + Math.random() * 8999999))}`.slice(0, 10)
-    const ugReg = await register(ug, ugPhone, 'Kampala Tester', 'password123', 'UG')
+    const ugReg = await register(ug, ugPhone, 'Kampala Tester', 'password321', 'UG')
     ok('register with country=UG creates +256 account (201)', ugReg.status === 201 && ugReg.json?.user?.phone?.startsWith('+256'))
 
     // Bearer-only transport: session survives with the cookie completely blocked.
@@ -182,7 +184,7 @@ async function main() {
     // passwords are allowed, the 6th attempt is 429 even with the RIGHT one.
     const rlPhone = uniquePhone()
     const rl: Jar = { cookie: '' }
-    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'password123')
+    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'password321')
     ok('rate-limit fixture account created (precondition)', rlReg.status === 201)
 
     let saw401 = 0
@@ -192,11 +194,11 @@ async function main() {
     }
     ok('5 wrong attempts each get the normal 401', saw401 === 5)
 
-    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password123' })
+    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password321' })
     ok('6th attempt locked out with 429 — even with the correct password', locked.status === 429)
     ok('lockout message is friendly and human', typeof locked.json?.error === 'string' && locked.json.error.includes('wait'))
 
-    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password123' })
+    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password321' })
     ok('local-format dialing of the same phone is locked too (normalization)', alsoLocked.status === 429)
 
     // A DIFFERENT phone from the same IP is untouched — the lock is per phone.
@@ -1102,7 +1104,7 @@ async function main() {
     // Section 10 signed alice out on purpose; the publish-backed tests below
     // need her session again, so sign back in first. call() does not auto-
     // store cookies, so capture the fresh session by hand.
-    const relogin = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
+    const relogin = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password321' }, alice)
     storeCookie(alice, relogin)
     if (relogin.json?.sessionToken) alice.token = relogin.json.sessionToken
     ok('alice signs back in for the shop tests', relogin.status === 200)
@@ -1447,6 +1449,160 @@ async function main() {
     await db.notification.deleteMany({ where: { listingId: { in: fixtureListings } } })
     await db.listing.deleteMany({ where: { id: { in: fixtureListings } } })
     console.log('  (section 13 fixtures cleaned up)')
+  }
+
+  console.log('\n== 14. Password reset by SMS code ==')
+  {
+    // The dev "inbox": the console SMS provider prints each message to the
+    // dev server console, which this run captures in dev.log. Codes are read
+    // out of it for the assertions — and NEVER printed: no test name or
+    // failure detail below carries a code, a token, or a full phone number.
+    const DEV_LOG = path.resolve(process.cwd(), 'dev.log')
+
+    async function readDevCode(phone: string): Promise<string | null> {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const log = fs.readFileSync(DEV_LOG, 'utf8')
+          const lines = log.split('\n').filter((l) => l.includes(`[sms:console] to ${phone}: `))
+          const m = lines.length > 0 ? /reset code is (\d{6})/.exec(lines[lines.length - 1]!) : null
+          if (m) return m[1]
+        } catch {
+          /* dev.log may not be flushed yet — retry below */
+        }
+        await new Promise((r) => setTimeout(r, 300))
+      }
+      return null
+    }
+
+    async function absentPhone(): Promise<string> {
+      for (let i = 0; i < 20; i++) {
+        const p = uniquePhone()
+        const clash = await db.user.findFirst({ where: { phone: p } })
+        if (!clash) return p
+      }
+      throw new Error('no free test phone')
+    }
+
+    // A code that is certainly wrong, derived from the real one (reversed; for
+    // palindromes, a guaranteed different constant).
+    function wrongOf(code: string): string {
+      const flipped = code.split('').reverse().join('')
+      if (flipped !== code) return flipped
+      return code === '999999' ? '000000' : '999999'
+    }
+
+    const OLD_PW = 'oldpassword77'
+    const NEW_PW = 'newpassword77'
+    const pwA: Jar = { cookie: '' }
+    const pwB: Jar = { cookie: '' }
+    const pwC: Jar = { cookie: '' }
+    const pwD: Jar = { cookie: '' }
+    const pwE: Jar = { cookie: '' }
+    await register(pwA, uniquePhone(), 'Reset Ada', OLD_PW)
+    await register(pwB, uniquePhone(), 'Reset Ben', OLD_PW)
+    await register(pwC, uniquePhone(), 'Reset Cate', OLD_PW)
+    await register(pwD, uniquePhone(), 'Reset Dan', OLD_PW)
+    await register(pwE, uniquePhone(), 'Reset Eva', OLD_PW)
+    ok('five reset-fixture accounts exist (precondition)', [pwA, pwB, pwC, pwD, pwE].every((j) => Boolean(j.user?.id && j.token)))
+    const tokenBeforeReset = pwA.token!
+
+    // ---- Anti-enumeration on the request step ----
+    const ghostPhone = await absentPhone()
+    const forgotGhost = await call('POST', '/api/auth/forgot-password', { phone: ghostPhone })
+    const forgotReal = await call('POST', '/api/auth/forgot-password', { phone: pwA.user!.phone })
+    ok('forgot-password answers 200 for a real number', forgotReal.status === 200 && forgotReal.json?.ok === true)
+    ok('identical answer whether or not the number has an account (no enumeration)', forgotGhost.status === forgotReal.status && JSON.stringify(forgotGhost.json) === JSON.stringify(forgotReal.json))
+    const forgotBad = await call('POST', '/api/auth/forgot-password', { phone: 'not-a-phone' })
+    ok('malformed phone → 400 with a friendly hint', forgotBad.status === 400 && typeof forgotBad.json?.error === 'string' && forgotBad.json.error.length > 10)
+    const ghostSmsSent = fs.existsSync(DEV_LOG) && fs.readFileSync(DEV_LOG, 'utf8').includes(`[sms:console] to ${ghostPhone}: `)
+    ok('no SMS is ever generated for a number without an account', !ghostSmsSent)
+
+    // ---- Wrong codes, then the right one (pwA) ----
+    const codeA = await readDevCode(pwA.user!.phone)
+    ok('code delivered to the dev console inbox, and absent from the API body', typeof codeA === 'string' && /^\d{6}$/.test(codeA ?? '') && !/\d{6}/.test(JSON.stringify(forgotReal.json)))
+    const smsLineA = fs.existsSync(DEV_LOG)
+      ? (fs.readFileSync(DEV_LOG, 'utf8').split('\n').filter((l) => l.includes(`[sms:console] to ${pwA.user!.phone}: `)).pop() ?? '')
+      : ''
+    ok('the SMS text names the app and is honest about expiry', smsLineA.includes('Mudaala password reset code') && smsLineA.includes('10 minutes'))
+
+    let wrongMsg = ''
+    const wrongStatuses: number[] = []
+    for (let i = 0; i < 4; i++) {
+      const r = await call('POST', '/api/auth/reset-password', { phone: pwA.user!.phone, code: wrongOf(codeA!), newPassword: NEW_PW })
+      wrongStatuses.push(r.status)
+      wrongMsg = typeof r.json?.error === 'string' ? r.json.error : wrongMsg
+    }
+    ok('four wrong codes → 400 with one generic message, every time', wrongStatuses.every((s) => s === 400) && wrongMsg.length > 10)
+    const rightA = await call('POST', '/api/auth/reset-password', { phone: pwA.user!.phone, code: codeA!, newPassword: NEW_PW })
+    ok('the correct code on the 5th submission still works (the kill counts WRONG tries)', rightA.status === 200)
+
+    // ---- Consequences of a successful reset (pwA) ----
+    const meOld = await call('GET', '/api/auth/me', undefined, { cookie: '', token: tokenBeforeReset })
+    ok('the session held before the reset is revoked (token resolves to nobody)', meOld.status === 200 && meOld.json?.user === null)
+    const loginOld = await call('POST', '/api/auth/login', { phone: pwA.user!.phone, password: OLD_PW })
+    ok('the old password no longer signs in', loginOld.status === 401)
+    const loginNew = await call('POST', '/api/auth/login', { phone: pwA.user!.phone, password: NEW_PW })
+    ok('the new password signs in', loginNew.status === 200)
+    const reuseA = await call('POST', '/api/auth/reset-password', { phone: pwA.user!.phone, code: codeA!, newPassword: 'anotherpass99' })
+    ok('a consumed code cannot be reused', reuseA.status === 400 && reuseA.json?.error === wrongMsg)
+    const usedRow = await db.passwordReset.findFirst({ where: { userId: pwA.user!.id }, orderBy: { createdAt: 'desc' } })
+    ok('the consumed code is marked used in the database', Boolean(usedRow?.usedAt))
+
+    // ---- Five wrong tries kill the code (pwB) ----
+    const forgotB = await call('POST', '/api/auth/forgot-password', { phone: pwB.user!.phone })
+    ok('second fixture requested its own code (200)', forgotB.status === 200)
+    const codeB = await readDevCode(pwB.user!.phone)
+    ok('code delivered for the second fixture', typeof codeB === 'string')
+    let killMsg = ''
+    for (let i = 0; i < 5; i++) {
+      const r = await call('POST', '/api/auth/reset-password', { phone: pwB.user!.phone, code: wrongOf(codeB!), newPassword: NEW_PW })
+      killMsg = typeof r.json?.error === 'string' ? r.json.error : killMsg
+    }
+    const rightB = await call('POST', '/api/auth/reset-password', { phone: pwB.user!.phone, code: codeB!, newPassword: NEW_PW })
+    ok('after five wrong tries even the correct code is refused', rightB.status === 400 && rightB.json?.error === killMsg)
+    const killedRow = await db.passwordReset.findFirst({ where: { userId: pwB.user!.id }, orderBy: { createdAt: 'desc' } })
+    ok('the killed code recorded five wrong tries and a used stamp', killedRow?.attempts === 5 && Boolean(killedRow?.usedAt))
+
+    // ---- Reset-endpoint anti-enumeration ----
+    const resetGhost = await call('POST', '/api/auth/reset-password', { phone: await absentPhone(), code: '123456', newPassword: NEW_PW })
+    ok('reset for an unknown number says exactly what a wrong code says', resetGhost.status === 400 && resetGhost.json?.error === wrongMsg)
+
+    // ---- Shared password rulebook (pwC), code survives weak tries ----
+    await call('POST', '/api/auth/forgot-password', { phone: pwC.user!.phone })
+    const codeC = await readDevCode(pwC.user!.phone)
+    ok('code delivered for the third fixture', typeof codeC === 'string')
+    const commonTry = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: '12345678' })
+    ok('a too-common password is refused even with the right code', commonTry.status === 400 && (commonTry.json?.error ?? '').includes('too easy to guess'))
+    const localPhone = `0${pwC.user!.phone.slice(4)}` // strip '+256' → everyday local form
+    const phoneTry = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: localPhone })
+    ok('the phone number itself as password is refused', phoneTry.status === 400 && (phoneTry.json?.error ?? '').includes('phone number'))
+    const goodC = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: NEW_PW })
+    ok('the code survives weak-password attempts and still completes the reset', goodC.status === 200)
+    const rejReg = await call('POST', '/api/auth/register', { phone: await absentPhone(), name: 'Common Pass', password: '12345678', country: 'UG' })
+    ok('register shares the same rulebook and refuses common passwords too', rejReg.status === 400 && (rejReg.json?.error ?? '').includes('too easy to guess'))
+
+    // ---- Expired code (pwE) ----
+    await call('POST', '/api/auth/forgot-password', { phone: pwE.user!.phone })
+    const codeE = await readDevCode(pwE.user!.phone)
+    ok('code delivered for the fifth fixture', typeof codeE === 'string')
+    await db.passwordReset.updateMany({ where: { userId: pwE.user!.id }, data: { expiresAt: new Date(Date.now() - 60_000) } })
+    const expiredTry = await call('POST', '/api/auth/reset-password', { phone: pwE.user!.phone, code: codeE!, newPassword: NEW_PW })
+    ok('an expired code is refused with the same generic message', expiredTry.status === 400 && expiredTry.json?.error === wrongMsg)
+
+    // ---- Per-phone request cap: 3 per hour ----
+    let firstThree = 0
+    for (let i = 0; i < 3; i++) {
+      const r = await call('POST', '/api/auth/forgot-password', { phone: pwD.user!.phone })
+      if (r.status === 200) firstThree++
+    }
+    ok('three code requests for one number in an hour go through', firstThree === 3)
+    const fourth = await call('POST', '/api/auth/forgot-password', { phone: pwD.user!.phone })
+    ok('a fourth request for the same number waits an hour (429, friendly)', fourth.status === 429 && typeof fourth.json?.error === 'string' && fourth.json.error.length > 10)
+
+    // ---- Hermetic cleanup: this section's fixtures never outlive the run ----
+    const resetUserIds = [pwA, pwB, pwC, pwD, pwE].map((j) => j.user?.id).filter(Boolean) as string[]
+    await db.user.deleteMany({ where: { id: { in: resetUserIds } } })
+    console.log('  (section 14 fixtures cleaned up)')
   }
 
   console.log(`\n========================================`)

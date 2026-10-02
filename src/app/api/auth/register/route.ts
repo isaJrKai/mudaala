@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { route, jsonOk, jsonError, parseBody } from '@/lib/api'
-import { registerSchema, normalizePhone, countryPhoneMessage, type CountryKey } from '@/lib/validation'
+import { registerSchema, normalizePhone, countryPhoneMessage, passwordProblem, type CountryKey } from '@/lib/validation'
 import { hashPassword, createSession, setSessionCookie, toPublicUser } from '@/lib/auth'
 import { hit, RATE_WINDOW_MS, REGISTER_IP_MAX } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
@@ -31,6 +31,14 @@ export async function POST(request: Request) {
       return jsonError(409, 'An account with this phone number already exists. Sign in instead.', {
         phone: 'Phone number already registered',
       })
+    }
+
+    // The full rulebook (common-password and not-your-phone checks) needs the
+    // normalized phone, so it runs here — register and reset share one set of
+    // password rules.
+    const pwProblem = passwordProblem(data.password, phone)
+    if (pwProblem) {
+      return jsonError(400, pwProblem, { password: pwProblem })
     }
 
     const user = await db.user.create({

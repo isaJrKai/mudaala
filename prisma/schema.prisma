@@ -23,11 +23,12 @@ model User {
 
   lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
 
-  sessions      Session[]
-  listings      Listing[]
-  savedSearches SavedSearch[]
-  notifications Notification[]
-  profile       BusinessProfile?
+  sessions       Session[]
+  listings       Listing[]
+  savedSearches  SavedSearch[]
+  notifications  Notification[]
+  profile        BusinessProfile?
+  passwordResets PasswordReset[]
 }
 
 model Session {
@@ -139,6 +140,24 @@ model AppSetting {
   key       String   @id
   value     String // JSON-encoded
   updatedAt DateTime @updatedAt
+}
+
+// One SMS password-reset code. The 6-digit code itself is NEVER stored —
+// only its sha256 hash. A code lives 10 minutes, dies after 5 wrong
+// submissions (attempts, killed by setting usedAt), and is consumed by a
+// successful reset (usedAt). Only the newest unused code per user is valid:
+// requesting a new code retires the old one.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String // sha256 hex of the 6-digit code
+  expiresAt DateTime // createdAt + 10 minutes
+  attempts  Int       @default(0) // wrong submissions so far
+  usedAt    DateTime? // consumed (success) or killed (5 wrong tries)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt, expiresAt])
 }
 
 // A buyer's flag on an ad or a shop. Guests can report (identified by IP);

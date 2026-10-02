@@ -60,3 +60,11 @@ export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 20)
 export const REPORT_DAY_MAX = 10
 export const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000
 export const REPORT_IP_DAY_MAX = Number(process.env.RATE_LIMIT_REPORT_IP_MAX ?? REPORT_DAY_MAX)
+
+// Password reset: requesting a CODE costs 3 per phone per hour and 10 per IP
+// per hour. The per-phone cap applies to EVERY number — existing account or
+// not — so nobody can use the endpoint as an SMS pump or an existence probe.
+// The per-IP cap is env-tunable for the same shared-dev-box reason as above.
+export const RESET_PHONE_MAX = Number(process.env.RATE_LIMIT_RESET_PHONE_MAX ?? 3)
+export const RESET_IP_MAX = Number(process.env.RATE_LIMIT_RESET_IP_MAX ?? 10)
+export const RESET_WINDOW_MS = 60 * 60 * 1000

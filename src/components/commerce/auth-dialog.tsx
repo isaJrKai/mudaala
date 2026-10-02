@@ -17,7 +17,7 @@ import { DEFAULT_COUNTRY, countryDef, type CountryDef } from '@/lib/constants'
 export function AuthDialog() {
   const open = useAppStore((s) => s.authOpen)
   const setOpen = useAppStore((s) => s.setAuthOpen)
-  const [tab, setTab] = useState<'signin' | 'register'>('signin')
+  const [tab, setTab] = useState<'signin' | 'register' | 'forgot'>('signin')
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -27,16 +27,22 @@ export function AuthDialog() {
           <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
           <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
         </DialogHeader>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register')}>
+        {/* 'forgot' is a reachable tab value with no trigger — the Sign in form's
+            "Forgot password?" link switches to it, so the TabsList stays two
+            clearly-named doors. */}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register' | 'forgot')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Sign in</TabsTrigger>
             <TabsTrigger value="register">Create account</TabsTrigger>
           </TabsList>
           <TabsContent value="signin">
-            <SignInForm onDone={() => setOpen(false)} />
+            <SignInForm onDone={() => setOpen(false)} onForgot={() => setTab('forgot')} />
           </TabsContent>
           <TabsContent value="register">
             <RegisterForm onDone={() => setOpen(false)} onSwitch={() => setTab('signin')} />
+          </TabsContent>
+          <TabsContent value="forgot">
+            <ForgotPasswordForm onDone={() => setOpen(false)} onBack={() => setTab('signin')} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -76,7 +82,7 @@ function DemoQuickFill({ onFill }: { onFill: (phone: string, password: string) =
   )
 }
 
-function SignInForm({ onDone }: { onDone: () => void }) {
+function SignInForm({ onDone, onForgot }: { onDone: () => void; onForgot: () => void }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [phone, setPhone] = useState('')
@@ -144,6 +150,15 @@ function SignInForm({ onDone }: { onDone: () => void }) {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
+      <p className="text-center">
+        <button
+          type="button"
+          onClick={onForgot}
+          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Forgot password?
+        </button>
+      </p>
       <DemoQuickFill
         onFill={(fillPhone, fillPassword) => {
           setPhone(fillPhone)
@@ -265,6 +280,143 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         Already registered?{' '}
         <button type="button" onClick={onSwitch} className="underline underline-offset-2">
           Sign in
+        </button>
+      </p>
+    </form>
+  )
+}
+
+// Two calm steps, no jargon: the phone, then the code from the SMS. The API
+// answers the same way whether or not the number is registered, so the first
+// screen never says "that number is wrong" — the code screen is where a real
+// mismatch (wrong code, expired code) is explained, and always with the same
+// sentence.
+function ForgotPasswordForm({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+  const { toast } = useToast()
+  const [step, setStep] = useState<'phone' | 'code'>('phone')
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function requestCode(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!phone.trim()) {
+      setError('Enter your phone number first')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await apiPost<{ ok: boolean; message: string }>('/api/auth/forgot-password', { phone })
+      // Same message either way — relay it as-is and move on to the code.
+      setStep('code')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the code. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitReset(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    setBusy(true)
+    try {
+      const res = await apiPost<{ ok: boolean; message: string }>('/api/auth/reset-password', {
+        phone,
+        code,
+        newPassword,
+      })
+      toast({ title: res.message || 'Password updated' })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reset the password. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (step === 'phone') {
+    return (
+      <form onSubmit={requestCode} className="mt-4 space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="forgot-phone">Your phone number</Label>
+          <Input
+            id="forgot-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="0772 345 678"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            We will text you a 6-digit code if this number has an account.
+          </p>
+        </div>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? 'Sending code…' : 'Send code'}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          <button type="button" onClick={onBack} className="underline underline-offset-2">
+            Back to sign in
+          </button>
+        </p>
+      </form>
+    )
+  }
+
+  return (
+    <form onSubmit={submitReset} className="mt-4 space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Enter the 6-digit code we sent to your phone, then choose a new password.
+      </p>
+      <div className="space-y-1.5">
+        <Label htmlFor="forgot-code">Code from the SMS</Label>
+        <Input
+          id="forgot-code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="123456"
+          maxLength={6}
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="forgot-password">New password</Label>
+        <Input
+          id="forgot-password"
+          type="password"
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+        />
+        <p className="text-xs text-muted-foreground">At least 8 characters — and not your phone number.</p>
+      </div>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? 'Updating password…' : 'Set new password'}
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        <button type="button" onClick={onBack} className="underline underline-offset-2">
+          Back to sign in
         </button>
       </p>
     </form>
