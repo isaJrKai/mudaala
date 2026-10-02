@@ -23,6 +23,11 @@ model User {
 
   lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
 
+  // PLACEHOLDER RULE — seed marker. Rows the seed script created are
+  // development fixtures, not real shops; scripts/remove-seed-data.ts
+  // deletes everything flagged true in one step before launch.
+  isSeed Boolean @default(false)
+
   // Task 4 — legal acceptance: when the user confirmed "18+ and accept the
   // Terms and Privacy Policy" and WHICH version they saw. NULL for accounts
   // created before versioned terms existed.
@@ -53,6 +58,9 @@ model BusinessProfile {
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessName String
   photoUrl     String? // shop photo shown on listings and the About-the-seller card
+  // PLACEHOLDER RULE — see User.isSeed: seed shops and their photos are
+  // removable-in-one-step development fixtures.
+  isSeed       Boolean @default(false)
   category     String?
   description  String?
   county       String?
@@ -96,6 +104,10 @@ model Listing {
   contactPhone     String // normalized E.164
   contactWhatsapp  String?
   photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
+  // PLACEHOLDER RULE — seed listings (and their /uploads/seed/ photos) are
+  // development fixtures; flagged so scripts/remove-seed-data.ts can wipe
+  // them in one step, and so sitemaps/OG never ship them as real content.
+  isSeed           Boolean   @default(false)
   status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation takedown; owner cannot self-restore)
   viewCount        Int       @default(0)
   publishedAt      DateTime  @default(now())

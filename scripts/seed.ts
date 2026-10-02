@@ -93,7 +93,9 @@ async function main() {
   const createdUsers: { id: string; phone: string }[] = []
   for (const u of users) {
     const user = await db.user.create({
-      data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234') },
+      // PLACEHOLDER RULE — every row the seed creates is flagged isSeed so
+      // scripts/remove-seed-data.ts can delete it in one step pre-launch.
+      data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234'), isSeed: true },
     })
     // Same rule as src/lib/shop.ts: a unique MD-XXXX identity code, assigned
     // once and never changed. (Local copy — scripts stay standalone.)
@@ -107,7 +109,7 @@ async function main() {
       }
     }
     if (!shopCode) throw new Error('seed: could not allocate a shop code')
-    await db.businessProfile.create({ data: { userId: user.id, phone: u.phone, whatsapp: u.phone, verified: false, shopCode, ...u.profile } })
+    await db.businessProfile.create({ data: { userId: user.id, phone: u.phone, whatsapp: u.phone, verified: false, shopCode, isSeed: true, ...u.profile } })
     createdUsers.push(user)
   }
 
@@ -133,6 +135,7 @@ async function main() {
         contactPhone: createdUsers[l.ownerIdx].phone,
         contactWhatsapp: createdUsers[l.ownerIdx].phone,
         photos: JSON.stringify(l.photo ? [l.photo] : []),
+        isSeed: true,
         status: l.status ?? 'ACTIVE',
         viewCount: l.views,
         publishedAt: refreshedAt,

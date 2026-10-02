@@ -22,6 +22,7 @@ import { ListingBlock, HeartButton } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
 import { MudaalaCurve } from './mudaala-curve'
+import { PlaceholderTile } from './placeholder-tile'
 import QRCode from 'react-qr-code'
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -207,15 +208,17 @@ export function ListingsBrowse() {
               </div>
             </div>
             <div className="relative hidden sm:block">
-              <img
-                src="/uploads/seed/shop-nakato.png"
-                alt="Market stall piled with matooke, tomatoes and red onions under canvas canopies"
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover"
+              {/* PLACEHOLDER RULE — the hero carries no photo until a real
+                  shop's real photo takes this slot. No seed image, no stock,
+                  no illustration: the neutral tile makes no claim. */}
+              <PlaceholderTile
+                label="Real shop photo — coming soon"
+                iconClassName="size-7"
+                className="absolute inset-0 h-full w-full"
               />
-              {/* The sweep that ties the photo into the ribbon: wider than
+              {/* The sweep that ties the tile into the ribbon: wider than
                   the column so its low end emerges out of the green field,
-                  then rises across the photo's bottom edge — the same stroke,
+                  then rises across the tile's bottom edge — the same stroke,
                   same direction, just given room to breathe. */}
               <MudaalaCurve className="absolute -left-24 bottom-0 block h-10 w-[calc(100%+6rem)] text-primary sm:h-14" />
             </div>

@@ -19,7 +19,6 @@ import { cache } from 'react'
 import { MapPin, Navigation, Package, Phone, Store } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { StatusBadge, TypeBadge } from '@/components/commerce/badges'
-import { CategoryGlyph, categoryTint } from '@/components/commerce/category-icons'
 import { ShareAdRow } from '@/components/commerce/share-row'
 import { SafetyCard } from '@/components/commerce/safety-card'
 import { ReportButton } from '@/components/commerce/report-button'
@@ -48,7 +47,6 @@ import {
   mapsSearchUrl,
 } from '@/lib/format'
 import { categoryLabel, countryDef, unitLabel, type ListingStatus, type ListingType } from '@/lib/constants'
-import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,7 +79,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 
   const photos = photosOf(listing.photos)
-  const firstPhoto = photos.length > 0 ? absolutePhoto(photos[0]) : undefined
+  // PLACEHOLDER RULE — seed photos are development fixtures, never real
+  // content: they never ship as the OG/Twitter preview. Filter by path so
+  // even an unflagged row that still points at /uploads/seed/ stays out.
+  const publicPhotos = photos.filter((p) => !p.includes('/uploads/seed/'))
+  const firstPhoto = publicPhotos.length > 0 ? absolutePhoto(publicPhotos[0]) : undefined
   const title = metaTitle(listing)
   const description = metaDescription(listing)
 
@@ -150,7 +152,10 @@ export default async function AdPage({ params }: Params) {
   const canonicalUrl = `${siteUrl}/l/${listing.id}`
 
   const { passwordHash: _unused, ...owner } = listing.user
-  const photos = photosOf(listing.photos)
+  // PLACEHOLDER RULE — seed photos are development fixtures, never real
+  // content: they do not render on the ad page, and they never reach the
+  // Product JSON-LD. A photo-less ad shows the neutral tile instead.
+  const photos = photosOf(listing.photos).filter((p) => !p.includes('/uploads/seed/'))
   const quantity = formatQuantity(listing.quantity, listing.unit)
   const priceLabel = priceLabelOf(listing)
   const whatsapp = listing.contactWhatsapp ?? (listing.type === 'OFFER' ? listing.contactPhone : listing.contactWhatsapp)
@@ -226,9 +231,18 @@ export default async function AdPage({ params }: Params) {
             ) : null}
           </div>
         ) : (
-          <div className={cn('flex h-48 w-full flex-col items-center justify-center gap-2 rounded-lg border text-center', categoryTint(listing.category))}>
-            <CategoryGlyph category={listing.category} className="[&_svg]:size-10" />
-            <span className="px-4 text-sm font-medium">{categoryLabel(listing.category)}</span>
+          // PLACEHOLDER RULE — neutral tile: flat grey, category name, a
+          // small camera icon. Inline markup keeps the page JS-free.
+          <div
+            role="img"
+            aria-label="Photo coming from the seller"
+            className="flex h-48 w-full flex-col items-center justify-center gap-2 rounded-lg border bg-muted text-center"
+          >
+            <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-8 text-muted-foreground/70">
+              <path d="M14.5 4h-5L7.5 6.5H5a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-2.5L14.5 4z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+            <span className="px-4 text-sm font-medium text-muted-foreground">{categoryLabel(listing.category)}</span>
           </div>
         )}
 

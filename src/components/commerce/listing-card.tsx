@@ -10,7 +10,7 @@ import { Check, Heart, MapPin, Navigation, Package, Phone, Plus, Store } from 'l
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { formatPrice, formatQuantity, timeAgo, telLink, whatsappLink } from '@/lib/format'
 import { categoryLabel, unitLabel } from '@/lib/constants'
-import { CategoryGlyph, categoryTint } from './category-icons'
+import { PlaceholderTile } from './placeholder-tile'
 import { TypeBadge, StatusBadge, FreshnessDot } from './badges'
 import { useAddedFlash } from './basket-view'
 import { LOVED_CAP, isLoved, toggleLoved, useLovedIds } from '@/lib/loved'
@@ -46,9 +46,9 @@ function ListingPhoto({ listing, className }: { listing: Listing; className?: st
     )
   }
   return (
-    <div className={cn('flex size-full items-center justify-center', categoryTint(listing.category), className)}>
-      <CategoryGlyph category={listing.category} className="[&_svg]:size-8" />
-    </div>
+    // PLACEHOLDER RULE — no photo yet: the neutral tile (flat grey, category
+    // name, small camera icon), never a stock or illustrated stand-in.
+    <PlaceholderTile category={listing.category} className={className} />
   )
 }
 

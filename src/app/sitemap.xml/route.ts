@@ -39,7 +39,9 @@ function urlEntry(loc: string, lastmod: Date | undefined, priority: string): str
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get('page')
 
-  const activeListing = { status: 'ACTIVE', expiresAt: { gt: new Date() } }
+  // PLACEHOLDER RULE — seed listings are development fixtures, never real
+  // content: search engines never crawl them from the sitemap.
+  const activeListing = { status: 'ACTIVE', expiresAt: { gt: new Date() }, isSeed: false }
   const [listingCount, shopCount] = await Promise.all([
     db.listing.count({ where: activeListing }),
     db.businessProfile.count({

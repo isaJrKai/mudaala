@@ -10,7 +10,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import { Clock, MapPin } from 'lucide-react'
-import { CategoryGlyph, categoryTint } from '@/components/commerce/category-icons'
 import { ShareAdRow } from '@/components/commerce/share-row'
 import { ReportButton } from '@/components/commerce/report-button'
 import { db } from '@/lib/db'
@@ -18,7 +17,7 @@ import { expireOverdueListings } from '@/lib/listings'
 import { normalizeShopCode } from '@/lib/format'
 import { siteUrl } from '@/lib/site'
 import { photosOf, absolutePhoto, placeOf, priceLabelOf } from '@/lib/ad-page'
-import { cn } from '@/lib/utils'
+import { categoryLabel } from '@/lib/constants'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,8 +59,12 @@ function shopPlace(shop: ShopRow): string {
 
 // The preview image: the newest live ad's first photo — a shop IS its stock
 // — falling back to the shop photo the seller uploaded.
+// PLACEHOLDER RULE — seed photos (/uploads/seed/) are development fixtures:
+// they never ship as the shop's OG/Twitter preview.
 function shopImage(shop: ShopRow): string | undefined {
-  const photo = photosOf(shop.user.listings[0]?.photos ?? '[]')[0] ?? shop.photoUrl
+  const photo =
+    photosOf(shop.user.listings[0]?.photos ?? '[]').find((p) => !p.includes('/uploads/seed/')) ??
+    (shop.photoUrl && !shop.photoUrl.includes('/uploads/seed/') ? shop.photoUrl : undefined)
   return photo ? absolutePhoto(photo) : undefined
 }
 
@@ -168,7 +171,7 @@ export default async function ShopPage({ params }: Params) {
           {listings.length > 0 ? (
             <div className="grid grid-cols-2 gap-2">
               {listings.map((ad) => {
-                const photo = photosOf(ad.photos)[0]
+                const photo = photosOf(ad.photos).find((p) => !p.includes('/uploads/seed/'))
                 return (
                   <Link
                     key={ad.id}
@@ -178,8 +181,17 @@ export default async function ShopPage({ params }: Params) {
                     {photo ? (
                       <img src={photo} alt="" className="h-28 w-full object-cover" loading="lazy" />
                     ) : (
-                      <div className={cn('flex h-28 items-center justify-center', categoryTint(ad.category))}>
-                        <CategoryGlyph category={ad.category} className="[&_svg]:size-8" />
+                      // PLACEHOLDER RULE — neutral tile, not a stand-in image.
+                      <div
+                        role="img"
+                        aria-label="Photo coming from the seller"
+                        className="flex h-28 flex-col items-center justify-center gap-1 bg-muted"
+                      >
+                        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-6 text-muted-foreground/70">
+                          <path d="M14.5 4h-5L7.5 6.5H5a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-2.5L14.5 4z" />
+                          <circle cx="12" cy="13" r="3.5" />
+                        </svg>
+                        <span className="px-2 text-[11px] text-muted-foreground">{categoryLabel(ad.category)}</span>
                       </div>
                     )}
                     <div className="space-y-1 p-2.5">

@@ -30,8 +30,13 @@ async function main() {
   const storage = new S3Storage(env)
   const db = new PrismaClient()
 
-  const files = await fs.readdir(UPLOAD_DIR).catch(() => [] as string[])
-  console.log(`${files.length} local photo(s) found in public/uploads`)
+  const files = (await fs.readdir(UPLOAD_DIR).catch(() => [] as string[])).filter(
+    // PLACEHOLDER RULE — seed photos are development fixtures: they are
+    // never migrated to cloud storage and never rewritten to bucket URLs.
+    // Removing seed data deletes the whole public/uploads/seed/ folder.
+    (name) => name !== 'seed',
+  )
+  console.log(`${files.length} local photo(s) found in public/uploads (seed photos excluded)`)
 
   let uploaded = 0
   const contentType = (name: string) =>
@@ -51,7 +56,9 @@ async function main() {
       return m ? `${base}/photos/${m[1]}` : url
     }
     let touched = 0
-    const listings = await db.listing.findMany({ where: { photos: { contains: '/uploads/' } } })
+    const listings = await db.listing.findMany({
+      where: { photos: { contains: '/uploads/' }, isSeed: false },
+    })
     for (const l of listings) {
       let photos: string[] = []
       try {
@@ -65,7 +72,9 @@ async function main() {
         touched++
       }
     }
-    const profiles = await db.businessProfile.findMany({ where: { photoUrl: { contains: '/uploads/' } } })
+    const profiles = await db.businessProfile.findMany({
+      where: { photoUrl: { contains: '/uploads/' }, isSeed: false },
+    })
     for (const p of profiles) {
       if (!p.photoUrl) continue
       await db.businessProfile.update({ where: { id: p.id }, data: { photoUrl: mapUrl(p.photoUrl) } })

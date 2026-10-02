@@ -105,6 +105,21 @@ demonstrates itself) and 2 saved searches with honestly computed counts.
 Fixture passwords are `demo1234`; fixture phones are +256 77x/70x demo
 numbers (see scripts/seed.ts).
 
+**PLACEHOLDER RULE** — every photo in this repo (seed listing photos,
+`public/uploads/seed/`, hero images) is a temporary placeholder for real
+photos real shops will take. Seed rows are flagged `isSeed = true`; before
+launch, remove the whole fixture dataset in one step:
+
+```bash
+npx tsx scripts/remove-seed-data.ts          # dry-run: see what would go
+npx tsx scripts/remove-seed-data.ts --yes    # delete seed rows + seed photo files
+```
+
+Wherever a photo is missing, the app shows the neutral placeholder tile
+(flat grey, category name, small camera icon) — no stock, AI-generated or
+illustrated images ship in production. Seed photos never reach sitemaps,
+Open Graph previews or cloud storage.
+
 ### API behavior & security tests
 
 With the dev server running:

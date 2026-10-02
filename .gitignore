@@ -72,3 +72,9 @@ server.log
 /.pgtool/
 /.t4stage/
 /.t5stage/
+# Runtime photo uploads are data, not source: they live on disk (and later
+# in the bucket), never in git. Seed fixtures under public/uploads/seed/ stay
+# tracked — they are the removable placeholder set.
+public/uploads/*
+!public/uploads/seed/
+!public/uploads/seed/**

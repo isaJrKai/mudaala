@@ -20,6 +20,7 @@ import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
 import path from 'node:path'
 import * as fs from 'node:fs'
+import { execSync } from 'node:child_process'
 import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
 // Pure-function units under test (no next/* imports — safe outside a request).
 import { bearerAuthEnabled } from '../src/lib/env-flags'
@@ -1897,6 +1898,59 @@ async function main() {
     const upper = await call('GET', `/api/listings?q=${encodeURIComponent(pgNeedle.toUpperCase())}`)
     const foundUpper = (upper.json?.items as any[] | undefined)?.some((l) => l.title === `Fresh ${pgNeedle} batch`)
     ok('16.12 an UPPERCASE query finds the lowercase title (case-insensitive ILIKE search)', upper.status === 200 && foundUpper === true)
+  }
+
+  // ===============================================================
+  // == 17. PLACEHOLDER RULE — seed flag, sitemap/OG exclusions,   ==
+  // ==    neutral tile, one-step seed-removal dry-run             ==
+  // ===============================================================
+  console.log('\n== 17. Placeholder rule: seed flag, sitemap/OG exclusions, neutral tile ==')
+  {
+    const ph17: Jar = { cookie: '' }
+    await register(ph17, uniquePhone(), 'Placeholder Fixture', 'quiet-harbor-31')
+    const ph17Created = await call('POST', '/api/listings', { ...validListing, title: `Zz placeholder fixture ${RUN_TAG}` }, ph17)
+    ok('17.1 fixture listing published (precondition)', ph17Created.status === 201)
+    const ph17Id: string = ph17Created.json?.listing?.id ?? ''
+
+    // Flag it seed + point its photos at the seed folder, like the seed rows.
+    const originalPhotos = JSON.stringify([`/uploads/zz17-not-seed-${RUN_TAG}.webp`])
+    await db.listing.update({
+      where: { id: ph17Id },
+      data: { isSeed: true, photos: JSON.stringify(['/uploads/seed/listing-matooke.png']) },
+    })
+
+    const sm17 = await (await fetch(`${BASE}/sitemap.xml`)).text()
+    ok('17.2 a seed-flagged listing is not in the sitemap', !sm17.includes(`/l/${ph17Id}<`))
+
+    const seedAd = await fetch(`${BASE}/l/${ph17Id}`)
+    const seedHtml = await seedAd.text()
+    ok('17.3 an ad page never ships a seed photo path anywhere in its HTML', !seedHtml.includes('/uploads/seed/'))
+    ok('17.4 a seed-only-photo ad shows the neutral placeholder tile', seedHtml.includes('Photo coming from the seller'))
+
+    // No photos at all — the honest empty state — shows the same tile.
+    await db.listing.update({ where: { id: ph17Id }, data: { photos: '[]' } })
+    const bareAd = await (await fetch(`${BASE}/l/${ph17Id}`)).text()
+    ok('17.5 a no-photo ad shows the neutral placeholder tile', bareAd.includes('Photo coming from the seller'))
+
+    // Control: with a non-seed photo and no flag, the og:image preview returns
+    // (proves the exclusion is the seed rule, not a broken metadata path).
+    await db.listing.update({ where: { id: ph17Id }, data: { isSeed: false, photos: originalPhotos } })
+    const realAdHtml = await (await fetch(`${BASE}/l/${ph17Id}`)).text()
+    ok('17.6 control: a normal ad ships its og:image preview again', realAdHtml.includes('og:image'))
+    const sm17b = await (await fetch(`${BASE}/sitemap.xml`)).text()
+    ok('17.7 control: the unflagged listing is back in the sitemap', sm17b.includes(`/l/${ph17Id}<`))
+
+    // The one-step removal script: dry-run must run clean, touch nothing,
+    // and still see the seed dataset (8 demo shops shipped with the repo).
+    const dryRun = execSync('npx tsx scripts/remove-seed-data.ts', { encoding: 'utf8', env: process.env })
+    ok('17.8 remove-seed-data dry-run runs clean and deletes nothing', dryRun.includes('DRY-RUN') && dryRun.includes('nothing was deleted'))
+    ok('17.9 the dry-run still identifies the seed dataset', /seed users:\s+8 \(8 flagged/.test(dryRun))
+    const stillThere = await db.user.count({ where: { isSeed: true } })
+    ok('17.10 the dry-run left every seed row in place', stillThere === 8)
+
+    // Section cleanup: the fixture listing + its user never persist.
+    await db.listing.delete({ where: { id: ph17Id } }).catch(() => undefined)
+    await db.user.delete({ where: { id: ph17.user?.id ?? '' } }).catch(() => undefined)
   }
 
   console.log(`\n========================================`)

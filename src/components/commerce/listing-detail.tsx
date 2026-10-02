@@ -26,7 +26,7 @@ import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { ShareAdRow } from './share-row'
 import { SafetyCard } from './safety-card'
 import { ReportButton } from './report-button'
-import { CategoryGlyph, categoryTint } from './category-icons'
+import { PlaceholderTile } from './placeholder-tile'
 import { HeartButton } from './listing-card'
 import { useAppStore } from '@/lib/store'
 import { useAddToBasket, useAddedFlash } from './basket-view'
@@ -38,11 +38,15 @@ import { cn } from '@/lib/utils'
 
 function PhotoGallery({ listing }: { listing: ListingDetailT }) {
   if (listing.photos.length === 0) {
+    // PLACEHOLDER RULE — no photo yet: the neutral tile (flat grey, category
+    // name, small camera icon), never a stock or illustrated stand-in.
     return (
-      <div className={cn('flex h-56 w-full flex-col items-center justify-center gap-2 text-center sm:h-72', categoryTint(listing.category))}>
-        <CategoryGlyph category={listing.category} className="[&_svg]:size-12" />
-        <span className="px-4 text-sm font-medium">{categoryLabel(listing.category)}</span>
-        <span className="px-4 text-xs text-muted-foreground">No photo — ask the seller for details</span>
+      <div className="h-56 w-full sm:h-72">
+        <PlaceholderTile
+          category={listing.category}
+          note="No photo — ask the seller for details"
+          iconClassName="size-8"
+        />
       </div>
     )
   }
