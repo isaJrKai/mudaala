@@ -21,8 +21,10 @@ import {
   telLink,
   formatPhonePretty,
   mapsSearchUrl,
+  adPath,
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
+import { ShareAdRow } from './share-row'
 import { CategoryGlyph, categoryTint } from './category-icons'
 import { HeartButton } from './listing-card'
 import { useAppStore } from '@/lib/store'
@@ -81,6 +83,13 @@ export function ListingDetail({ id }: { id: string }) {
     queryFn: () => apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`),
   })
 
+  // The canonical ad-page URL: window origin + keyword slug + id. Derived
+  // during render, not synced through state — the origin is stable for the
+  // life of the page, and only the browser ever has a listing to share
+  // (the query only runs client-side), so no SSR guard is needed in practice.
+  const listing = data?.listing
+  const shareUrl = listing ? `${window.location.origin}${adPath(listing.title, listing.id)}` : null
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -92,7 +101,7 @@ export function ListingDetail({ id }: { id: string }) {
     )
   }
 
-  if (isError || !data) {
+  if (isError || !data || !listing) {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
@@ -103,8 +112,8 @@ export function ListingDetail({ id }: { id: string }) {
     )
   }
 
-  const { listing } = data
   const quantity = formatQuantity(listing.quantity, listing.unit)
+  const sharePriceLabel = listing.price !== null ? formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency) : null
   const whatsapp = listing.contactWhatsapp ?? (listing.type === 'OFFER' ? listing.contactPhone : listing.contactWhatsapp)
   const shopDisplayName = listing.user.profile?.businessName?.trim() || listing.user.name
   const shopPhoto = listing.user.profile?.photoUrl ?? null
@@ -293,6 +302,15 @@ export function ListingDetail({ id }: { id: string }) {
           </Button>
         </div>
       </article>
+
+      {/* Share — every ad carries its own shareable ad-page URL, so what a
+          seller forwards on WhatsApp opens as a real web page with photos,
+          price and the shop, not a dead app fragment. */}
+      {shareUrl ? (
+        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Share this ad">
+          <ShareAdRow title={listing.title} url={shareUrl} priceLabel={sharePriceLabel} />
+        </section>
+      ) : null}
 
       {/* Seller — real account info; no verification claims are made. */}
       <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">

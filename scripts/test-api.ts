@@ -1074,6 +1074,72 @@ async function main() {
     }
   }
 
+  console.log('\n== 12. Ad pages (/listing/[slug]) ==')
+  {
+    // The ad page is the crawlable, shareable surface of a listing. These
+    // tests lock the URL contract (canonical keyword slug + permanent
+    // redirects), the SEO surface (metadata, Product JSON-LD) and the two
+    // honesty rules: a wanted ad is never marked up as a Product, and the
+    // safety line rides on every ad.
+    const slugTail = (title: string, id: string) => {
+      const words = title.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean)
+      const slug = words.slice(0, 6).join('-').slice(0, 60).replace(/-+$/, '') || 'ad'
+      return `${slug}-${id}`
+    }
+
+    const search = await call('GET', '/api/listings?type=OFFER&sort=newest')
+    const offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && Array.isArray(l.photos) && l.photos.length > 0)
+    ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
+    const canonical = slugTail(offer.title, offer.id)
+
+    // Bare id → permanent redirect to the canonical keyword URL.
+    const bare = await fetch(`${BASE}/listing/${offer.id}`, { redirect: 'manual' })
+    ok('bare /listing/{id} → 308 to canonical slug URL',
+      bare.status === 308 && (bare.headers.get('location') ?? '').endsWith(`/listing/${canonical}`))
+
+    // Canonical URL → full ad-page surface.
+    const page = await fetch(`${BASE}/listing/${canonical}`)
+    const html = await page.text()
+    ok('canonical ad page → 200', page.status === 200)
+    ok('ad page renders the listing title', html.includes(offer.title))
+    ok('ad page carries a canonical link to itself',
+      html.includes('rel="canonical"') && html.includes(`/listing/${canonical}"`))
+    ok('ad page carries OG tags with the absolute first photo',
+      html.includes('property="og:title"') && html.includes(`property="og:image" content="http://localhost:3000${offer.photos[0]}"`))
+    ok('OFFER ad page carries Product JSON-LD in UGX',
+      html.includes('"@type":"Product"') && html.includes('"priceCurrency":"UGX"'))
+    ok('ad page carries the WhatsApp share link', html.includes('https://wa.me/?text='))
+    ok('ad page carries the safety line', html.includes('Meet in a public place'))
+    ok('ad page shows the honest tenure line', html.includes('Active since'))
+
+    // Stale keyword slug (title edited since the link was made) → redirect.
+    const stale = await fetch(`${BASE}/listing/old-keywords-${offer.id}`, { redirect: 'manual' })
+    ok('stale keyword slug → 308 to current canonical', stale.status === 308 && (stale.headers.get('location') ?? '').endsWith(`/listing/${canonical}`))
+
+    // REQUEST: honest markup — a wanted ad is not a Product.
+    const reqSearch = await call('GET', '/api/listings?type=REQUEST&sort=newest')
+    const request = (reqSearch.json?.items ?? []).find((l: any) => l.status === 'ACTIVE')
+    ok('suite finds an active REQUEST to test with', Boolean(request?.id))
+    if (request?.id) {
+      const reqPage = await fetch(`${BASE}/listing/${slugTail(request.title, request.id)}`)
+      const reqHtml = await reqPage.text()
+      ok('REQUEST ad page → 200', reqPage.status === 200)
+      ok('REQUEST ad page has NO Product JSON-LD (honest markup)', reqPage.status === 200 && !reqHtml.includes('"@type":"Product"'))
+    }
+
+    // Unknown id → styled 404.
+    const missing = await fetch(`${BASE}/listing/does-not-exist-at-all`)
+    ok('unknown ad → 404', missing.status === 404)
+
+    // Sitemap: every ACTIVE listing appears once, under its canonical URL.
+    const sitemap = await fetch(`${BASE}/sitemap.xml`)
+    const sitemapXml = await sitemap.text()
+    ok('sitemap.xml → 200', sitemap.status === 200)
+    ok('sitemap lists the canonical ad URL', sitemapXml.includes(`/listing/${canonical}<`))
+    ok('sitemap points at the site root', sitemapXml.includes('<loc>http://localhost:3000</loc>'))
+    ok('robots.txt exposes the sitemap', (await (await fetch(`${BASE}/robots.txt`)).text()).includes('/sitemap.xml'))
+  }
+
   console.log(`\n========================================`)
   console.log(`RESULT: ${passed} passed, ${failed} failed`)
   if (failures.length > 0) {

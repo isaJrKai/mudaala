@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { siteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,6 +23,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Anchors every relative canonical/OG URL to one origin (ad pages depend on it).
+  metadataBase: new URL(siteUrl),
   title: "Mudaala — Trade locally, discover more",
   description:
     "Mudaala connects local buyers and sellers: find OFFERs and REQUESTs near you, compare prices and quantities, and contact sellers or buyers directly on WhatsApp or by phone.",
