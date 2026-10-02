@@ -96,26 +96,6 @@ export function normalizeShopName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-// Ad-page URL slug: a few keyword words from the title (readable by humans
-// and search engines) followed by the listing id. The id is the identity —
-// the words are only presentation, so a retitled ad simply 301s from its old
-// URL to the new one and nothing ever breaks. Non-latin titles fall back to
-// "ad" rather than emitting an empty slug.
-export function adSlug(title: string): string {
-  const words = title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-  return words.slice(0, 6).join('-').slice(0, 60).replace(/-+$/, '') || 'ad'
-}
-
-// Full canonical path of an ad page: /listing/{keywords}-{id}.
-// Shared by the server (ad page canonical + sitemap) and the client (share rows).
-export function adPath(title: string, id: string): string {
-  return `/listing/${adSlug(title)}-${id}`
-}
-
 // Shop-code canonicalizer, shared by the server (lookup API) and the client
 // (browse search detection). Buyers punch in a code like a mobile-money till
 // number — forgiving about case, spaces and dashes ("md 2623", "MD-2623",
