@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BadgeCheck, CheckCircle2, Circle, Info, User, Settings, LogOut, Store, MapPin } from 'lucide-react'
+import { BadgeCheck, Check, CheckCircle2, Circle, Info, Link2, User, Settings, LogOut, Store, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -135,6 +135,11 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const codeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (codeTimer.current) clearTimeout(codeTimer.current)
+  }, [])
 
   useEffect(() => {
     if (data && !hydrated) {
@@ -177,6 +182,25 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
 
   const nameClash = checkedName !== '' && nameCheck?.taken === true
   const clashPlace = [nameCheck?.matches?.[0]?.area, nameCheck?.matches?.[0]?.county].filter(Boolean).join(', ')
+
+  // The shop's public web link: window origin + /s/{code}. Derived during
+  // render like the in-app ad share — the profile query only runs in the
+  // browser, so the origin is always real by the time a code exists.
+  const shopCode = data?.profile?.shopCode ?? null
+  const shopUrl = shopCode ? `${window.location.origin}/s/${shopCode}` : null
+
+  async function copyShopLink() {
+    if (!shopUrl) return
+    try {
+      await navigator.clipboard.writeText(shopUrl)
+      setCodeCopied(true)
+      if (codeTimer.current) clearTimeout(codeTimer.current)
+      codeTimer.current = setTimeout(() => setCodeCopied(false), 1500)
+    } catch {
+      // Clipboard denied — the full link sits in the row as text, one
+      // long-press away from the manual path.
+    }
+  }
 
   function set<K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -232,10 +256,40 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <p className="mt-0.5 text-sm text-muted-foreground">
           This is your space on Mudaala — give it the name of your shop. Buyers see it on every listing you post.
         </p>
-        {data?.profile?.shopCode ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Your shop code is <span className="font-mono font-semibold text-foreground">{data.profile.shopCode}</span> — it never changes, so buyers and old posters can always find you.
-          </p>
+        {shopCode && shopUrl ? (
+          <div className="mt-1.5 rounded-md border bg-secondary/30 p-2.5">
+            <p className="text-xs text-muted-foreground">
+              Your shop code is <span className="font-mono font-semibold text-foreground">{shopCode}</span> — it never changes, so buyers and old posters can always find you.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <a
+                href={shopUrl}
+                className="min-w-0 flex-1 truncate font-mono text-xs font-medium text-foreground underline-offset-2 hover:underline"
+                title={shopUrl}
+              >
+                {shopUrl}
+              </a>
+              <button
+                type="button"
+                onClick={copyShopLink}
+                className="press flex h-8 shrink-0 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[13px] font-medium hover:bg-accent/50"
+                aria-label="Copy your shop web link"
+              >
+                {codeCopied ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-700" aria-hidden /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="size-3.5" aria-hidden /> Copy link
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Anyone with this link lands straight on your public shop page — put it on WhatsApp, posters, business cards.
+            </p>
+          </div>
         ) : null}
       </div>
 

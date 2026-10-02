@@ -696,3 +696,18 @@ Stage Summary:
 - Suite: 254 passed, 0 failed (was 221). tsc + eslint clean. Test uploads removed from public/uploads before commit.
 - Every listing and shop now has a real, crawlable, shareable web page under the brief's URL contract; legacy links 308 forward; gone ads are honest 404s with doors back into the market.
 - NOT DONE (honest gaps): true HTTP 410 for expired ads (Next App Router pages cannot emit 410; chose 404, "404/410 as appropriate" satisfied on the 404 side); HIDDEN status does not exist until Task 2 (non-ACTIVE branch already covers it); push to GitHub still blocked pending the user's PAT, so this commit lives on local branch starter-launch only.
+
+---
+Task ID: T1b (starter-launch)
+Agent: Main agent (Super Z)
+Task: User-approved Task 1 addendum — the seller's Account → My Shop card shows the shop's public web link (/s/{code}) with copy-to-clipboard, right under the existing shop-code line.
+
+Work Log:
+- src/components/commerce/account-view.tsx (BusinessProfileSection): once the profile has a shopCode, a link row renders under the code line — the full {origin}/s/{code} URL as a tappable anchor (title = full URL, truncates gracefully) plus a "Copy link" button using the same Copied-flash pattern as share-row (1.5 s flash, timer cleaned up on unmount). Clipboard-denied falls back to the visible URL text.
+- URL derived during render from window.location.origin — same pattern as the in-app ad share (the profile query is client-only, so the origin is always real by the time a code exists).
+- One line of microcopy under the row: "Anyone with this link lands straight on your public shop page — put it on WhatsApp, posters, business cards."
+- Verification: tsc clean, eslint clean, full suite 254/254 with the dev server on starter-launch (scripts/verify-t1b.sh added: branch guard → tsc → eslint → server → suite). No new API tests — client-only change; the /s/{code} target page is already covered by the Task 1 suite.
+- Workspace note: the platform flipped the branch back to main between tool calls repeatedly during this small task (guard caught it each time); account-view.tsx is identical on both branches so the edit survived every flip. Worklog + commit are now assembled in single atomic Bash calls to deny the flipper a window.
+
+Stage Summary:
+- Sellers can copy their real shop web link exactly where they see their code — the "what do I actually share?" question answered in one place. Committed on starter-launch as the Task 1 addendum commit.
