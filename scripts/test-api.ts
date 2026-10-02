@@ -124,6 +124,7 @@ async function register(jar: Jar, phone: string, name: string, password: string,
   storeCookie(jar, res)
   if (res.json?.sessionToken) jar.token = res.json.sessionToken
   jar.user = res.json?.user
+  if (res.json?.user?.id) createdUserIds.add(res.json.user.id)
   return res
 }
 
@@ -131,6 +132,11 @@ const uniquePhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 8
 // Per-run tag: fixture shop names embed it, so repeated suite runs never
 // collide with debris from earlier runs sitting in the same dev database.
 const RUN_TAG = Date.now().toString(36)
+// Every user id the suite creates (via register() and the direct flood-loop
+// POSTs). The final hermetic sweep deletes exactly these — so a suite run
+// leaves the shared dev/preview database exactly as it found it, and no
+// fixture users ever reach the preview feed again.
+const createdUserIds = new Set<string>()
 
 const validListing = {
   type: 'OFFER',
@@ -1701,9 +1707,10 @@ async function main() {
 
     // ---- 15e. Register flood: 5 accounts per IP per hour ----
     const regFixed = `203.0.115.${(RUN_SALT % 200) + 8}`
-    let lastReg = { status: 0 }
+    let lastReg: { status: number; json: any } = { status: 0, json: null }
     for (let i = 0; i < 5; i++) {
       lastReg = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
+      if (lastReg.json?.user?.id) createdUserIds.add(lastReg.json.user.id)
     }
     ok('15.18 five accounts from one IP are allowed', lastReg.status === 201)
     const regBlocked = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
@@ -1963,6 +1970,57 @@ async function main() {
     // Section cleanup: the fixture listing + its user never persist.
     await db.listing.delete({ where: { id: ph17Id } }).catch(() => undefined)
     await db.user.delete({ where: { id: ph17.user?.id ?? '' } }).catch(() => undefined)
+  }
+
+  console.log(`\n== 19. Hermetic sweep — this run leaves no fixtures behind ==`)
+  {
+    const ids = [...createdUserIds]
+    // Targets the fixtures own or were reported about: listings + shop
+    // profiles owned by this run's users (users cascade on delete, but
+    // report/audit rows POINTING at those targets must go first).
+    const ownedListings = ids.length
+      ? await db.listing.findMany({ where: { userId: { in: ids } }, select: { id: true } })
+      : []
+    const ownedShops = ids.length
+      ? await db.businessProfile.findMany({ where: { userId: { in: ids } }, select: { id: true } })
+      : []
+    const targetIds = [...ownedListings, ...ownedShops].map((r) => r.id)
+    // Sections with their own hermetic cleanup already removed some users —
+    // the sweep must remove every fixture STILL ALIVE at this point.
+    const aliveBefore = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
+    const delReports = await db.report.deleteMany({
+      where: {
+        OR: [
+          { reporterId: { in: ids } },
+          ...(targetIds.length ? [{ targetId: { in: targetIds } }] : []),
+        ],
+      },
+    })
+    const delAudits = await db.auditLog.deleteMany({
+      where: {
+        OR: [
+          { actorId: { in: ids } },
+          ...(targetIds.length ? [{ targetId: { in: targetIds } }] : []),
+        ],
+      },
+    })
+    const delUsers = await db.user.deleteMany({ where: { id: { in: ids } } })
+    // Notifications ABOUT deleted fixture listings (recipients may be real
+    // users) and any other notification whose listing no longer exists.
+    const live = await db.listing.findMany({ select: { id: true } })
+    const liveIds = live.map((l) => l.id)
+    const delDangling = await db.notification.deleteMany({
+      where: { listingId: { not: null }, ...(liveIds.length ? { NOT: { listingId: { in: liveIds } } } : {}) },
+    })
+    ok(
+      '19.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
+      delUsers.count === aliveBefore,
+    )
+    console.log(
+      `swept: ${delUsers.count} user(s), ${delReports.count} report(s), ${delAudits.count} audit row(s), ${delDangling.count} dangling notification(s)`,
+    )
+    const leftovers = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
+    ok('19.2 zero users from this run remain', leftovers === 0)
   }
 
   console.log(`\n========================================`)

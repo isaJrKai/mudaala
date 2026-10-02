@@ -1027,3 +1027,21 @@ Stage Summary:
 - ANSWER: yes, the CONTEXT + PLACEHOLDER RULE are implemented end to end and now re-proven: tsc clean, eslint clean, suite 389/0, one commit (021e1f5).
 - Branch note: commits since the merge-base live on main, not starter-launch; starter-launch is an ancestor, so catching it up is a fast-forward, no history rewrite.
 - The suite's own section 17 asserts the placeholder behavior, so regressions can't land silently.
+
+---
+Task ID: deep-clean
+Agent: main (Super Z)
+Task: User reported "browse screen — actually the screens aren't opening" and called for a deep clean.
+
+Work Log:
+- Reproduced in a live browser (agent-browser): every screen OPENS and renders with zero page errors (home, browse feed, listing detail, Post/Saved/Notifications/My Business/Settings gates). Navigation is not broken.
+- The REAL visible bug: the shared preview database was polluted AGAIN by suite fixtures — 30 test users ("Burst Publisher" with 40 listings, 5x "Reg Flood", "Owner A/B", "CSRF Target", "PG Search Fixture" with the "Zz-Roasted-Groundnuts-murghuar" listing) and 60 non-seed listings sitting on top of the 14 seed market items. The suite's per-section cleanups leak; every test-api.ts run re-polluted the preview.
+- Deep cleaned the DB: upgraded scripts/cleanup-test-data.ts into a safe tool (dry-run default + --yes gate, seed phones parsed from scripts/seed.ts source like remove-seed-data.ts so they can never drift, report/audit rows about fixtures removed first, post-delete verification). Verified via scripts/deep-clean-recon.ts (new) that ZERO human accounts existed (all 30 users came from one 21:08-21:09 suite batch), then ran --yes: 30 users + 60 listings + 58 dangling notifications + 1 snapshot removed; scripts/clean-orphan-uploads.ts removed 34 orphan photo files (seed/ untouched). Feed now shows exactly the 14 clean seed listings.
+- ROOT FIX so this never recurs: scripts/test-api.ts now records every user id it creates (register() helper + the direct flood-loop POSTs) in createdUserIds, and a new final "section 19. Hermetic sweep" deletes exactly those users, their reports/audits (by and about their listings/shops), and any notification left pointing at a deleted listing. Assertion subtlety fixed: 19.1 compares against users still alive at sweep time (per-section cleanups already removed some), 19.2 asserts zero remain.
+- Proved it: full suite via bugprobe.sh → 391 passed / 0 failed (389 + 19.1 + 19.2), tsc clean, eslint clean, and a post-suite recon shows 8 seed users / 16 seed listings / 0 non-seed rows — the preview DB stays clean across suite runs.
+- If the user STILL sees dead screens in their own browser: hard-refresh the preview (dev-server reaps reload the SPA; a stale bundle in the browser can blank tabs until reload). Server-side everything verifies working.
+
+Stage Summary:
+- Navigation was never broken in the app; the "broken browse screen" was fixture pollution on top of the market feed.
+- The suite is now hermetic at the run level (391/0), the preview DB is clean, and the cleanup tooling is safe (no more blanket non-seed deletion without --yes + dry-run report).
+- Commits on main (current working line; fast-forwardable to starter-launch).
