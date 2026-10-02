@@ -9,13 +9,15 @@
 // in the Authorization: Bearer header.
 //
 // BUT the Bearer channel is an opt-in compatibility feature, not a right:
-// AUTH_BEARER_FALLBACK=1 turns it on (dev, preview, sandbox). Production sets
-// nothing and gets the httpOnly cookie ONLY — a stolen-URL token cannot ride
-// an Authorization header there, and logout revokes exactly the cookie session.
+// ALLOW_BEARER_AUTH=true (or the legacy AUTH_BEARER_FALLBACK=1) turns it on
+// (dev, preview, sandbox). Production sets nothing and gets the httpOnly
+// cookie ONLY — a stolen-URL token cannot ride an Authorization header there,
+// and logout revokes exactly the cookie session.
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { cookies, headers } from 'next/headers'
 import { db } from '@/lib/db'
+import { bearerAuthEnabled } from '@/lib/env-flags'
 import type { User } from '@prisma/client'
 
 const SESSION_COOKIE = 'mudaala_session'
@@ -89,7 +91,7 @@ export async function getCurrentSessionToken(): Promise<string | null> {
   const [store, hdrs] = await Promise.all([cookies(), headers()])
   return (
     store.get(SESSION_COOKIE)?.value ??
-    (process.env.AUTH_BEARER_FALLBACK === '1' ? extractBearerToken(hdrs.get('authorization')) : null)
+    (bearerAuthEnabled() ? extractBearerToken(hdrs.get('authorization')) : null)
   )
 }
 

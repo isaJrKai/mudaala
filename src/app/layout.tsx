@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { SiteFooter } from "@/components/commerce/site-footer";
 import { siteUrl } from "@/lib/site";
 
 const geistSans = Geist({
@@ -52,6 +53,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <SiteFooter />
       </body>
     </html>
   );

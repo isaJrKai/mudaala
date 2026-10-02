@@ -108,6 +108,21 @@ export function AccountView() {
       <Separator />
 
       <BusinessProfileSection user={user} />
+
+      {/* Legal — the same three doors the footer carries, reachable inside
+          the app where the footer sits below the fold. */}
+      <Separator />
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <a href="/safety" target="_blank" rel="noopener noreferrer" className="hover:text-foreground hover:underline">
+          Safety guide
+        </a>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-foreground hover:underline">
+          Privacy Policy
+        </a>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-foreground hover:underline">
+          Terms of Service
+        </a>
+      </div>
     </div>
   )
 }

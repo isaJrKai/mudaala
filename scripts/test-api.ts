@@ -20,10 +20,40 @@ import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
 import path from 'node:path'
 import * as fs from 'node:fs'
-import { SUPPORT_EMAIL } from '../src/lib/constants'
+import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
+// Pure-function units under test (no next/* imports — safe outside a request).
+import { bearerAuthEnabled } from '../src/lib/env-flags'
+import { validateEnv } from '../src/lib/env'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
+
+// The dev server loads .env; tsx does not. Parse it (without overriding
+// anything already exported) so secrets like CRON_SECRET and the rate-limit
+// knobs this suite needs are visible here too.
+function loadDotEnv(file = '.env') {
+  try {
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line)
+      if (m && process.env[m[1]!] === undefined) {
+        process.env[m[1]!] = m[2]!.replace(/^["']|["']$/g, '')
+      }
+    }
+  } catch {
+    /* no .env — CI provides env vars directly */
+  }
+}
+loadDotEnv()
+
+// Every request the suite makes carries a run-unique x-forwarded-for, so the
+// suite acts like a crowd of distinct devices: per-IP rate-limit buckets and
+// per-IP report dedupe never trip on the suite's own ordinary traffic. Tests
+// that specifically exercise an IP budget pass their OWN fixed IP via
+// extraHeaders, which overrides this one. (Run-salted so two runs against a
+// server that was not restarted never share a bucket either.)
+const RUN_SALT = 1 + (Date.now() % 200)
+let xffCounter = 0
+const autoXff = () => `10.${RUN_SALT}.${xffCounter++ % 250}.7`
 
 let passed = 0
 let failed = 0
@@ -57,6 +87,7 @@ async function call(
     method,
     headers: {
       'Content-Type': 'application/json',
+      'x-forwarded-for': autoXff(),
       ...(jar?.cookie ? { cookie: jar.cookie } : {}),
       ...(jar?.token ? { authorization: `Bearer ${jar.token}` } : {}),
       ...extraHeaders,
@@ -87,7 +118,7 @@ function storeCookie(jar: Jar, res: { setCookie?: string }) {
 }
 
 async function register(jar: Jar, phone: string, name: string, password: string, country = 'UG') {
-  const res = await call('POST', '/api/auth/register', { phone, name, password, country }, jar)
+  const res = await call('POST', '/api/auth/register', { phone, name, password, country, acceptTerms: true }, jar)
   storeCookie(jar, res)
   if (res.json?.sessionToken) jar.token = res.json.sessionToken
   jar.user = res.json?.user
@@ -1312,9 +1343,13 @@ async function main() {
     const fixtureListings: string[] = targetId ? [targetId] : []
 
     // ---- Guest reporting + dedupe + validation ----
-    const guestReport = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM', details: 'looks fake' })
+    // Both guest calls share ONE run-salted fixed IP: the suite normally salts
+    // every request, but this test asserts SAME-guest (same-IP) dedupe, so the
+    // pair must arrive from one address.
+    const guestIp = { 'x-forwarded-for': `203.0.115.${(RUN_SALT % 200) + 20}` }
+    const guestReport = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM', details: 'looks fake' }, undefined, guestIp)
     ok('guest report → 201', guestReport.status === 201 && Boolean(guestReport.json?.report?.id))
-    const guestDup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM' })
+    const guestDup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM' }, undefined, guestIp)
     ok('same guest reporting again → 409 with a friendly message', guestDup.status === 409 && typeof guestDup.json?.error === 'string' && guestDup.json.error.length > 10)
     const badReason = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'JUST_BECAUSE' })
     ok('unknown reason → 400', badReason.status === 400)
@@ -1578,7 +1613,7 @@ async function main() {
     ok('the phone number itself as password is refused', phoneTry.status === 400 && (phoneTry.json?.error ?? '').includes('phone number'))
     const goodC = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: NEW_PW })
     ok('the code survives weak-password attempts and still completes the reset', goodC.status === 200)
-    const rejReg = await call('POST', '/api/auth/register', { phone: await absentPhone(), name: 'Common Pass', password: '12345678', country: 'UG' })
+    const rejReg = await call('POST', '/api/auth/register', { phone: await absentPhone(), name: 'Common Pass', password: '12345678', country: 'UG', acceptTerms: true })
     ok('register shares the same rulebook and refuses common passwords too', rejReg.status === 400 && (rejReg.json?.error ?? '').includes('too easy to guess'))
 
     // ---- Expired code (pwE) ----
@@ -1603,6 +1638,207 @@ async function main() {
     const resetUserIds = [pwA, pwB, pwC, pwD, pwE].map((j) => j.user?.id).filter(Boolean) as string[]
     await db.user.deleteMany({ where: { id: { in: resetUserIds } } })
     console.log('  (section 14 fixtures cleaned up)')
+  }
+
+  console.log('\n== 15. Legal pages, terms acceptance & phase-1 security ==')
+  {
+    // ---- 15a. Pure-function units: the bearer gate and env validation ----
+    const gate = (env: Record<string, string | undefined>) => bearerAuthEnabled(env)
+    ok('15.1 bearer gate: unset → off (production posture)', gate({}) === false)
+    ok('15.2 bearer gate: ALLOW_BEARER_AUTH=true/1 → on', gate({ ALLOW_BEARER_AUTH: 'true' }) && gate({ ALLOW_BEARER_AUTH: '1' }))
+    ok('15.3 bearer gate: "0"/"false" → off', gate({ ALLOW_BEARER_AUTH: '0' }) === false && gate({ ALLOW_BEARER_AUTH: 'false' }) === false)
+    ok('15.4 bearer gate: legacy AUTH_BEARER_FALLBACK=1 still works', gate({ AUTH_BEARER_FALLBACK: '1' }) === true)
+    ok('15.5 bearer gate: ALLOW_BEARER_AUTH overrides the legacy alias off', gate({ ALLOW_BEARER_AUTH: '0', AUTH_BEARER_FALLBACK: '1' }) === false)
+
+    const dev = validateEnv({ NODE_ENV: 'development', DATABASE_URL: 'file:./db/x.db' })
+    ok('15.6 env validation: minimal dev env passes (ok, no errors)', dev.ok && dev.errors.length === 0)
+    ok('15.7 env validation: dev without app URL warns but passes', dev.warnings.length === 1)
+    const prodBroken = validateEnv({ NODE_ENV: 'production' })
+    ok(
+      '15.8 env validation: production without secrets fails with named errors',
+      !prodBroken.ok && prodBroken.errors.some((e) => e.includes('DATABASE_URL')) && prodBroken.errors.some((e) => e.includes('CRON_SECRET')) && prodBroken.errors.some((e) => e.includes('SETTINGS_ENCRYPTION_KEY')) && prodBroken.errors.some((e) => e.includes('ADMIN_PHONES')),
+    )
+    const prodBadBearer = validateEnv({ NODE_ENV: 'production', DATABASE_URL: 'x', NEXT_PUBLIC_APP_URL: 'https://m', CRON_SECRET: 's', SETTINGS_ENCRYPTION_KEY: 'k', ADMIN_PHONES: '+256712000001', ALLOW_BEARER_AUTH: '1' })
+    ok('15.9 env validation: bearer enabled in production is at least a loud warning', prodBadBearer.ok && prodBadBearer.warnings.length === 1)
+
+    // ---- 15b. Legal pages exist, render their markdown, and are linked ----
+    for (const [slug, phrase] of [['privacy', 'Privacy Policy'], ['terms', 'Terms of Service'], ['safety', 'Safety Guide']] as const) {
+      const res = await fetch(`${BASE}/${slug}`)
+      const html = await res.text()
+      ok(`15.10 /${slug} renders with its content`, res.status === 200 && html.includes(phrase) && html.includes('Mudaala'))
+    }
+    const homeHtml = await (await fetch(`${BASE}/`)).text()
+    ok('15.11 the site footer links all three legal pages', homeHtml.includes('href="/privacy"') && homeHtml.includes('href="/terms"') && homeHtml.includes('href="/safety"'))
+
+    // ---- 15c. Terms acceptance is required and recorded ----
+    const noTerms = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'No Terms', password: 'quiet-harbor-31', country: 'UG' })
+    ok('15.12 register without acceptTerms → 400 with the confirm message', noTerms.status === 400 && noTerms.json?.error?.includes('18'))
+    const falseTerms = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'No Terms', password: 'quiet-harbor-31', country: 'UG', acceptTerms: false })
+    ok('15.13 register with acceptTerms=false → 400', falseTerms.status === 400)
+    const termsJar: Jar = { cookie: '' }
+    const termsPhone = uniquePhone()
+    const withTerms = await register(termsJar, termsPhone, 'Terms Acceptor', 'quiet-harbor-31')
+    ok('15.14 register with acceptTerms=true → 201', withTerms.status === 201)
+    const termsUser = await db.user.findUnique({ where: { phone: termsPhone } })
+    ok(
+      `15.15 terms acceptance recorded with version ${TERMS_VERSION}`,
+      Boolean(termsUser?.termsAcceptedAt) && termsUser?.termsVersion === TERMS_VERSION,
+    )
+
+    // ---- 15d. Login flood: 20 attempts per IP per 15 min ----
+    const ipFixed = `203.0.115.${(RUN_SALT % 200) + 7}`
+    let lastLogin = { status: 0 }
+    for (let i = 0; i < 20; i++) {
+      lastLogin = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'x-forwarded-for': ipFixed })
+    }
+    ok('15.16 twenty login attempts from one IP all answered (401)', lastLogin.status === 401)
+    const ipBlocked = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'x-forwarded-for': ipFixed })
+    ok('15.17 the 21st login attempt from that IP inside 15 min → 429', ipBlocked.status === 429)
+
+    // ---- 15e. Register flood: 5 accounts per IP per hour ----
+    const regFixed = `203.0.115.${(RUN_SALT % 200) + 8}`
+    let lastReg = { status: 0 }
+    for (let i = 0; i < 5; i++) {
+      lastReg = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
+    }
+    ok('15.18 five accounts from one IP are allowed', lastReg.status === 201)
+    const regBlocked = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
+    ok('15.19 the 6th account from that IP within the hour → 429', regBlocked.status === 429)
+
+    // ---- 15f. Publish flood: 20 listings per user per day ----
+    const publishCap = Number(process.env.RATE_LIMIT_PUBLISH_MAX ?? 20)
+    const publisher: Jar = { cookie: '' }
+    await register(publisher, uniquePhone(), 'Burst Publisher', 'quiet-harbor-31')
+    // The publisher gets a shop profile: the burst listings it leaves behind
+    // then CARRY a businessName on browse page 1, keeping the section-3b
+    // "named shop surfaces on browse" assertion true on reruns of this suite
+    // (41 fresh listings would otherwise push profiled sellers off page 1).
+    await call('PUT', '/api/profile', {
+      businessName: `Burst Shop ${Date.now().toString(36)}`,
+      photoUrl: null,
+      category: 'other',
+      description: null,
+      county: 'Kampala',
+      area: null,
+      phone: publisher.user?.phone,
+      whatsapp: null,
+      hours: null,
+    }, publisher)
+    let lastPublish = { status: 0 }
+    for (let i = 0; i < publishCap; i++) {
+      lastPublish = await call('POST', '/api/listings', { ...validListing, title: `Burst listing ${i}` }, publisher)
+      if (lastPublish.status !== 201) break
+    }
+    ok(`15.20 ${publishCap} publishes by one user in a day are allowed`, lastPublish.status === 201)
+    const publishBlocked = await call('POST', '/api/listings', { ...validListing, title: 'One too many' }, publisher)
+    ok('15.21 the next publish past the daily budget → 429', publishBlocked.status === 429)
+
+    // ---- 15g. Upload flood: 30 photos per user per hour ----
+    const tinyPng = await sharp({ create: { width: 8, height: 8, channels: 3, background: { r: 18, g: 52, b: 86 } } }).png().toBuffer()
+    const upload = (jar: Jar) =>
+      fetch(`${BASE}/api/upload`, {
+        method: 'POST',
+        headers: { cookie: jar.cookie, ...(jar.token ? { authorization: `Bearer ${jar.token}` } : {}) },
+        body: (() => {
+          const f = new FormData()
+          f.append('file', new Blob([new Uint8Array(tinyPng)], { type: 'image/png' }), 't.png')
+          return f
+        })(),
+      })
+    const uploader: Jar = { cookie: '' }
+    await register(uploader, uniquePhone(), 'Photo Burst', 'quiet-harbor-31')
+    let lastUpload = { status: 0 }
+    for (let i = 0; i < 30; i++) lastUpload = { status: (await upload(uploader)).status }
+    ok('15.22 thirty uploads by one user in an hour are allowed', lastUpload.status === 201)
+    ok('15.23 the 31st upload within the hour → 429', (await upload(uploader)).status === 429)
+
+    // ---- 15h. CSRF: state-changing requests with a foreign Origin are blocked ----
+    const csrfJar: Jar = { cookie: '' }
+    await register(csrfJar, uniquePhone(), 'CSRF Target', 'quiet-harbor-31')
+    const evilOrigin = await call('POST', '/api/auth/logout', undefined, csrfJar, { origin: 'https://evil.example' })
+    ok('15.24 cross-site logout with a stolen cookie → 403', evilOrigin.status === 403)
+    const stillIn = await call('GET', '/api/auth/me', undefined, csrfJar)
+    ok('15.25 the blocked request did nothing — session intact', stillIn.json?.user?.name === 'CSRF Target')
+    const ownOrigin = await call('POST', '/api/auth/logout', undefined, csrfJar, { origin: BASE })
+    ok('15.26 same-origin state change passes the Origin check', ownOrigin.status === 200)
+    const noOrigin = await call('POST', '/api/auth/logout', undefined, { cookie: '' })
+    ok('15.27 non-browser clients (no Origin header) still work', noOrigin.status === 200)
+
+    // ---- 15i. Security headers on every response ----
+    const homeRes = await fetch(`${BASE}/`)
+    const hdrs = homeRes.headers
+    ok('15.28 nosniff is set', hdrs.get('x-content-type-options') === 'nosniff')
+    ok('15.29 Referrer-Policy is set', (hdrs.get('referrer-policy') ?? '').length > 0)
+    ok('15.30 CSP includes frame-ancestors', (hdrs.get('content-security-policy') ?? '').includes('frame-ancestors'))
+    ok('15.31 HSTS is set', (hdrs.get('strict-transport-security') ?? '').includes('max-age'))
+    ok('15.32 X-Frame-Options mirrors frame-ancestors', hdrs.get('x-frame-options') === 'SAMEORIGIN')
+
+    // ---- 15j. Photos: EXIF/GPS stripped, capped at 1200px, WebP ----
+    const exifJpeg = await sharp({
+      create: { width: 2400, height: 1600, channels: 3, background: { r: 40, g: 90, b: 60 } },
+    })
+      .withMetadata({
+        exif: { IFD0: { Artist: 'mudaala-exif-test' }, IFD3: { GPSLatitude: '0,37,0', GPSLatitudeRef: 'N' } },
+      })
+      .jpeg()
+      .toBuffer()
+    const exifUpload = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: termsJar.cookie, ...(termsJar.token ? { authorization: `Bearer ${termsJar.token}` } : {}) },
+      body: (() => {
+        const f = new FormData()
+        f.append('file', new Blob([new Uint8Array(exifJpeg)], { type: 'image/jpeg' }), 'exif.jpg')
+        return f
+      })(),
+    })
+    const exifJson = (await exifUpload.json().catch(() => null)) as { url?: string } | null
+    ok('15.33 EXIF-tagged JPEG uploads → 201 with a .webp url', exifUpload.status === 201 && typeof exifJson?.url === 'string' && exifJson.url.endsWith('.webp'))
+    const storedExifPath = path.join(process.cwd(), 'public', exifJson?.url ?? '')
+    const storedExif = await sharp(storedExifPath).metadata()
+    ok(
+      '15.34 stored photo is inside the 1200px box and WebP',
+      Math.max(storedExif.width ?? 0, storedExif.height ?? 0) <= 1200 && storedExif.format === 'webp',
+    )
+    const storedExifBytes = await fs.promises.readFile(storedExifPath)
+    ok(
+      '15.35 EXIF/GPS is gone — no Artist tag, no EXIF block survives',
+      storedExif.exif === undefined && !storedExifBytes.includes(Buffer.from('mudaala-exif-test')),
+    )
+
+    // ---- 15k. Cross-user ownership matrix (routes with an id) ----
+    const ownerA: Jar = { cookie: '' }
+    const ownerB: Jar = { cookie: '' }
+    await register(ownerA, uniquePhone(), 'Owner A', 'quiet-harbor-31')
+    await register(ownerB, uniquePhone(), 'Owner B', 'quiet-harbor-31')
+    const aOwn = await call('POST', '/api/listings', { ...validListing, title: 'Owner A copper piece' }, ownerA)
+    ok('15.36 fixture: owner A published a listing', aOwn.status === 201)
+    const aSearch = await call('POST', '/api/saved-searches', { name: 'A looks for copper', query: { q: 'copper' } }, ownerA)
+    const aSearchId = aSearch.json?.search?.id as string
+    const bCheck = await call('POST', `/api/saved-searches/${aSearchId}/check`, undefined, ownerB)
+    ok('15.37 user B cannot trigger user A\u2019s saved-search check → 404', bCheck.status === 404)
+    const bDelete = await call('DELETE', `/api/saved-searches/${aSearchId}`, undefined, ownerB)
+    ok('15.38 user B cannot delete user A\u2019s saved search → 404', bDelete.status === 404)
+    const aListings = await call('GET', '/api/my/listings', undefined, ownerA)
+    const aListingId = (aListings.json?.listings as any[] | undefined)?.[0]?.id as string | undefined
+    if (aListingId) {
+      const bMark = await call('PATCH', `/api/listings/${aListingId}`, { title: 'B hijacks A' }, ownerB)
+      ok('15.39 user B cannot edit user A\u2019s listing → 404', bMark.status === 404)
+    } else {
+      ok('15.39 user B cannot edit user A\u2019s listing → 404 (fixture missing)', false, 'owner A had no listing to attack')
+    }
+    // Notifications: marking another user's notification read is a silent no-op.
+    await call('POST', '/api/saved-searches', { name: 'A watches for a radio', query: { q: 'radio' } }, ownerA)
+    await call('POST', '/api/listings', { ...validListing, title: 'Radio set for the cross-user test' }, ownerB)
+    const aNotifs = await call('GET', '/api/notifications', undefined, ownerA)
+    const aNotifId = (aNotifs.json?.notifications as any[] | undefined)?.find((n) => !n.read)?.id as string | undefined
+    if (aNotifId) {
+      const bMarkRead = await call('POST', `/api/notifications/mark-read?ids=${aNotifId}`, undefined, ownerB)
+      const aNotifsAfter = await call('GET', '/api/notifications', undefined, ownerA)
+      const stillUnread = (aNotifsAfter.json?.notifications as any[]).find((n) => n.id === aNotifId)?.read === false
+      ok('15.40 user B marking user A\u2019s notification read is a no-op', bMarkRead.status === 200 && stillUnread)
+    } else {
+      ok('15.40 user B marking user A\u2019s notification read is a no-op (no fixture)', false, 'owner A had no unread notification')
+    }
   }
 
   console.log(`\n========================================`)

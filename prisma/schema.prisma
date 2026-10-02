@@ -23,6 +23,12 @@ model User {
 
   lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
 
+  // Task 4 — legal acceptance: when the user confirmed "18+ and accept the
+  // Terms and Privacy Policy" and WHICH version they saw. NULL for accounts
+  // created before versioned terms existed.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
   sessions       Session[]
   listings       Listing[]
   savedSearches  SavedSearch[]

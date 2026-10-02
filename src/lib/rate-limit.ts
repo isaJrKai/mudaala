@@ -44,13 +44,26 @@ export function clear(key: string): void {
 // Window: 15 minutes (env-tunable so tests and CI can tighten or widen it).
 export const RATE_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MIN ?? 15) * 60_000
 
-// Login: 5 FAILED attempts per phone per window; 30 total attempts per IP.
+// Login: 5 FAILED attempts per phone per 15 min; 20 total attempts per IP in
+// the same window (the IP bucket counts every attempt — a flood is a flood
+// even when each phone fails only once).
 export const LOGIN_FAIL_MAX = Number(process.env.RATE_LIMIT_LOGIN_MAX ?? 5)
-export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 30)
+export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 20)
 
-// Register: 20 accounts per IP per window (one device onboarding a market
-// stall's worth of sellers stays clear; a script farm does not).
-export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 20)
+// Register: 5 accounts per IP per hour (spec). One device onboarding a small
+// stall's worth of sellers stays clear; a script farm does not.
+export const REGISTER_WINDOW_MS = 60 * 60_000
+export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 5)
+
+// Publish: 20 listings per user per day (spec) — plenty for a real shop's
+// morning restock, hostile to catalogue-spam.
+export const PUBLISH_WINDOW_MS = 24 * 60 * 60_000
+export const PUBLISH_DAY_MAX = Number(process.env.RATE_LIMIT_PUBLISH_MAX ?? 20)
+
+// Upload: 30 photos per user per hour (spec) — a full catalogue shoot in one
+// sitting is fine; a bulk-fill attack is not.
+export const UPLOAD_WINDOW_MS = 60 * 60_000
+export const UPLOAD_HOUR_MAX = Number(process.env.RATE_LIMIT_UPLOAD_MAX ?? 30)
 
 // Reports: 10 ACCEPTED reports per day per reporter (a sliding 24h window,
 // not a calendar day — consistent with the other windows here). Signed-in

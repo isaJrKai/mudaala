@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { apiPost, storeSessionToken } from '@/lib/client'
 import type { SessionUser } from '@/lib/client'
@@ -177,6 +178,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
   const [countryKey] = useState<string>(DEFAULT_COUNTRY)
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
 
@@ -186,7 +188,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
     e.preventDefault()
     setErrors({})
 
-    const parsed = registerSchema.safeParse({ name, phone, country: countryKey, password })
+    const parsed = registerSchema.safeParse({ name, phone, country: countryKey, password, acceptTerms })
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
@@ -194,6 +196,12 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         if (!fieldErrors[key]) fieldErrors[key] = issue.message
       }
       setErrors(fieldErrors)
+      return
+    }
+    // The checkbox is required — caught client-side with the same words the
+    // server uses, so an unchecked box never even becomes a request.
+    if (!acceptTerms) {
+      setErrors({ acceptTerms: 'Confirm you are 18+ and accept the Terms and Privacy Policy' })
       return
     }
 
@@ -267,6 +275,28 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         />
         <p className="text-xs text-muted-foreground">At least 8 characters.</p>
         {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
+      </div>
+      {/* Required 18+ / Terms / Privacy confirmation — also enforced by the
+          API, so an old client cannot skip it. */}
+      <div className="space-y-1.5">
+        <div className="flex items-start gap-2.5">
+          <Checkbox
+            id="reg-terms"
+            checked={acceptTerms}
+            onCheckedChange={(v) => setAcceptTerms(v === true)}
+            className="mt-0.5"
+          />
+          <Label htmlFor="reg-terms" className="text-sm font-normal leading-snug">
+            I am 18+ and accept the{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+              Terms
+            </a>{' '}and{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+              Privacy Policy
+            </a>
+          </Label>
+        </div>
+        {errors.acceptTerms ? <p className="text-sm text-destructive">{errors.acceptTerms}</p> : null}
       </div>
       {errors._ ? (
         <p role="alert" className="text-sm text-destructive">

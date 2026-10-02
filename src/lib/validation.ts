@@ -59,8 +59,11 @@ export const registerSchema = z.object({
   phone: rawPhone,
   country: z.enum(COUNTRY_KEYS as [string, ...string[]]).default('UG'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
+  // Task 4 — the 18+ / Terms / Privacy confirmation. Optional in the SCHEMA
+  // (so the route can answer with one friendly message for both missing and
+  // false), but REQUIRED by the route: registration is refused without it.
+  acceptTerms: z.boolean().optional(),
 })
-
 export const loginSchema = z.object({
   phone: rawPhone,
   password: z.string().min(1, 'Password is required'),

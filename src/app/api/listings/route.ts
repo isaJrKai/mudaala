@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { route, jsonOk, parseBody, requireUser, ApiError } from '@/lib/api'
+import { hit, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS } from '@/lib/rate-limit'
 import { listingCreateSchema, listingQuerySchema, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
 import {
@@ -44,6 +45,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   return route(async () => {
     const user = await requireUser('Sign in to publish a listing')
+
+    // 20 listings per user per day — a real shop restocking is welcome;
+    // catalogue-spam is not.
+    const verdict = hit(`publish:user:${user.id}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
+    if (!verdict.ok) {
+      throw new ApiError(429, 'You have published a lot today — please continue tomorrow')
+    }
+
     const data = await parseBody(request, listingCreateSchema)
 
     // Prohibited items: check the words a seller chose BEFORE anything is
