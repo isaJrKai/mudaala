@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppHeader } from './app-header'
 import { BottomNav } from './bottom-nav'
 import { AuthDialog } from './auth-dialog'
+import { HomeDashboard } from './home-view'
 import { ListingsBrowse } from './listings-browse'
 import { ListingDetail } from './listing-detail'
 import { ShopView } from './shop-view'
@@ -37,6 +38,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 function CurrentView() {
   const { view } = useAppStore()
   switch (view.name) {
+    case 'home':
+      return <HomeDashboard />
     case 'listing':
       return view.id ? <ListingDetail id={view.id} /> : <ListingsBrowse />
     case 'shop':
@@ -79,7 +82,12 @@ function HashSync() {
       const next = hashToView(window.location.hash)
       const state = useAppStore.getState().view
       if (next.name !== state.name || next.id !== state.id) {
-        setImmediate(() => navigate(next))
+        // Deferred by one task so navigate()'s own hash write settles before
+        // we compare state again. setTimeout, NOT setImmediate — setImmediate
+        // is Node-only and threw a ReferenceError on every external hash
+        // change (opening a shared shop link while the app is already open,
+        // browser back/forward), leaving the page stuck on the old view.
+        setTimeout(() => navigate(next), 0)
       }
     }
     window.addEventListener('hashchange', onHashChange)

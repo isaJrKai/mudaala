@@ -1,9 +1,10 @@
-// Duuka — display formatting helpers (client-safe).
+// Mudaala — display formatting helpers (client-safe).
 
 import { currencyDef, LISTING_ACTIVE_DAYS } from './constants'
 
-// Price in the listing's own currency. UGX and TZS are zero-decimal in
-// everyday trade — never render "USh 1,500.00"; KES may carry decimals.
+// Price in the listing's currency. UGX is zero-decimal in everyday trade —
+// never render "USh 1,500.00"; the shape keeps decimals possible for any
+// future market that needs them.
 export function formatPrice(
   price: number | null | undefined,
   unit?: string | null,
@@ -27,7 +28,7 @@ export function formatQuantity(quantity: number | null | undefined, unit?: strin
 }
 
 export function formatPhonePretty(phone: string): string {
-  // +256 772 345 678 / +255 712 345 678 / +254 712 345 678
+  // +256 772 123 456 → "+256 772 123 456"
   const match = /^\+(\d{3})(\d{3})(\d{3})(\d{3})$/.exec(phone)
   if (match) return `+${match[1]} ${match[2]} ${match[3]} ${match[4]}`
   return phone
@@ -36,11 +37,6 @@ export function formatPhonePretty(phone: string): string {
 export function formatDateTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleString('en', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-
-export function formatDate(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function timeAgo(date: string | Date): string {
@@ -57,7 +53,7 @@ export function timeAgo(date: string | Date): string {
   return `${months} ${months === 1 ? 'month' : 'months'} ago`
 }
 
-export function daysLeft(expiresAt: string | Date): number {
+function daysLeft(expiresAt: string | Date): number {
   const d = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt
   return Math.max(0, Math.ceil((d.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
 }
@@ -75,8 +71,8 @@ export { LISTING_ACTIVE_DAYS }
 export function whatsappLink(phone: string, listingTitle: string, listingType: 'OFFER' | 'REQUEST'): string {
   const digits = phone.replace(/\D/g, '')
   const intro = listingType === 'OFFER'
-    ? `Hi, I saw your listing "${listingTitle}" on Duuka. Is it still available?`
-    : `Hi, about your request "${listingTitle}" on Duuka — can we talk?`
+    ? `Hi, I saw your listing "${listingTitle}" on Mudaala. Is it still available?`
+    : `Hi, about your request "${listingTitle}" on Mudaala — can we talk?`
   return `https://wa.me/${digits}?text=${encodeURIComponent(intro)}`
 }
 
@@ -102,12 +98,15 @@ export function normalizeShopName(name: string): string {
 
 // Shop-code canonicalizer, shared by the server (lookup API) and the client
 // (browse search detection). Buyers punch in a code like a mobile-money till
-// number — forgiving about case, spaces and dashes ("dk 2623", "DK-2623",
-// "dk2623" all work), but the match against the stored code stays EXACT, so
-// a mistyped number never lands on a stranger's shop. Lives in format.ts
-// because the client imports it and format.ts must stay server-free.
+// number — forgiving about case, spaces and dashes ("md 2623", "MD-2623",
+// "md2623" all work), but the match against the stored code stays EXACT, so
+// a mistyped number never lands on a stranger's shop. Both prefixes are
+// accepted and canonicalize to MD-: the digits ARE the identity, so a code
+// read off a pre-rename DK- poster still lands on the same shop. Lives in
+// format.ts because the client imports it and format.ts must stay
+// server-free.
 export function normalizeShopCode(raw: string): string | null {
   const compact = raw.replace(/[\s-]+/g, '').toUpperCase()
-  const match = /^DK(\d{4})$/.exec(compact)
-  return match ? `DK-${match[1]}` : null
+  const match = /^(?:DK|MD)(\d{4})$/.exec(compact)
+  return match ? `MD-${match[1]}` : null
 }

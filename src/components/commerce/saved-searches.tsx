@@ -10,9 +10,11 @@ import type { ListingQuery } from '@/lib/validation'
 import { useAppStore, describeQuery, type BrowseFilters } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { timeAgo } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { ListingListSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
 import { ErrorState } from './listings-browse'
+import { useState } from 'react'
 
 // Saved searches — persisted filters with honest, recomputed match counts.
 export function SavedSearches() {
@@ -27,10 +29,15 @@ export function SavedSearches() {
     queryFn: () => apiGet<{ searches: SavedSearchT[] }>('/api/saved-searches'),
   })
 
+  // The row whose check is running — checking is read-only, so other rows
+  // stay live; only the tapped one pauses and spins.
+  const [checkingId, setCheckingId] = useState<string | null>(null)
   const checkMutation = useMutation({
     mutationFn: (id: string) => apiPost<{ search: SavedSearchT }>(`/api/saved-searches/${id}/check`),
+    onMutate: (id: string) => setCheckingId(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['saved-searches'] }),
     onError: (err: Error) => toast({ title: 'Could not check', description: err.message, variant: 'destructive' }),
+    onSettled: () => setCheckingId(null),
   })
 
   const deleteMutation = useMutation({
@@ -111,22 +118,22 @@ export function SavedSearches() {
               </p>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <Button size="sm" className="h-8 gap-1.5" onClick={() => apply(search)}>
+              <Button size="sm" className="h-8 gap-1.5 press" onClick={() => apply(search)}>
                 Apply <ArrowRight className="size-3.5" aria-hidden />
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1.5"
+                className="h-8 gap-1.5 press"
                 onClick={() => checkMutation.mutate(search.id)}
-                disabled={checkMutation.isPending}
+                disabled={checkingId === search.id}
               >
-                <RefreshCw className="size-3.5" aria-hidden /> Check now
+                <RefreshCw className={cn('size-3.5', checkingId === search.id && 'animate-spin')} aria-hidden /> Check now
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 gap-1.5 text-muted-foreground hover:text-destructive"
+                className="h-8 gap-1.5 text-muted-foreground hover:text-destructive press"
                 onClick={() => deleteMutation.mutate(search.id)}
                 disabled={deleteMutation.isPending}
               >

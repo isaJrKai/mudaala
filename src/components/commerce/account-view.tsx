@@ -230,7 +230,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           <Store className="size-4" aria-hidden /> My Shop
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          This is your space on Duuka — give it the name of your shop. Buyers see it on every listing you post.
+          This is your space on Mudaala — give it the name of your shop. Buyers see it on every listing you post.
         </p>
         {data?.profile?.shopCode ? (
           <p className="mt-1 text-xs text-muted-foreground">
@@ -336,7 +336,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         {errors.description ? <p role="alert" className="text-sm text-destructive">{errors.description}</p> : null}
       </div>
 
-      <Button type="submit" disabled={busy}>
+      <Button type="submit" disabled={busy} className="press">
         {busy ? 'Saving…' : 'Save shop'}
       </Button>
     </form>
@@ -405,15 +405,15 @@ function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
         </div>
         {saved ? (
           <div className="flex shrink-0 gap-1.5">
-            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={capture}>
+            <Button type="button" variant="outline" size="sm" className="press" disabled={busy} onClick={capture}>
               {phase === 'locating' ? 'Finding…' : 'Update'}
             </Button>
-            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" disabled={busy} onClick={() => persist(null, null)}>
+            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground press" disabled={busy} onClick={() => persist(null, null)}>
               Remove
             </Button>
           </div>
         ) : (
-          <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={busy} onClick={capture}>
+          <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5 press" disabled={busy} onClick={capture}>
             <MapPin className="size-3.5" aria-hidden />
             {phase === 'locating' ? 'Finding you…' : phase === 'saving' ? 'Saving…' : 'Add my shop location'}
           </Button>

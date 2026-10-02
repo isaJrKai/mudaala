@@ -35,7 +35,7 @@ const CATEGORY_GLYPHS: Record<string, React.ReactNode> = {
 
 // Warm, muted tint per category for photo placeholders — recognizable blocks
 // of color, no decorative gradients.
-export const CATEGORY_TINTS: Record<string, string> = {
+const CATEGORY_TINTS: Record<string, string> = {
   'scrap-recyclables': 'bg-stone-100 text-stone-500',
   'food-groceries': 'bg-amber-50 text-amber-700',
   'farm-produce': 'bg-lime-50 text-lime-700',

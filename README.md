@@ -1,20 +1,21 @@
-# Duuka
+# Mudaala
 
 A local-commerce discovery platform: people post **OFFER** and **REQUEST** listings,
 find each other by category and location, compare price/quantity/freshness, and
 contact each other directly on WhatsApp or by phone.
 
-Built to the Duuka product contract — a discovery platform, not an ERP:
+Built to the Mudaala product contract — a discovery platform, not an ERP:
 no payments, wallets, escrow, delivery dispatch, in-app chat, or transaction
 ratings in V1.
 
 ## Markets & currency
 
-Duuka launches in **Uganda** (default), with **Tanzania** and **Kenya** supported:
+Mudaala is focused on **Uganda**:
 
-- Country chosen at registration drives the phone format (+256/+255/+254), the
-  district/region list, and the default currency (USh/TSh/KSh)
-- Each listing stores its own currency; UGX and TZS render with zero decimals
+- Ugandan phone numbers (+256, local 07.. formats accepted) drive registration,
+  login and all contact fields
+- District list is Uganda's towns and regions; the currency is UGX, rendered
+  with zero decimals
 - **One account does everything** — being a buyer and a seller needs no second
   sign-in. Account → "My Shop" is where a seller names their space; that name
   appears on every listing they publish.
@@ -93,10 +94,11 @@ bun run dev           # development server on :3000
 bun scripts/seed.ts
 ```
 
-Seeds 6 demo traders, 13 listings across categories/counties/statuses (including
-one already overdue so the expiry sweep demonstrates itself) and 2 saved
-searches with honestly computed counts. Fixture passwords are `demo1234`,
-phones `+2547120000 01–06`.
+Seeds 8 demo traders across Ugandan districts, 16 listings across
+categories/statuses (including one already overdue so the expiry sweep
+demonstrates itself) and 2 saved searches with honestly computed counts.
+Fixture passwords are `demo1234`; fixture phones are +256 77x/70x demo
+numbers (see scripts/seed.ts).
 
 ### API behavior & security tests
 

@@ -2,9 +2,21 @@ import { db } from '@/lib/db'
 import { route, jsonOk, jsonError, parseBody } from '@/lib/api'
 import { registerSchema, normalizePhone, countryPhoneMessage, type CountryKey } from '@/lib/validation'
 import { hashPassword, createSession, setSessionCookie, toPublicUser } from '@/lib/auth'
+import { hit, RATE_WINDOW_MS, REGISTER_IP_MAX } from '@/lib/rate-limit'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   return route(async () => {
+    // Per-IP cap: account creation is the expensive thing to flood.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+    const verdict = hit(`register:ip:${ip}`, REGISTER_IP_MAX, RATE_WINDOW_MS)
+    if (!verdict.ok) {
+      return NextResponse.json(
+        { error: 'Too many accounts created from this device. Please wait about 15 minutes, then try again.' },
+        { status: 429, headers: { 'retry-after': String(verdict.retryAfterSeconds) } },
+      )
+    }
+
     const data = await parseBody(request, registerSchema)
 
     const phone = normalizePhone(data.phone, data.country as CountryKey)

@@ -72,7 +72,7 @@ export function PublishForm() {
   useEffect(() => {
     if (user) {
       // Pre-fill contact phone and default the currency to the account's
-      // country (UG → USh, TZ → TSh, KE → KSh). Still switchable per listing.
+      // country (Uganda → USh). Still switchable per listing.
       setForm((f) => ({
         ...f,
         contactPhone: f.contactPhone === '' ? user.phone : f.contactPhone,
@@ -170,7 +170,7 @@ export function PublishForm() {
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5" autoComplete="on">
-      <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
+      <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-1 press" onClick={() => navigate({ name: 'browse' })}>
         <ArrowLeft className="size-4" aria-hidden /> Cancel
       </Button>
 
@@ -194,7 +194,7 @@ export function PublishForm() {
                 if (t === 'REQUEST') set('compareAtPrice', '')
               }}
               className={cn(
-                'rounded-md border px-3 py-2.5 text-sm font-medium transition-colors',
+                'press rounded-md border px-3 py-2.5 text-sm font-medium transition-colors',
                 form.type === t ? 'border-primary bg-accent text-accent-foreground' : 'bg-card text-muted-foreground hover:bg-secondary',
               )}
             >
@@ -350,7 +350,7 @@ export function PublishForm() {
       </div>
 
       <Field label="Area / town (optional)" htmlFor="p-area" error={errors.area}>
-        <Input id="p-area" value={form.area} onChange={(e) => set('area', e.target.value)} maxLength={80} placeholder="e.g. Gikomba" />
+        <Input id="p-area" value={form.area} onChange={(e) => set('area', e.target.value)} maxLength={80} placeholder="e.g. Kisenyi" />
       </Field>
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
@@ -386,10 +386,10 @@ export function PublishForm() {
       ) : null}
 
       <div className="flex gap-2 pb-2">
-        <Button type="submit" disabled={busy} className="flex-1 sm:flex-none sm:px-8">
+        <Button type="submit" disabled={busy} className="press flex-1 sm:flex-none sm:px-8">
           {busy ? 'Publishing…' : 'Publish listing'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => navigate({ name: 'browse' })} disabled={busy}>
+        <Button type="button" variant="outline" onClick={() => navigate({ name: 'browse' })} disabled={busy} className="press">
           Cancel
         </Button>
       </div>
@@ -673,10 +673,10 @@ export function EditListingForm({ id }: { id: string }) {
       ) : null}
 
       <div className="flex gap-2 pb-2">
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} className="press">
           {busy ? 'Saving…' : 'Save changes'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => navigate({ name: 'listing', id })} disabled={busy}>
+        <Button type="button" variant="outline" onClick={() => navigate({ name: 'listing', id })} disabled={busy} className="press">
           Cancel
         </Button>
       </div>

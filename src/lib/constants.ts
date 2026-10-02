@@ -1,10 +1,10 @@
-// Duuka — shared domain constants.
+// Mudaala — shared domain constants.
 // Single source of truth for both server validation and UI rendering.
 
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const
 export type ListingType = (typeof LISTING_TYPES)[number]
 
-export const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED'] as const
+const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED'] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
 
 // Deliberate status transitions. Anything not listed here is forbidden —
@@ -16,7 +16,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<ListingStatus, ListingStatus[]> 
   ARCHIVED: ['ACTIVE'],
 }
 
-export interface CategoryDef {
+interface CategoryDef {
   key: string
   label: string
   examples: string
@@ -43,7 +43,7 @@ export function categoryLabel(key: string): string {
   return CATEGORIES.find((c) => c.key === key)?.label ?? key
 }
 
-export interface UnitDef {
+interface UnitDef {
   key: string
   label: string
 }
@@ -70,12 +70,14 @@ export function unitLabel(key: string): string {
   return UNITS.find((u) => u.key === key)?.label ?? key
 }
 
-// Countries — Uganda is the launch market, Tanzania and Kenya supported too.
+// Countries — Mudaala launches in Uganda and stays focused on it. The shape
+// (array, not a single constant) is kept so new markets can be added later
+// without touching call sites.
 export interface CountryDef {
-  key: 'UG' | 'TZ' | 'KE'
+  key: 'UG'
   name: string
   dialCode: string
-  currency: 'UGX' | 'TZS' | 'KES'
+  currency: 'UGX'
   locations: readonly string[]
 }
 
@@ -91,28 +93,6 @@ export const COUNTRIES: CountryDef[] = [
       'Fort Portal', 'Kasese', 'Mbarara', 'Masaka', 'Kabale', 'Other',
     ],
   },
-  {
-    key: 'TZ',
-    name: 'Tanzania',
-    dialCode: '255',
-    currency: 'TZS',
-    locations: [
-      'Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya', 'Tanga',
-      'Morogoro', 'Kilimanjaro', 'Zanzibar', 'Tabora', 'Iringa', 'Kigoma',
-      'Mtwara', 'Lindi', 'Ruvuma', 'Other',
-    ],
-  },
-  {
-    key: 'KE',
-    name: 'Kenya',
-    dialCode: '254',
-    currency: 'KES',
-    locations: [
-      'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Uasin Gishu', 'Kiambu', 'Machakos',
-      'Kajiado', 'Kakamega', 'Kisii', 'Meru', 'Nyeri', 'Bungoma', 'Kilifi',
-      'Trans Nzoia', 'Nandi', 'Kericho', 'Kirinyaga', 'Muranga', 'Other',
-    ],
-  },
 ]
 
 export const COUNTRY_KEYS = COUNTRIES.map((c) => c.key)
@@ -125,18 +105,16 @@ export function countryDef(key: string): CountryDef {
 // Union of all locations — used for validating existing rows and saved searches.
 export const COUNTIES = COUNTRIES.flatMap((c) => [...c.locations]) as unknown as readonly string[]
 
-// Currencies — UGX and TZS are zero-decimal in everyday trade, so amounts are
-// whole numbers. KES allows minor decimals.
-export interface CurrencyDef {
-  key: 'UGX' | 'TZS' | 'KES'
+// Currencies — UGX is zero-decimal in everyday trade, so amounts are
+// whole numbers.
+interface CurrencyDef {
+  key: 'UGX'
   symbol: string
   zeroDecimal: boolean
 }
 
 export const CURRENCIES: CurrencyDef[] = [
   { key: 'UGX', symbol: 'USh', zeroDecimal: true },
-  { key: 'TZS', symbol: 'TSh', zeroDecimal: true },
-  { key: 'KES', symbol: 'KSh', zeroDecimal: false },
 ]
 
 export function currencyDef(key: string): CurrencyDef {
@@ -144,12 +122,13 @@ export function currencyDef(key: string): CurrencyDef {
 }
 
 export const CURRENCY_KEYS = CURRENCIES.map((c) => c.key)
-export const DEFAULT_CURRENCY = 'UGX'
 
 // Time-dependent business rules (single source of truth).
 export const LISTING_ACTIVE_DAYS = 30
 export const REFRESH_COOLDOWN_HOURS = 24
 export const EXPIRING_SOON_DAYS = 5
+// A listing not refreshed for this long triggers the Home "freshness tip".
+export const STALE_LISTING_DAYS = 7
 
 export const LISTING_TYPES_UI: Record<ListingType, { label: string; badge: string; dot: string }> = {
   OFFER: { label: 'OFFER', badge: 'bg-emerald-100 text-emerald-900 border-emerald-200', dot: 'bg-emerald-600' },

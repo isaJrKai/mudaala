@@ -1,4 +1,4 @@
-// Duuka — listing domain service.
+// Mudaala — listing domain service.
 // Search, expiry, refresh rules, saved-search matching.
 // All time-dependent logic reads persisted timestamps; nothing is faked in the UI.
 
@@ -73,7 +73,7 @@ export async function notifyExpiringSoon(): Promise<number> {
   return candidates.length
 }
 
-export interface SearchOptions {
+interface SearchOptions {
   query: ListingQuery
   includeStatuses?: string[]
 }
@@ -98,10 +98,10 @@ export type ListingWithShop = Prisma.ListingGetPayload<{ include: typeof SHOP_OW
 
 // A listing as it leaves the API: the stored JSON photos string becomes a
 // real array.
-export type Serialized<L extends { photos: string }> = Omit<L, 'photos'> & { photos: string[] }
+type Serialized<L extends { photos: string }> = Omit<L, 'photos'> & { photos: string[] }
 
 // Stored photos are a JSON array of URL strings; corrupt data degrades to [].
-export function parsePhotos(raw: string | null | undefined): string[] {
+function parsePhotos(raw: string | null | undefined): string[] {
   if (!raw) return []
   try {
     const parsed: unknown = JSON.parse(raw)
@@ -221,7 +221,7 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
 }
 
 // Check a listing against a saved-search query (shared matching rules).
-export function listingMatchesQuery(listing: Listing, query: ListingQuery): boolean {
+function listingMatchesQuery(listing: Listing, query: ListingQuery): boolean {
   if (query.type && listing.type !== query.type) return false
   if (query.category && listing.category !== query.category) return false
   if (query.county && listing.county !== query.county) return false
@@ -312,4 +312,4 @@ export async function getOwnedListingOr404(id: string, userId: string): Promise<
   return listing
 }
 
-export { buildSearchText, addDays }
+export { buildSearchText }

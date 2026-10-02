@@ -4,18 +4,54 @@
 // exists so connection details can be captured and tested without redeploying.
 
 import net from 'node:net'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
 import type { PostgresConfig } from '@/lib/validation'
 
-export const POSTGRES_SETTING_KEY = 'postgres_config'
+const POSTGRES_SETTING_KEY = 'postgres_config'
 
 export type StoredPostgresConfig = PostgresConfig & { configuredAt?: string }
+
+// Secrets at rest: password and connection string are AES-256-GCM encrypted
+// before they touch AppSetting. The key comes from SETTINGS_ENC_KEY; without
+// it a stable machine-local fallback is derived from DATABASE_URL so dev does
+// not silently lose saved config across restarts. Values written before
+// encryption (no "enc:" prefix) decrypt to themselves — nothing breaks.
+const ENC_PREFIX = 'enc:'
+
+function settingsKey(): Buffer {
+  const secret = process.env.SETTINGS_ENC_KEY
+  const material = secret
+    ? `mudaala:settings:${secret}`
+    : `mudaala:settings:fallback:${process.env.DATABASE_URL ?? 'local'}`
+  return createHash('sha256').update(material).digest()
+}
+
+function encryptSecret(plain: string): string {
+  const iv = randomBytes(12)
+  const cipher = createCipheriv('aes-256-gcm', settingsKey(), iv)
+  const ciphertext = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
+  return `${ENC_PREFIX}${iv.toString('base64')}:${cipher.getAuthTag().toString('base64')}:${ciphertext.toString('base64')}`
+}
+
+function decryptSecret(value: string): string {
+  if (!value.startsWith(ENC_PREFIX)) return value
+  const [, ivB64, tagB64, dataB64] = value.split(':')
+  const decipher = createDecipheriv('aes-256-gcm', settingsKey(), Buffer.from(ivB64!, 'base64'))
+  decipher.setAuthTag(Buffer.from(tagB64!, 'base64'))
+  return Buffer.concat([decipher.update(Buffer.from(dataB64!, 'base64')), decipher.final()]).toString('utf8')
+}
 
 export async function readPostgresConfig(): Promise<StoredPostgresConfig | null> {
   const row = await db.appSetting.findUnique({ where: { key: POSTGRES_SETTING_KEY } })
   if (!row) return null
   try {
-    return JSON.parse(row.value) as StoredPostgresConfig
+    const stored = JSON.parse(row.value) as StoredPostgresConfig
+    return {
+      ...stored,
+      password: stored.password ? decryptSecret(stored.password) : stored.password,
+      connectionString: stored.connectionString ? decryptSecret(stored.connectionString) : stored.connectionString,
+    }
   } catch {
     console.error('[settings] corrupt postgres_config value')
     return null
@@ -23,10 +59,16 @@ export async function readPostgresConfig(): Promise<StoredPostgresConfig | null>
 }
 
 export async function savePostgresConfig(config: StoredPostgresConfig): Promise<void> {
+  const stored: StoredPostgresConfig = {
+    ...config,
+    password: config.password ? encryptSecret(config.password) : config.password,
+    connectionString: config.connectionString ? encryptSecret(config.connectionString) : config.connectionString,
+  }
+  const value = JSON.stringify(stored)
   await db.appSetting.upsert({
     where: { key: POSTGRES_SETTING_KEY },
-    create: { key: POSTGRES_SETTING_KEY, value: JSON.stringify(config) },
-    update: { value: JSON.stringify(config) },
+    create: { key: POSTGRES_SETTING_KEY, value },
+    update: { value },
   })
 }
 
@@ -43,7 +85,7 @@ export function hasEmbeddedPassword(connectionString: string): boolean {
   return /:[^:@/\s]+@/.test(connectionString)
 }
 
-export interface ParsedTarget {
+interface ParsedTarget {
   host: string
   port: number
 }
@@ -65,7 +107,7 @@ export function resolveTarget(config: StoredPostgresConfig): ParsedTarget | null
   return null
 }
 
-export interface TcpTestResult {
+interface TcpTestResult {
   ok: boolean
   latencyMs?: number
   message: string

@@ -4,8 +4,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Hide the dev-tools indicator so it never covers the mobile bottom nav.
   devIndicators: false,
+  // Type errors fail the build — never ship unchecked types.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   reactStrictMode: false,
 };

@@ -2,7 +2,8 @@
 // Passwords and connection strings are stored server-side and never returned
 // unmasked to the browser.
 
-import { route, jsonOk, parseBody, requireUser } from '@/lib/api'
+import { route, jsonOk, parseBody } from '@/lib/api'
+import { requireAdmin } from '@/lib/admin'
 import { postgresConfigSchema } from '@/lib/validation'
 import {
   readPostgresConfig,
@@ -15,7 +16,7 @@ import {
 
 export async function GET() {
   return route(async () => {
-    await requireUser('Sign in to view advanced settings')
+    await requireAdmin('Sign in to view advanced settings')
     const stored = await readPostgresConfig()
     if (!stored) return jsonOk({ config: null })
 
@@ -32,7 +33,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   return route(async () => {
-    await requireUser('Sign in to change advanced settings')
+    await requireAdmin('Sign in to change advanced settings')
     const data = await parseBody(request, postgresConfigSchema)
 
     // An empty password field means "keep the previously stored password".
@@ -54,7 +55,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE() {
   return route(async () => {
-    await requireUser('Sign in to change advanced settings')
+    await requireAdmin('Sign in to change advanced settings')
     await deletePostgresConfig()
     return jsonOk({ ok: true })
   })
