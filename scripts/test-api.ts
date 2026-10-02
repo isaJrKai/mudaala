@@ -89,6 +89,9 @@ async function register(jar: Jar, phone: string, name: string, password: string,
 }
 
 const uniquePhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 89999999))}`
+// Per-run tag: fixture shop names embed it, so repeated suite runs never
+// collide with debris from earlier runs sitting in the same dev database.
+const RUN_TAG = Date.now().toString(36)
 
 const validListing = {
   type: 'OFFER',
@@ -352,7 +355,7 @@ async function main() {
 
     // Shop profile photo round-trip.
     const profilePut = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: `Alice Test Shop ${RUN_TAG}`,
       photoUrl: photoUrl ?? null,
       category: 'other',
       description: null,
@@ -365,7 +368,7 @@ async function main() {
     ok('profile PUT with shop photo (200)', profilePut.status === 200 && profilePut.json?.profile?.photoUrl === (photoUrl ?? null))
 
     const badPhotoProfile = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: `Alice Test Shop ${RUN_TAG}`,
       photoUrl: 'javascript:alert(1)',
       category: 'other',
       description: null,
@@ -433,7 +436,7 @@ async function main() {
     const shopAnon = await call('GET', `/api/shops/${alice.user?.id ?? ''}`)
     ok('shop page is public (no auth)', shopAnon.status === 200)
     const shopBody = shopAnon.json
-    ok('shop name uses the seller-chosen business name', shopBody?.shop?.name === 'Alice Test Shop')
+    ok('shop name uses the seller-chosen business name', shopBody?.shop?.name === `Alice Test Shop ${RUN_TAG}`)
     ok('shop exposes no password material', !JSON.stringify(shopBody).includes('passwordHash'))
     ok('shop catalogue contains only this seller ACTIVE listings',
       Array.isArray(shopBody?.listings)
@@ -472,7 +475,7 @@ async function main() {
 
     // The code is a permanent identity: profile updates must never re-roll it.
     const update = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: `Alice Test Shop ${RUN_TAG}`,
       photoUrl: null,
       category: 'other',
       description: 'Updated description for code stability check.',
@@ -488,10 +491,10 @@ async function main() {
     ok('shop page shows the same code to buyers', shopAnon.status === 200 && shopAnon.json?.shop?.shopCode === aliceCode)
 
     // check-name: public availability check behind the live "suggest area" hint.
-    const takenCheck = await call('GET', '/api/shops/check-name?name=alice%20test%20shop')
+    const takenCheck = await call('GET', `/api/shops/check-name?name=${encodeURIComponent(`alice test shop ${RUN_TAG}`)}`)
     ok('check-name flags an existing name case-insensitively',
       takenCheck.status === 200 && takenCheck.json?.taken === true && takenCheck.json.matches.length >= 1)
-    const ownCheck = await call('GET', `/api/shops/check-name?name=Alice%20Test%20Shop&exclude=${alice.user?.id}`)
+    const ownCheck = await call('GET', `/api/shops/check-name?name=${encodeURIComponent(`Alice Test Shop ${RUN_TAG}`)}&exclude=${alice.user?.id}`)
     ok('check-name ignores the seller’s own shop (exclude works)',
       ownCheck.status === 200 && ownCheck.json?.taken === false)
     const freeCheck = await call('GET', '/api/shops/check-name?name=Brand%20New%20Name%20Shop')
@@ -505,14 +508,14 @@ async function main() {
     await register(cara, uniquePhone(), 'Cara Twinname', 'password789')
     await register(dora, uniquePhone(), 'Dora Twinname', 'password789')
     const caraProfile = await call('PUT', '/api/profile', {
-      businessName: 'Twin Name Market',
+      businessName: `Twin Name Market ${RUN_TAG}`,
       photoUrl: null, category: 'other', description: null, county: 'Kampala',
       area: 'Ntinda', phone: uniquePhone(),
       whatsapp: null, hours: null,
     }, cara)
     ok('new profile gets a code at creation', caraProfile.status === 200 && /^MD-\d{4}$/.test(caraProfile.json?.profile?.shopCode ?? ''))
     const doraProfile = await call('PUT', '/api/profile', {
-      businessName: 'Twin Name Market',
+      businessName: `Twin Name Market ${RUN_TAG}`,
       photoUrl: null, category: 'other', description: null, county: 'Kampala',
       area: 'Bukoto', phone: uniquePhone(),
       whatsapp: null, hours: null,
@@ -532,7 +535,7 @@ async function main() {
       caraItem?.user?.profile?.area === 'Ntinda' && doraItem?.user?.profile?.area === 'Bukoto')
 
     // check-name now flags the twin name for a third party.
-    const twinCheck = await call('GET', '/api/shops/check-name?name=Twin%20Name%20Market')
+    const twinCheck = await call('GET', `/api/shops/check-name?name=${encodeURIComponent(`Twin Name Market ${RUN_TAG}`)}`)
     ok('check-name sees the duplicated name', twinCheck.json?.taken === true && twinCheck.json.matches.length >= 2)
 
     await call('DELETE', `/api/listings/${caraListing.json.listing.id}`, undefined, cara)
@@ -560,7 +563,7 @@ async function main() {
     // The regular "Save shop" form write must NEVER clobber the spot: its
     // schema strips unknown keys, so lat/lng keys never reach Prisma.
     const formSave = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: `Alice Test Shop ${RUN_TAG}`,
       photoUrl: null,
       category: 'other',
       description: 'Location preservation check.',
@@ -907,6 +910,16 @@ async function main() {
 
   console.log('\n== 11. Home dashboard + price trends ==')
   {
+    // Hermetic cleanup: the sweep aggregates every ACTIVE OFFER per
+    // (category, unit, currency), so leftovers from earlier runs (a restore
+    // can resurrect them) would poison the medians. Archive foreign OFFERs
+    // in the two combos under test and drop today's stale snapshot rows;
+    // only this run's fixtures will remain in the sample.
+    await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'electronics', unit: 'piece', currency: 'UGX' }, data: { status: 'ARCHIVED' } })
+    await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'food-groceries', unit: 'kg', currency: 'UGX' }, data: { status: 'ARCHIVED' } })
+    const trendsToday = new Date().toISOString().slice(0, 10)
+    await db.priceSnapshot.deleteMany({ where: { date: trendsToday, category: { in: ['electronics', 'food-groceries'] }, unit: { in: ['piece', 'kg'] }, currency: 'UGX' } })
+
     // Transport guards first: every Home endpoint is signed-in only.
     const homeAnon = await call('GET', '/api/home')
     ok('GET /api/home signed out → 401', homeAnon.status === 401)
@@ -1072,6 +1085,12 @@ async function main() {
     } else {
       console.log('  (CRON_SECRET not available — snapshot assertions skipped)')
     }
+
+    // Hermetic cleanup: archive this run's trends fixtures too, so the next
+    // run's sweep sample starts from zero (REQUESTs and other categories
+    // are untouched — the sweep only ever counts OFFERs).
+    await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'electronics', unit: 'piece' }, data: { status: 'ARCHIVED' } })
+    await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'food-groceries', unit: 'kg' }, data: { status: 'ARCHIVED' } })
   }
 
   console.log('\n== 12. Ad pages (/l/[id], /s/[code]) ==')
@@ -1093,8 +1112,33 @@ async function main() {
     const ldJson = (html: string) => /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? ''
 
     const search = await call('GET', '/api/listings?type=OFFER&sort=newest')
-    const offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+    let offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+    // Hermetic fixture: the suite must never depend on demo data surviving in
+    // the database (a restore can drop photo links). If no active OFFER with
+    // photos exists, alice uploads one photo and publishes a fixture listing.
+    if (!offer) {
+      const FIXTURE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+      const fixUp = await fetch(`${BASE}/api/upload`, {
+        method: 'POST',
+        headers: { cookie: alice.cookie },
+        body: (() => { const f = new FormData(); f.append('file', new Blob([FIXTURE_PNG], { type: 'image/png' }), 'fixture.png'); return f })(),
+      })
+      const fixUpJson = await fixUp.json().catch(() => null)
+      const fixPhoto: string[] = typeof fixUpJson?.url === 'string' ? [fixUpJson.url as string] : []
+      const fixCreate = await call('POST', '/api/listings', {
+        ...validListing,
+        title: 'ZZ Section-12 fixture offer with photo',
+        description: 'Published by the suite when no active OFFER with photos exists, so the ad-page tests stay hermetic.',
+        photos: fixPhoto,
+      }, alice)
+      const fixSearch = fixCreate.status === 201 ? await call('GET', '/api/listings?type=OFFER&sort=newest') : null
+      offer = (fixSearch?.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+    }
     ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
+    if (!offer) {
+      console.log('  (FATAL: no active OFFER with photos could be created — skipping the rest of section 12)')
+      return
+    }
 
     // /l/{id} — the full ad-page surface.
     const page = await fetch(`${BASE}/l/${offer.id}`)
@@ -1145,6 +1189,12 @@ async function main() {
 
     // Gone ads: expired → 404 with a friendly page that offers similar live
     // ads from the same category, and never leaks the contact phone.
+    // Similar-ads doorway: publish a dedicated live ad right before the
+    // expiry so it is the freshest same-category listing and cannot be
+    // crowded out of the top-4 window by older scrap fixtures.
+    const similar = await call('POST', '/api/listings', { ...validListing, title: 'ZZ Gone-test similar offer', contactPhone: '+256700000333' }, alice)
+    ok('similar-ad fixture published (201)', similar.status === 201 && Boolean(similar.json?.listing?.id))
+    const similarId: string = similar.json?.listing?.id ?? ''
     const gone = await call('POST', '/api/listings', { ...validListing, title: 'Gone copper scrap offering', contactPhone: '+256700000111' }, alice)
     ok('gone-test listing published (201)', gone.status === 201 && Boolean(gone.json?.listing?.id))
     const goneId: string = gone.json?.listing?.id ?? ''
@@ -1157,7 +1207,7 @@ async function main() {
     // buyer's browser renders.
     ok('expired ad → 404', gonePage.status === 404)
     ok('expired ad page says it is no longer available', goneHtml.includes('no longer available'))
-    ok('expired ad page offers similar ads from the same category', goneHtml.includes(`/l/${offer.id}`))
+    ok('expired ad page offers similar ads from the same category', Boolean(similarId) && goneHtml.includes(`/l/${similarId}`))
     ok('expired ad page never shows the contact phone', !goneHtml.includes('+256700000111'))
     ok('expired ad page links back to browse', goneHtml.includes('#/browse'))
 
@@ -1172,7 +1222,7 @@ async function main() {
     let aliceCode: string | undefined = profileState.json?.profile?.shopCode
     if (!aliceCode) {
       await call('PUT', '/api/profile', {
-        businessName: 'Alice Test Shop',
+        businessName: `Alice Test Shop ${RUN_TAG}`,
         photoUrl: null,
         category: 'other',
         description: 'Test shop for the /s/[code] page.',
