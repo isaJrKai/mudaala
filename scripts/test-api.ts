@@ -1149,8 +1149,11 @@ async function main() {
     // by code, plus the paged sitemap of ACTIVE listings and live shops.
     const ldJson = (html: string) => /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? ''
 
+    const realPhotos = (l: any) => Array.isArray(l.photos) && l.photos.length > 0 && l.photos.every((p: string) => !p.includes('/uploads/seed/'))
+    // Seed fixtures are never the test target: the app deliberately keeps their
+    // photos out of OG/Twitter metadata and their rows out of the sitemap.
     const search = await call('GET', '/api/listings?type=OFFER&sort=newest')
-    let offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+    let offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && realPhotos(l))
     // Hermetic fixture: the suite must never depend on demo data surviving in
     // the database (a restore can drop photo links). If no active OFFER with
     // photos exists, alice uploads one photo and publishes a fixture listing.
@@ -1170,7 +1173,7 @@ async function main() {
         photos: fixPhoto,
       }, alice)
       const fixSearch = fixCreate.status === 201 ? await call('GET', '/api/listings?type=OFFER&sort=newest') : null
-      offer = (fixSearch?.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+      offer = (fixSearch?.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && realPhotos(l))
     }
     ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
     if (!offer) {
@@ -1772,7 +1775,16 @@ async function main() {
     ok('15.29 Referrer-Policy is set', (hdrs.get('referrer-policy') ?? '').length > 0)
     ok('15.30 CSP includes frame-ancestors', (hdrs.get('content-security-policy') ?? '').includes('frame-ancestors'))
     ok('15.31 HSTS is set', (hdrs.get('strict-transport-security') ?? '').includes('max-age'))
-    ok('15.32 X-Frame-Options mirrors frame-ancestors', hdrs.get('x-frame-options') === 'SAMEORIGIN')
+    // 15.32 mirrors next.config.ts: XFO is SAMEORIGIN for bare 'self', DENY
+    // for 'none', and deliberately ABSENT when frame-ancestors names custom
+    // origins (XFO cannot express a list — the sandbox preview allowlist).
+    const fa = (process.env.FRAME_ANCESTORS ?? "'self'").trim()
+    const customAncestors = fa !== '' && fa !== "'self'" && fa !== "'none'"
+    const wantXfo = customAncestors ? null : fa === "'none'" ? 'DENY' : 'SAMEORIGIN'
+    ok('15.32 X-Frame-Options mirrors frame-ancestors',
+      wantXfo === null
+        ? hdrs.get('x-frame-options') === null && (hdrs.get('content-security-policy') ?? '').includes(fa)
+        : hdrs.get('x-frame-options') === wantXfo)
 
     // ---- 15j. Photos: EXIF/GPS stripped, capped at 1200px, WebP ----
     const exifJpeg = await sharp({
