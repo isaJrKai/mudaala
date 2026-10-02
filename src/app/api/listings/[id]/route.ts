@@ -2,11 +2,10 @@ import { NextRequest } from 'next/server'
 import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
 import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
-import { expireOverdueListings, getOwnedListingOr404, buildSearchText, sanitizePhotos, serializeListing } from '@/lib/listings'
-import { LISTING_ACTIVE_DAYS, countryDef } from '@/lib/constants'
+import { expireOverdueListings, getOwnedListingOr404, sanitizePhotos, serializeListing } from '@/lib/listings'
+import { LISTING_ACTIVE_DAYS, countryDef, findProhibitedItem } from '@/lib/constants'
 import { getSessionUser } from '@/lib/auth'
 import { isAdminUser } from '@/lib/admin'
-
 type Params = { params: Promise<{ id: string }> }
 
 // Public detail view. Also expires overdue listings so status is always truthful.
@@ -96,6 +95,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         county: `Choose a district or region in ${def.name}`,
       })
     }
+
+    // Prohibited items: edits get the same filter as publishing (an edit must
+    // not become the loophole around the publish-time rejection).
+    const banned = findProhibitedItem(
+      data.title ?? listing.title,
+      data.description ?? listing.description,
+    )
+    if (banned) {
+      throw new ApiError(400, banned.message, {
+        title: 'This listing cannot be published — ' + banned.label.toLowerCase(),
+      })
+    }
     const rawContactPhone = data.contactPhone ?? listing.contactPhone
     const contactPhone = normalizePhone(rawContactPhone, country)
     if (!contactPhone) {
@@ -151,13 +162,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: { id },
       data: {
         ...merged,
-        searchText: buildSearchText({
-          title: merged.title,
-          description: merged.description,
-          category: merged.category,
-          area: merged.area,
-          county: merged.county,
-        }),
       },
     })
     return jsonOk({ listing: serializeListing(updated) })

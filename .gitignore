@@ -67,4 +67,8 @@ server.log
 
 # IM gateway uploads (local only)
 /upload/
-.pgtool/data/
+
+# Task 5 local tooling
+/.pgtool/
+/.t4stage/
+/.t5stage/

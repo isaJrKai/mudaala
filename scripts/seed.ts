@@ -114,7 +114,6 @@ async function main() {
   for (const l of listings) {
     const refreshedAt = hoursAgo(l.refreshedHoursAgo)
     const expiresAt = new Date(refreshedAt.getTime() + (l.expiresInDaysOverride !== undefined ? l.expiresInDaysOverride : LISTING_ACTIVE_DAYS) * 86_400_000)
-    const searchText = `${l.title} ${l.description} ${l.category} ${l.area ?? ''} ${l.county}`.toLowerCase().replace(/\s+/g, ' ').trim()
     await db.listing.create({
       data: {
         userId: createdUsers[l.ownerIdx].id,
@@ -135,7 +134,6 @@ async function main() {
         contactWhatsapp: createdUsers[l.ownerIdx].phone,
         photos: JSON.stringify(l.photo ? [l.photo] : []),
         status: l.status ?? 'ACTIVE',
-        searchText,
         viewCount: l.views,
         publishedAt: refreshedAt,
         refreshedAt,
@@ -147,7 +145,15 @@ async function main() {
   // Saved searches with honestly computed match counts (same rules as the API).
   for (const s of savedSearches) {
     const where: Record<string, unknown> = { status: 'ACTIVE' }
-    if (s.query.q) where.searchText = { contains: s.query.q.toLowerCase() }
+    if (s.query.q) {
+      where.OR = [
+        { title: { contains: s.query.q, mode: 'insensitive' } },
+        { description: { contains: s.query.q, mode: 'insensitive' } },
+        { category: { contains: s.query.q, mode: 'insensitive' } },
+        { area: { contains: s.query.q, mode: 'insensitive' } },
+        { county: { contains: s.query.q, mode: 'insensitive' } },
+      ]
+    }
     if ('type' in s.query && s.query.type) where.type = s.query.type
     if ('county' in s.query && s.query.county) where.county = s.query.county
     const total = await db.listing.count({ where: where as never })

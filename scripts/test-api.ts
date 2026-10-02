@@ -24,6 +24,7 @@ import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
 // Pure-function units under test (no next/* imports — safe outside a request).
 import { bearerAuthEnabled } from '../src/lib/env-flags'
 import { validateEnv } from '../src/lib/env'
+import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -841,7 +842,6 @@ async function main() {
         area: null,
         contactPhone: alicePhone,
         status: 'ACTIVE',
-        searchText: 'expiry sweep test listing',
         publishedAt: new Date(Date.now() - 40 * 86_400_000),
         refreshedAt: new Date(Date.now() - 40 * 86_400_000),
         expiresAt: new Date(Date.now() - 1 * 86_400_000),
@@ -1839,6 +1839,64 @@ async function main() {
     } else {
       ok('15.40 user B marking user A\u2019s notification read is a no-op (no fixture)', false, 'owner A had no unread notification')
     }
+  }
+
+  console.log('\n== 16. Real hosting: health, storage interface, Postgres search ==')
+  {
+    // ---- 16a. Health endpoint: app + database reachable ----
+    const health = await fetch(`${BASE}/api/health`)
+    const healthJson = (await health.json().catch(() => null)) as { ok?: boolean; app?: string; database?: string } | null
+    ok('16.1 /api/health reports ok with the database up', health.status === 200 && healthJson?.ok === true && healthJson.app === 'up' && healthJson.database === 'up')
+
+    // ---- 16b. Storage provider choice is env-driven (pure function) ----
+    const local = chooseStorage({})
+    ok('16.2 no STORAGE_* env → local-disk provider (development default)', local.name === 'local-disk')
+    const s3Env = {
+      STORAGE_ENDPOINT: 'https://account.r2.cloudflarestorage.com',
+      STORAGE_BUCKET: 'mudaala-photos',
+      STORAGE_KEY: 'test-key',
+      STORAGE_SECRET: 'test-secret',
+      STORAGE_PUBLIC_URL: 'https://cdn.mudaala.example',
+    }
+    const cloud = chooseStorage(s3Env)
+    ok('16.3 full STORAGE_* env → s3-compatible provider', cloud.name === 's3-compatible')
+    ok(
+      '16.4 a single missing STORAGE_* var falls back to local (fail-safe, not half-configured)',
+      chooseStorage({ ...s3Env, STORAGE_SECRET: undefined }).name === 'local-disk',
+    )
+    const parsed = readStorageEnv({ ...s3Env, STORAGE_ENDPOINT: 'https://account.r2.cloudflarestorage.com/' })
+    ok('16.5 endpoint trailing slash trimmed, public URL kept', parsed?.endpoint === 'https://account.r2.cloudflarestorage.com' && parsed?.publicUrl === 'https://cdn.mudaala.example')
+
+    // ---- 16c. SigV4 signing: deterministic, spec-shaped ----
+    const payload = Buffer.from('mudaala-signature-test')
+    const at = new Date('2026-10-02T09:30:00.000Z')
+    const s3 = new S3Storage(readStorageEnv(s3Env)!)
+    const sigA = signS3Put(readStorageEnv(s3Env)!, 'photos/a.webp', payload, at)
+    const sigB = signS3Put(readStorageEnv(s3Env)!, 'photos/a.webp', payload, at)
+    ok('16.6 signing is deterministic for identical inputs', sigA.authorization === sigB.authorization)
+    ok(
+      '16.7 signature scope and shape follow the SigV4 spec',
+      sigA.authorization.startsWith('AWS4-HMAC-SHA256 Credential=test-key/20261002/auto/s3/aws4_request') && sigA.amzDate === '20261002T093000Z',
+    )
+    ok('16.8 path-style request line targets bucket/key', sigA.path === '/mudaala-photos/photos/a.webp' && sigA.host === 'account.r2.cloudflarestorage.com')
+    const sigOther = signS3Put({ ...(readStorageEnv(s3Env)!), secret: 'different-secret' }, 'photos/a.webp', payload, at)
+    ok('16.9 a different secret yields a different signature', sigOther.authorization !== sigA.authorization)
+    ok(
+      '16.10 public URL = STORAGE_PUBLIC_URL + key (fallback: endpoint/bucket + key)',
+      s3.publicUrlFor('photos/a.webp') === 'https://cdn.mudaala.example/photos/a.webp' &&
+        new S3Storage(readStorageEnv({ ...s3Env, STORAGE_PUBLIC_URL: undefined })!).publicUrlFor('photos/a.webp') ===
+          'https://account.r2.cloudflarestorage.com/mudaala-photos/photos/a.webp',
+    )
+
+    // ---- 16d. Search is case-insensitive ON THE DATABASE (Postgres ILIKE) ----
+    const pgSearcher: Jar = { cookie: '' }
+    await register(pgSearcher, uniquePhone(), 'PG Search Fixture', 'quiet-harbor-31')
+    const pgNeedle = `Zz-Roasted-Groundnuts-${Date.now().toString(36)}`
+    const pgListing = await call('POST', '/api/listings', { ...validListing, title: `Fresh ${pgNeedle} batch` }, pgSearcher)
+    ok('16.11 search fixture listing published', pgListing.status === 201)
+    const upper = await call('GET', `/api/listings?q=${encodeURIComponent(pgNeedle.toUpperCase())}`)
+    const foundUpper = (upper.json?.items as any[] | undefined)?.some((l) => l.title === `Fresh ${pgNeedle} batch`)
+    ok('16.12 an UPPERCASE query finds the lowercase title (case-insensitive ILIKE search)', upper.status === 200 && foundUpper === true)
   }
 
   console.log(`\n========================================`)

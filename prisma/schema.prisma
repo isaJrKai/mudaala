@@ -1,14 +1,14 @@
 // Commerce OS — data model
 // The database is the single source of truth for listings, ownership and status.
-// SQLite is the sandbox runtime store; the PostgreSQL deployment connection is
-// configured in Settings → Advanced Settings (stored in AppSetting).
+// PostgreSQL is the runtime store (Task 5): local dev and production both
+// point DATABASE_URL at a real Postgres server.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -96,8 +96,7 @@ model Listing {
   contactPhone     String // normalized E.164
   contactWhatsapp  String?
   photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
-  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation)
-  searchText       String    @default("") // lowercased title+description+category+area for SQLite case-insensitive search
+  status           String    @default("ACTIVE") // ACTIVE | FULFILLED | EXPIRED | ARCHIVED | HIDDEN (moderation takedown; owner cannot self-restore)
   viewCount        Int       @default(0)
   publishedAt      DateTime  @default(now())
   refreshedAt      DateTime  @default(now()) // drives freshness ordering
