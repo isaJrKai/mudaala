@@ -1,3 +1,6 @@
+// One-off CJS generator (kept runnable per script-persistence rule): require() is the
+// correct syntax here since package.json has no "type":"module". Not app code.
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Mudaala API Security & Test Coverage Report — docx generator (skill: docx, route: create, scene: report)
 // Cover: Recipe R1 (Pure Paragraph Left) + DM-1 palette (report + tech industry, per selectCoverRecipe)
 const {

@@ -1,3 +1,6 @@
+// One-off CJS generator (kept runnable per script-persistence rule): require() is the
+// correct syntax here since package.json has no "type":"module". Not app code.
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Assembles the final report docx: cover (R1) + front matter (TOC, Roman) + body (Arabic).
 const K = require("./report-kit.js");
 const D = K.D;
