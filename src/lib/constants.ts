@@ -241,3 +241,13 @@ export function findProhibitedItem(text: string): { rule: ProhibitedRule; term: 
   }
   return null
 }
+
+// ---------------------------------------------------------------------------
+// Legal (Task 4)
+// ---------------------------------------------------------------------------
+
+// Version stamp recorded on every account at the moment its owner accepts the
+// Terms and Privacy Policy. Bump this value whenever the legal text changes
+// meaningfully — users who accepted an older version can then be asked to
+// re-confirm. Date-based so the version reads naturally in the database.
+export const TERMS_VERSION = '2026-10-02'

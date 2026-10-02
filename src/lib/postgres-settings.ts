@@ -20,7 +20,9 @@ export type StoredPostgresConfig = PostgresConfig & { configuredAt?: string }
 const ENC_PREFIX = 'enc:'
 
 function settingsKey(): Buffer {
-  const secret = process.env.SETTINGS_ENC_KEY
+  // SETTINGS_ENCRYPTION_KEY is the spec name; SETTINGS_ENC_KEY remains as the
+  // legacy alias so environments configured before Task 4 keep decrypting.
+  const secret = process.env.SETTINGS_ENCRYPTION_KEY ?? process.env.SETTINGS_ENC_KEY
   const material = secret
     ? `mudaala:settings:${secret}`
     : `mudaala:settings:fallback:${process.env.DATABASE_URL ?? 'local'}`

@@ -12,6 +12,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { ApiError, route, jsonOk, requireUser } from '@/lib/api'
+import { hit, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS } from '@/lib/rate-limit'
 import sharp from 'sharp'
 
 const MAX_BYTES = 8 * 1024 * 1024 // 8MB pre-compression — phones shoot big
@@ -42,7 +43,14 @@ function randomName(): string {
 
 export async function POST(request: Request) {
   return route(async () => {
-    await requireUser('Sign in to upload photos')
+    const user = await requireUser('Sign in to upload photos')
+
+    // 30 photos per user per hour: a whole catalogue shoot in a sitting is
+    // fine; bulk-filling the disk is not.
+    const verdict = hit(`upload:user:${user.id}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
+    if (!verdict.ok) {
+      throw new ApiError(429, 'That is a lot of photos — please wait a while before uploading more')
+    }
 
     const form = await request.formData().catch(() => null)
     const file = form?.get('file')
