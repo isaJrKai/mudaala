@@ -1010,3 +1010,20 @@ Stage Summary:
 - No app-code bugs found — the shipped surface is functionally sound; the real "bugs" were two stale suite assertions (now fixed, suite 389/0) and a preview database full of test fixtures (now clean).
 - Insurance: commits on main; nothing orphaned this session.
 - For the user: if a specific broken screen remains, name the page/action and I'll target it; next real launch step remains scripts/remove-seed-data.ts --yes when the demo shops should vanish.
+
+---
+Task ID: context-verification
+Agent: main (Super Z)
+Task: User asked "have you implemented this CONTEXT?" (standing Mudaala context + PLACEHOLDER RULE). Point-by-point verification against the code, plus fix whatever the check surfaced.
+
+Work Log:
+- Verified every CONTEXT clause against the tree: isSeed flags on User/BusinessProfile/Listing with PLACEHOLDER RULE comments (schema.prisma); scripts/remove-seed-data.ts (dry-run / --mark / --yes, legacy-row detection via seed phones parsed from seed.ts source + /uploads/seed/ references, cascade-aware deletes, post-delete verification, exit 1 on leftovers); src/components/commerce/placeholder-tile.tsx (flat grey bg-muted, category label, camera icon, a11y role=img); sitemap excludes isSeed rows; ad-page/OG/Twitter seed exclusion covered by suite section 17.
+- Found + fixed a real tsc error the last session's "clean" claim missed: scripts/clean-orphan-uploads.ts cast l.photos (JSON String per schema) to string[] (TS2352) — at runtime the referenced-set was garbage characters, a latent data-loss bug for the cleaner. Fixed via JSON.parse + Array.isArray + string-only guard, plus explicit seed-folder skip (belt-and-braces for the PLACEHOLDER RULE).
+- eslint . had 4 errors (no-require-imports) in one-off CJS generators report-kit.js / gen-final-report.js (package.json has no type:module — require is correct there). Added targeted per-file eslint-disable banners with rationale instead of breaking working artifacts.
+- Ran the standing gate the canonical way: bash scripts/bugprobe.sh npx tsx scripts/test-api.ts → 389 passed / 0 failed (bare tsx run fails at Prisma init because DATABASE_URL only comes from the harness env — bugprobe.sh exports the sandbox URL on 5433; documented here so future sessions don't misread that as an app bug).
+- Committed 021e1f5 on main (current working line; main = starter-launch + bug-hunt commits, strictly ahead — fast-forwardable if the user wants starter-launch caught up).
+
+Stage Summary:
+- ANSWER: yes, the CONTEXT + PLACEHOLDER RULE are implemented end to end and now re-proven: tsc clean, eslint clean, suite 389/0, one commit (021e1f5).
+- Branch note: commits since the merge-base live on main, not starter-launch; starter-launch is an ancestor, so catching it up is a fast-forward, no history rewrite.
+- The suite's own section 17 asserts the placeholder behavior, so regressions can't land silently.
