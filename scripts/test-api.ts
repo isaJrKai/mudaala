@@ -15,6 +15,9 @@ import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
 import path from 'node:path'
 import * as fs from 'node:fs'
+// The app's own code-hash primitive — the suite mints KNOWN codes with the
+// exact same hashing the request endpoint uses (password.ts is next-free).
+import { hashCode } from '../src/lib/password'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -90,6 +93,10 @@ async function register(jar: Jar, phone: string, name: string, password: string,
 
 const uniquePhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 89999999))}`
 
+// A shop name unique to THIS run — earlier suite runs leave shops behind, and
+// name-equality checks (check-name exclude) must never trip over them.
+const SHOP_NAME = `Alice Test Shop ${Date.now().toString(36)}`
+
 const validListing = {
   type: 'OFFER',
   title: 'Test copper scrap offering',
@@ -116,11 +123,11 @@ async function main() {
     const bad = await call('POST', '/api/auth/register', { phone: 'not-a-phone', name: 'X Y', password: 'short' })
     ok('register rejects invalid phone + short password (400)', bad.status === 400 && bad.json.fields)
 
-    const res = await register(alice, alicePhone, 'Alice Tester', 'password123')
+    const res = await register(alice, alicePhone, 'Alice Tester', 'quiet-harbor-31')
     ok('register creates account (201)', res.status === 201 && res.json?.user?.id)
     ok('register response never contains passwordHash', !JSON.stringify(res.json).includes('passwordHash'))
 
-    const dup = await register({ cookie: '' }, alicePhone, 'Alice Again', 'password123')
+    const dup = await register({ cookie: '' }, alicePhone, 'Alice Again', 'quiet-harbor-31')
     ok('register rejects duplicate phone (409)', dup.status === 409)
 
     const wrongPw = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'wrongpassword' })
@@ -129,7 +136,7 @@ async function main() {
     const ghost = await call('POST', '/api/auth/login', { phone: '+256700111222', password: 'whatever123' })
     ok('login with unknown phone → same 401 message', ghost.status === 401 && ghost.json.error === wrongPw.json.error)
 
-    const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
+    const login = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'quiet-harbor-31' }, alice)
     ok('login works (200) and sets session cookie', login.status === 200 && alice.cookie.includes('mudaala_session'))
     ok('login returns sessionToken for the Bearer channel', typeof login.json?.sessionToken === 'string' && login.json.sessionToken.length > 0)
 
@@ -153,7 +160,7 @@ async function main() {
     // Register a Ugandan account with country declared.
     const ug: Jar = { cookie: '' }
     const ugPhone = `077${String(Math.floor(1000000 + Math.random() * 8999999))}`.slice(0, 10)
-    const ugReg = await register(ug, ugPhone, 'Kampala Tester', 'password123', 'UG')
+    const ugReg = await register(ug, ugPhone, 'Kampala Tester', 'quiet-harbor-31', 'UG')
     ok('register with country=UG creates +256 account (201)', ugReg.status === 201 && ugReg.json?.user?.phone?.startsWith('+256'))
 
     // Bearer-only transport: session survives with the cookie completely blocked.
@@ -175,7 +182,7 @@ async function main() {
     // passwords are allowed, the 6th attempt is 429 even with the RIGHT one.
     const rlPhone = uniquePhone()
     const rl: Jar = { cookie: '' }
-    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'password123')
+    const rlReg = await register(rl, rlPhone, 'RL Lockout', 'quiet-harbor-31')
     ok('rate-limit fixture account created (precondition)', rlReg.status === 201)
 
     let saw401 = 0
@@ -185,11 +192,11 @@ async function main() {
     }
     ok('5 wrong attempts each get the normal 401', saw401 === 5)
 
-    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password123' })
+    const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'quiet-harbor-31' })
     ok('6th attempt locked out with 429 — even with the correct password', locked.status === 429)
     ok('lockout message is friendly and human', typeof locked.json?.error === 'string' && locked.json.error.includes('wait'))
 
-    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password123' })
+    const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'quiet-harbor-31' })
     ok('local-format dialing of the same phone is locked too (normalization)', alsoLocked.status === 429)
 
     // A DIFFERENT phone from the same IP is untouched — the lock is per phone.
@@ -352,7 +359,7 @@ async function main() {
 
     // Shop profile photo round-trip.
     const profilePut = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: SHOP_NAME,
       photoUrl: photoUrl ?? null,
       category: 'other',
       description: null,
@@ -365,7 +372,7 @@ async function main() {
     ok('profile PUT with shop photo (200)', profilePut.status === 200 && profilePut.json?.profile?.photoUrl === (photoUrl ?? null))
 
     const badPhotoProfile = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: SHOP_NAME,
       photoUrl: 'javascript:alert(1)',
       category: 'other',
       description: null,
@@ -433,7 +440,7 @@ async function main() {
     const shopAnon = await call('GET', `/api/shops/${alice.user?.id ?? ''}`)
     ok('shop page is public (no auth)', shopAnon.status === 200)
     const shopBody = shopAnon.json
-    ok('shop name uses the seller-chosen business name', shopBody?.shop?.name === 'Alice Test Shop')
+    ok('shop name uses the seller-chosen business name', shopBody?.shop?.name === SHOP_NAME)
     ok('shop exposes no password material', !JSON.stringify(shopBody).includes('passwordHash'))
     ok('shop catalogue contains only this seller ACTIVE listings',
       Array.isArray(shopBody?.listings)
@@ -472,7 +479,7 @@ async function main() {
 
     // The code is a permanent identity: profile updates must never re-roll it.
     const update = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: SHOP_NAME,
       photoUrl: null,
       category: 'other',
       description: 'Updated description for code stability check.',
@@ -488,10 +495,10 @@ async function main() {
     ok('shop page shows the same code to buyers', shopAnon.status === 200 && shopAnon.json?.shop?.shopCode === aliceCode)
 
     // check-name: public availability check behind the live "suggest area" hint.
-    const takenCheck = await call('GET', '/api/shops/check-name?name=alice%20test%20shop')
+    const takenCheck = await call('GET', `/api/shops/check-name?name=${encodeURIComponent(SHOP_NAME)}`)
     ok('check-name flags an existing name case-insensitively',
       takenCheck.status === 200 && takenCheck.json?.taken === true && takenCheck.json.matches.length >= 1)
-    const ownCheck = await call('GET', `/api/shops/check-name?name=Alice%20Test%20Shop&exclude=${alice.user?.id}`)
+    const ownCheck = await call('GET', `/api/shops/check-name?name=${encodeURIComponent(SHOP_NAME)}&exclude=${alice.user?.id}`)
     ok('check-name ignores the seller’s own shop (exclude works)',
       ownCheck.status === 200 && ownCheck.json?.taken === false)
     const freeCheck = await call('GET', '/api/shops/check-name?name=Brand%20New%20Name%20Shop')
@@ -560,7 +567,7 @@ async function main() {
     // The regular "Save shop" form write must NEVER clobber the spot: its
     // schema strips unknown keys, so lat/lng keys never reach Prisma.
     const formSave = await call('PUT', '/api/profile', {
-      businessName: 'Alice Test Shop',
+      businessName: SHOP_NAME,
       photoUrl: null,
       category: 'other',
       description: 'Location preservation check.',
@@ -942,6 +949,22 @@ async function main() {
       hana,
     )
     ok('hana saves a search (precondition)', saved.status === 201)
+
+    // Hermetic medians: a median computed over accumulated test listings from
+    // earlier runs would be a lie. The sandbox owns its data — retire every
+    // ACTIVE OFFER in exactly the two combos this section measures, then
+    // rebuild them from scratch below.
+    await db.listing.updateMany({
+      where: {
+        type: 'OFFER',
+        status: 'ACTIVE',
+        OR: [
+          { category: 'electronics', unit: 'piece' },
+          { category: 'food-groceries', unit: 'kg' },
+        ],
+      },
+      data: { status: 'EXPIRED' },
+    })
     const listingA = await call(
       'POST',
       '/api/listings',
@@ -1079,7 +1102,7 @@ async function main() {
     // Section 10 signed alice out on purpose; the publish-backed tests below
     // need her session again, so sign back in first. call() does not auto-
     // store cookies, so capture the fresh session by hand.
-    const relogin = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
+    const relogin = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'quiet-harbor-31' }, alice)
     storeCookie(alice, relogin)
     if (relogin.json?.sessionToken) alice.token = relogin.json.sessionToken
     ok('alice signs back in for the shop tests', relogin.status === 200)
@@ -1163,6 +1186,13 @@ async function main() {
 
     // Gone ads: expired → 404 with a friendly page that offers similar live
     // ads from the same category, and never leaks the contact phone.
+    // The similar-ads rail shows the 4 FRESHEST ACTIVE ads of the category —
+    // fixtures left by earlier runs could crowd the expected ad out of the
+    // take-4 window. The suite therefore ships its own: created seconds ago,
+    // nothing in the category is fresher, so the assertion holds on a clean
+    // or a dirty database alike.
+    const similarKeep = await call('POST', '/api/listings', { ...validListing, title: 'Similar copper scrap offering', contactPhone: '+256700000222' }, alice)
+    ok('similar-ad fixture published (201)', similarKeep.status === 201 && Boolean(similarKeep.json?.listing?.id))
     const gone = await call('POST', '/api/listings', { ...validListing, title: 'Gone copper scrap offering', contactPhone: '+256700000111' }, alice)
     ok('gone-test listing published (201)', gone.status === 201 && Boolean(gone.json?.listing?.id))
     const goneId: string = gone.json?.listing?.id ?? ''
@@ -1175,7 +1205,7 @@ async function main() {
     // buyer's browser renders.
     ok('expired ad → 404', gonePage.status === 404)
     ok('expired ad page says it is no longer available', goneHtml.includes('no longer available'))
-    ok('expired ad page offers similar ads from the same category', goneHtml.includes(`/l/${offer.id}`))
+    ok('expired ad page offers similar ads from the same category', goneHtml.includes(`/l/${similarKeep.json?.listing?.id ?? ''}`))
     ok('expired ad page never shows the contact phone', !goneHtml.includes('+256700000111'))
     ok('expired ad page links back to browse', goneHtml.includes('#/browse'))
 
@@ -1190,7 +1220,7 @@ async function main() {
     let aliceCode: string | undefined = profileState.json?.profile?.shopCode
     if (!aliceCode) {
       await call('PUT', '/api/profile', {
-        businessName: 'Alice Test Shop',
+        businessName: SHOP_NAME,
         photoUrl: null,
         category: 'other',
         description: 'Test shop for the /s/[code] page.',
@@ -1215,7 +1245,7 @@ async function main() {
       const shopHead = shopHtml.slice(0, shopHtml.indexOf('</head>'))
       const shopVisible = shopHtml.replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
       ok('shop page /s/{code} → 200', shopPage.status === 200)
-      ok('shop page renders the shop name', shopHtml.includes('Alice Test Shop'))
+      ok('shop page renders the shop name', shopHtml.includes(SHOP_NAME))
       ok('shop page carries a canonical link to the code',
         shopHead.includes('rel="canonical"') && shopHead.includes(`/s/${aliceCode}"`))
       ok('shop page lists the live stock', shopOfferId !== '' && shopVisible.includes(`/l/${shopOfferId}`))
@@ -1253,7 +1283,7 @@ async function main() {
     // for the daily-ceiling sweep. All guest reporters send explicit
     // x-forwarded-for values — the server keys guest dedupe/limits on IP.
     const owner: Jar = { cookie: '' }
-    await register(owner, uniquePhone(), 'Report Owner', 'password123')
+    await register(owner, uniquePhone(), 'Report Owner', 'quiet-harbor-31')
     const mkListing = async (title: string): Promise<string> => {
       const res = await call('POST', '/api/listings', { ...validListing, title, contactPhone: owner.user?.phone }, owner)
       return res.json?.listing?.id
@@ -1267,18 +1297,23 @@ async function main() {
     const badReason = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'SPAM' }, undefined, { 'x-forwarded-for': '10.99.0.2' })
     ok('invalid reason → 400', badReason.status === 400)
 
+    // Run-unique reporter IPs: report rows persist and count per UTC day, so
+    // fixed IPs would stay exhausted from earlier suite runs on the same day.
+    const runIpSeed = Math.floor(Math.random() * 200) + 20
+    const guestIp = (n: number) => `10.${runIpSeed}.0.${n}`
+
     // 13.2 guests may report; one OPEN report per reporter per target
-    const g1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'SCAM', details: 'Asked for money before showing the goods' }, undefined, { 'x-forwarded-for': '10.0.0.1' })
+    const g1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'SCAM', details: 'Asked for money before showing the goods' }, undefined, { 'x-forwarded-for': guestIp(1) })
     ok('guest report accepted (201)', g1.status === 201 && g1.json?.report?.id)
     ok('report response never echoes reporter identity', !JSON.stringify(g1.json).toLowerCase().includes('ip'))
-    const g1dup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'OTHER' }, undefined, { 'x-forwarded-for': '10.0.0.1' })
+    const g1dup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'OTHER' }, undefined, { 'x-forwarded-for': guestIp(1) })
     ok('same guest reporting again → 409 (one open report per reporter)', g1dup.status === 409)
 
     // 13.3 auto-hide at three DISTINCT reporters + the owner notice
-    const g2 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'STOLEN_GOODS' }, undefined, { 'x-forwarded-for': '10.0.0.2' })
+    const g2 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'STOLEN_GOODS' }, undefined, { 'x-forwarded-for': guestIp(2) })
     ok('second distinct guest report accepted (201)', g2.status === 201)
     const second: Jar = { cookie: '' }
-    await register(second, uniquePhone(), 'Second Reporter', 'password123')
+    await register(second, uniquePhone(), 'Second Reporter', 'quiet-harbor-31')
     const u1 = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: victim, reason: 'WRONG_INFO' }, second)
     ok('signed-in report accepted (201)', u1.status === 201)
     const victimAfter = await db.listing.findUnique({ where: { id: victim } })
@@ -1301,7 +1336,7 @@ async function main() {
     const anonQueue = await call('GET', '/api/admin/reports')
     ok('admin queue signed out → 401', anonQueue.status === 401)
     const civilian: Jar = { cookie: '' }
-    await register(civilian, uniquePhone(), 'Civilian Reporter', 'password123')
+    await register(civilian, uniquePhone(), 'Civilian Reporter', 'quiet-harbor-31')
     const nonAdminQueue = await call('GET', '/api/admin/reports', undefined, civilian)
     ok('admin queue non-admin → 403', nonAdminQueue.status === 403)
     const nonAdminAct = await call('PATCH', `/api/admin/reports/${g1.json.report.id}`, { action: 'DISMISS' }, civilian)
@@ -1348,7 +1383,7 @@ async function main() {
     ok('ceiling sweep fixtures published (precondition)', targets.every(Boolean))
     let limitAt: number | null = null
     for (let i = 0; i < targets.length; i++) {
-      const res = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: targets[i], reason: 'OTHER', details: `sweep ${i}` }, undefined, { 'x-forwarded-for': '10.5.5.5' })
+      const res = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: targets[i], reason: 'OTHER', details: `sweep ${i}` }, undefined, { 'x-forwarded-for': `10.${runIpSeed}.9.1` })
       if (res.status === 429) {
         limitAt = i
         break
@@ -1357,7 +1392,7 @@ async function main() {
     }
     ok('11th report in a day → 429', limitAt === 10)
     const third: Jar = { cookie: '' }
-    await register(third, uniquePhone(), 'Third Reporter', 'password123')
+    await register(third, uniquePhone(), 'Third Reporter', 'quiet-harbor-31')
     const separateBudget = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: targets[0], reason: 'OTHER' }, third)
     ok('signed-in reporter has a separate daily budget (201)', separateBudget.status === 201)
 
@@ -1386,6 +1421,119 @@ async function main() {
     const adminPageText = await adminPage.text()
     ok('/admin page reachable with an admins-only screen for guests', adminPage.status === 200 && adminPageText.includes('Admins only'))
     ok('/admin page asks crawlers to stay away (noindex)', adminPageText.toLowerCase().includes('noindex'))
+  }
+
+  console.log('\n== 14. Password reset by SMS code ==')
+  {
+    const REQUEST_PATH = '/api/auth/password/reset/request'
+    const CONFIRM_PATH = '/api/auth/password/reset/confirm'
+    const INVALID_MESSAGE = 'That code is not valid or has expired. Request a new code and try again.'
+    const xff = (ip: string): Record<string, string> => ({ 'x-forwarded-for': ip })
+
+    // Fixture: a user with a strong password and three live sessions
+    // (register creates one, two more logins follow).
+    const rita: Jar = { cookie: '' }
+    const ritaPhone = uniquePhone()
+    const ritaReg = await register(rita, ritaPhone, 'Reset Rita', 'quiet-harbor-31')
+    ok('14.1 reset fixture user registered (201)', ritaReg.status === 201 && Boolean(rita.user?.id))
+    await call('POST', '/api/auth/login', { phone: ritaPhone, password: 'quiet-harbor-31' })
+    await call('POST', '/api/auth/login', { phone: ritaPhone, password: 'quiet-harbor-31' })
+    const sessionsBefore = await db.session.count({ where: { userId: rita.user!.id } })
+    ok('14.2 fixture has three live sessions before the reset', sessionsBefore === 3)
+
+    // Step 1 — request a code. THE no-enumeration test: identical status and
+    // body for a phone with an account and a phone without one.
+    const known = await call('POST', REQUEST_PATH, { phone: ritaPhone }, undefined, xff('203.0.113.51'))
+    const ghostPhone = uniquePhone()
+    const unknown = await call('POST', REQUEST_PATH, { phone: ghostPhone }, undefined, xff('203.0.113.51'))
+    ok('14.3 request for an account → 200 with the fixed message', known.status === 200 && typeof known.json?.message === 'string' && known.json.message.includes('6-digit'))
+    ok('14.4 request for a non-account → IDENTICAL status + body (no enumeration)', unknown.status === known.status && JSON.stringify(unknown.json) === JSON.stringify(known.json))
+
+    const storedRow = await db.passwordReset.findFirst({ where: { user: { phone: ritaPhone } }, orderBy: { createdAt: 'desc' } })
+    ok('14.5 a real account got a PasswordReset row', Boolean(storedRow))
+    ok('14.6 the code is stored as salted sha256, never plaintext', Boolean(storedRow && /^[0-9a-f]{32}:[0-9a-f]{64}$/.test(storedRow.codeHash)))
+
+    // The delivery path (console provider in dev) must not leak the phone
+    // into server logs — a project red line, checked against the live log.
+    await new Promise((r) => setTimeout(r, 400))
+    let phoneInLog = false
+    if (fs.existsSync('dev.log')) {
+      phoneInLog = fs.readFileSync('dev.log', 'utf8').includes(ritaPhone)
+    }
+    ok('14.7 the delivery path never logs the phone number', !phoneInLog)
+
+    // Per-phone budget: 3 codes per hour (each dial format shares one budget).
+    const budgetPhone = uniquePhone()
+    const b1 = await call('POST', REQUEST_PATH, { phone: budgetPhone }, undefined, xff('203.0.113.52'))
+    const b2 = await call('POST', REQUEST_PATH, { phone: budgetPhone }, undefined, xff('203.0.113.52'))
+    const b3 = await call('POST', REQUEST_PATH, { phone: budgetPhone }, undefined, xff('203.0.113.52'))
+    const b4 = await call('POST', REQUEST_PATH, { phone: budgetPhone }, undefined, xff('203.0.113.52'))
+    ok('14.8 three codes per phone per hour pass', b1.status === 200 && b2.status === 200 && b3.status === 200)
+    ok('14.9 the 4th code request for the same phone inside the hour → 429', b4.status === 429)
+
+    // Per-IP budget: 10 codes per hour across any numbers (distinct phones so
+    // only the IP bucket fills).
+    let lastOk = { status: 0 }
+    for (let i = 0; i < 10; i++) {
+      lastOk = await call('POST', REQUEST_PATH, { phone: uniquePhone() }, undefined, xff('203.0.113.53'))
+    }
+    ok('14.10 ten code requests from one IP pass', lastOk.status === 200)
+    const eleventh = await call('POST', REQUEST_PATH, { phone: uniquePhone() }, undefined, xff('203.0.113.53'))
+    ok('14.11 the 11th code request from the same IP inside the hour → 429', eleventh.status === 429)
+
+    // Step 2 — confirm. The app never reveals a code over HTTP, so the suite
+    // mints a row with a KNOWN code using the app's own hash primitive.
+    const KNOWN_CODE = '482013'
+    await db.passwordReset.deleteMany({ where: { user: { phone: ritaPhone } } })
+    const minted = await db.passwordReset.create({
+      data: { userId: rita.user!.id, codeHash: hashCode(KNOWN_CODE), expiresAt: new Date(Date.now() + 10 * 60_000) },
+    })
+
+    const wrong = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: '000000', newPassword: 'another-strong-77' })
+    ok('14.12 wrong code → the one unified 400 message', wrong.status === 400 && wrong.json?.error === INVALID_MESSAGE)
+    ok('14.13 a wrong entry counts an attempt', (await db.passwordReset.findUnique({ where: { id: minted.id } }))?.attempts === 1)
+
+    // Five wrong entries kill the code — even the RIGHT code dies with them.
+    for (let i = 0; i < 4; i++) {
+      await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: '000000', newPassword: 'another-strong-77' })
+    }
+    ok('14.14 attempts stopped counting at 5', (await db.passwordReset.findUnique({ where: { id: minted.id } }))?.attempts === 5)
+    const rightButDead = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'another-strong-77' })
+    ok('14.15 five wrong entries kill the code — the right code is refused too', rightButDead.status === 400)
+
+    await db.passwordReset.update({ where: { id: minted.id }, data: { attempts: 0, expiresAt: new Date(Date.now() - 1000) } })
+    const expired = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'another-strong-77' })
+    ok('14.16 expired code → unified 400', expired.status === 400 && expired.json?.error === INVALID_MESSAGE)
+
+    await db.passwordReset.update({ where: { id: minted.id }, data: { expiresAt: new Date(Date.now() + 10 * 60_000), usedAt: new Date() } })
+    const reused = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'another-strong-77' })
+    ok('14.17 reused (already-used) code → unified 400', reused.status === 400 && reused.json?.error === INVALID_MESSAGE)
+
+    const ghostConfirm = await call('POST', CONFIRM_PATH, { phone: ghostPhone, code: '123456', newPassword: 'strong-enough-9' })
+    ok('14.18 confirm for a phone without an account = wrong-code answer (no enumeration)', ghostConfirm.status === 400 && ghostConfirm.json?.error === INVALID_MESSAGE)
+
+    // Fresh live code again; the new password must pass the REGISTER rules.
+    await db.passwordReset.update({ where: { id: minted.id }, data: { usedAt: null, attempts: 0, expiresAt: new Date(Date.now() + 10 * 60_000) } })
+    const shortPw = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'short' })
+    ok('14.19 short new password → 400 with the register wording', shortPw.status === 400 && Boolean(shortPw.json?.fields?.newPassword))
+    const commonPw = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'password1234' })
+    ok('14.20 common new password → 400', commonPw.status === 400 && Boolean(commonPw.json?.fields?.newPassword))
+    const phonePw = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: `0${ritaPhone.slice(4)}` })
+    ok('14.21 password equal to the phone number → 400', phonePw.status === 400 && Boolean(phonePw.json?.fields?.newPassword))
+    ok('14.22 rule rejections did not burn code attempts', (await db.passwordReset.findUnique({ where: { id: minted.id } }))?.attempts === 0)
+
+    // Happy path: password flips, code burns, sessions die.
+    const good = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'final-strong-88' })
+    ok('14.23 correct code + strong password → 200', good.status === 200)
+    ok('14.24 the code is marked used', Boolean((await db.passwordReset.findUnique({ where: { id: minted.id } }))?.usedAt))
+    const sessionsAfter = await db.session.count({ where: { userId: rita.user!.id } })
+    ok('14.25 every session for the user is revoked', sessionsAfter === 0)
+    const oldLogin = await call('POST', '/api/auth/login', { phone: ritaPhone, password: 'quiet-harbor-31' })
+    ok('14.26 the old password no longer signs in', oldLogin.status === 401)
+    const newLogin = await call('POST', '/api/auth/login', { phone: ritaPhone, password: 'final-strong-88' })
+    ok('14.27 the new password signs in', newLogin.status === 200)
+    const reuse = await call('POST', CONFIRM_PATH, { phone: ritaPhone, code: KNOWN_CODE, newPassword: 'final-strong-88' })
+    ok('14.28 the same code cannot reset twice', reuse.status === 400)
   }
 
   console.log(`\n========================================`)

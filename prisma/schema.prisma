@@ -24,6 +24,7 @@ model User {
   lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
 
   sessions      Session[]
+  passwordResets PasswordReset[]
   listings      Listing[]
   savedSearches SavedSearch[]
   notifications Notification[]
@@ -38,6 +39,25 @@ model Session {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// One row per issued password-reset code. The 6-digit code is stored ONLY as
+// a salted sha256 hash ("salt:hash") — a leaked database yields no working
+// codes. expiresAt = createdAt + 10 minutes; attempts counts WRONG entries
+// (the code dies at 5); usedAt burns the code the moment it succeeds. A
+// successful reset revokes every session of the user in the same transaction.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@index([expiresAt])
 }
 
 model BusinessProfile {

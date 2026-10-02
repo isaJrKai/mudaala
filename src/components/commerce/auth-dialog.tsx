@@ -18,27 +18,47 @@ export function AuthDialog() {
   const open = useAppStore((s) => s.authOpen)
   const setOpen = useAppStore((s) => s.setAuthOpen)
   const [tab, setTab] = useState<'signin' | 'register'>('signin')
+  // 'auth' = the usual sign-in / register tabs; 'reset' = the forgot-password
+  // flow. Unmounting the reset form (back to 'auth') clears all its state.
+  const [flow, setFlow] = useState<'auth' | 'reset'>('auth')
+
+  function closeAll() {
+    setOpen(false)
+    setFlow('auth')
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          {/* The one brand moment in the dialog: the shop-serif welcome. */}
-          <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
-          <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
-        </DialogHeader>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign in</TabsTrigger>
-            <TabsTrigger value="register">Create account</TabsTrigger>
-          </TabsList>
-          <TabsContent value="signin">
-            <SignInForm onDone={() => setOpen(false)} />
-          </TabsContent>
-          <TabsContent value="register">
-            <RegisterForm onDone={() => setOpen(false)} onSwitch={() => setTab('signin')} />
-          </TabsContent>
-        </Tabs>
+        {flow === 'reset' ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl tracking-tight text-primary">Reset your password</DialogTitle>
+              <DialogDescription>Two steps: your number, then the code we send you.</DialogDescription>
+            </DialogHeader>
+            <ResetPasswordForm onBack={() => setFlow('auth')} />
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              {/* The one brand moment in the dialog: the shop-serif welcome. */}
+              <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
+              <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
+            </DialogHeader>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign in</TabsTrigger>
+                <TabsTrigger value="register">Create account</TabsTrigger>
+              </TabsList>
+              <TabsContent value="signin">
+                <SignInForm onDone={closeAll} onForgot={() => setFlow('reset')} />
+              </TabsContent>
+              <TabsContent value="register">
+                <RegisterForm onDone={closeAll} onSwitch={() => setTab('signin')} />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )
@@ -76,7 +96,7 @@ function DemoQuickFill({ onFill }: { onFill: (phone: string, password: string) =
   )
 }
 
-function SignInForm({ onDone }: { onDone: () => void }) {
+function SignInForm({ onDone, onForgot }: { onDone: () => void; onForgot: () => void }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [phone, setPhone] = useState('')
@@ -135,6 +155,15 @@ function SignInForm({ onDone }: { onDone: () => void }) {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onForgot}
+          className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Forgot password?
+        </button>
       </div>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -250,7 +279,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+        <p className="text-xs text-muted-foreground">At least 8 characters — not a common one, not your phone number.</p>
         {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
       </div>
       {errors._ ? (
@@ -265,6 +294,151 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         Already registered?{' '}
         <button type="button" onClick={onSwitch} className="underline underline-offset-2">
           Sign in
+        </button>
+      </p>
+    </form>
+  )
+}
+
+// Forgot-password flow, in the same dialog: phone → code + new password →
+// done. The request endpoint answers identically whether or not the number
+// has an account, so the UI never learns (or hints) that either — the wording
+// below is the app's fixed, honest message.
+function ResetPasswordForm({ onBack }: { onBack: () => void }) {
+  const [step, setStep] = useState<'phone' | 'code' | 'done'>('phone')
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function requestCode(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!phone.trim()) {
+      setError('Enter your phone number first')
+      return
+    }
+    setBusy(true)
+    try {
+      await apiPost<{ ok: boolean; message: string }>('/api/auth/password/reset/request', { phone: phone.trim() })
+      setStep('code')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the code — try again')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmReset(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError('Enter the 6-digit code from the SMS')
+      return
+    }
+    setBusy(true)
+    try {
+      await apiPost<{ ok: boolean; message: string }>('/api/auth/password/reset/confirm', {
+        phone: phone.trim(),
+        code: code.trim(),
+        newPassword,
+      })
+      setStep('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reset the password — try again')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (step === 'done') {
+    return (
+      <div className="mt-4 space-y-3">
+        <p className="text-sm">Your password has been updated. Sign in with your new password — your old sessions were signed out everywhere.</p>
+        <Button type="button" className="w-full" onClick={onBack}>
+          Back to sign in
+        </Button>
+      </div>
+    )
+  }
+
+  if (step === 'code') {
+    return (
+      <form onSubmit={confirmReset} className="mt-4 space-y-3" noValidate>
+        <p className="text-sm text-muted-foreground">
+          If <span className="font-medium text-foreground">{phone}</span> has an account, a 6-digit code is on its way. It expires in 10 minutes.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="reset-code">6-digit code</Label>
+          <Input
+            id="reset-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="e.g. 482013"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="reset-password">New password</Label>
+          <Input
+            id="reset-password"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+          />
+          <p className="text-xs text-muted-foreground">At least 8 characters — not a common one, not your phone number.</p>
+        </div>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <Button type="submit" className="w-full" disabled={busy}>
+          {busy ? 'Checking…' : 'Reset password'}
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Wrong number or code never arrived?{' '}
+          <button type="button" onClick={() => { setError(null); setStep('phone') }} className="underline underline-offset-2">
+            Start again
+          </button>
+        </p>
+      </form>
+    )
+  }
+
+  return (
+    <form onSubmit={requestCode} className="mt-4 space-y-3" noValidate>
+      <div className="space-y-1.5">
+        <Label htmlFor="reset-phone">Phone number</Label>
+        <Input
+          id="reset-phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="0772 345 678"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+        />
+        <p className="text-xs text-muted-foreground">Any Ugandan format works: 07…, 2567… or +2567…</p>
+      </div>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? 'Sending…' : 'Send code'}
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        <button type="button" onClick={onBack} className="underline underline-offset-2">
+          Back to sign in
         </button>
       </p>
     </form>

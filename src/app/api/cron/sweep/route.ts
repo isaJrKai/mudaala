@@ -9,6 +9,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { headers } from 'next/headers'
 import { route, jsonOk, jsonError } from '@/lib/api'
+import { db } from '@/lib/db'
 import { expireOverdueListings, notifyExpiringSoon } from '@/lib/listings'
 import { recordPriceSnapshots } from '@/lib/price-trends'
 
@@ -37,6 +38,11 @@ export async function POST() {
     const expiring = await notifyExpiringSoon()
     // Daily price medians — same sweep, derived honestly from ACTIVE listings.
     const priceSnapshots = await recordPriceSnapshots()
-    return jsonOk({ expired, expiringNotified: expiring, priceSnapshots })
+    // Password-reset codes past their night: used or expired more than a day
+    // ago they are dead weight (and dead rows nobody should ever resurrect).
+    const staleResets = await db.passwordReset.deleteMany({
+      where: { expiresAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    })
+    return jsonOk({ expired, expiringNotified: expiring, priceSnapshots, staleResets: staleResets.count })
   })
 }

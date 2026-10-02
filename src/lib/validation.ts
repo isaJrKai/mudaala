@@ -54,17 +54,72 @@ export function countryPhoneMessage(country: CountryKey): string {
 // name the right country.
 const rawPhone = z.string().trim().min(1, 'Phone number is required').max(20, 'Phone number is too long')
 
-export const registerSchema = z.object({
-  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80, 'Name is too long'),
-  phone: rawPhone,
-  country: z.enum(COUNTRY_KEYS as [string, ...string[]]).default('UG'),
-  password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
-})
+// ---- Password policy (register AND password reset share ONE set of rules) ----
+// Well-known passwords that must never be accepted. Deliberately a short,
+// hand-picked list of classics — long enough to catch the obvious, short
+// enough that a real person's quirky-but-fine password never bounces.
+export const COMMON_PASSWORDS: ReadonlySet<string> = new Set([
+  'password', 'password1', 'password123', 'password1234', '12345678', '123456789',
+  '1234567890', 'qwerty123', 'qwertyuiop', 'iloveyou', 'letmein123', '00000000',
+  '11111111', '12121212', 'abcd1234', 'abc12345', 'football', 'baseball',
+  'trustno1', 'monkey123', 'mudaala123', 'mudaala1234',
+])
+
+/** Returns the reason a password is unacceptable, or null when it passes.
+ *  `phone` (raw or normalized) adds the "not your phone number" rule in all
+ *  the dial formats a user might have typed it in. */
+export function passwordPolicyError(password: string, phone?: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters'
+  if (password.length > 100) return 'Password is too long'
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return 'That password is too common — choose something others cannot guess'
+  }
+  if (phone) {
+    const digits = phone.replace(/\D/g, '')
+    const local = digits.replace(/^256/, '')
+    const forms = new Set([phone, digits, local, local ? `0${local}` : ''])
+    if (forms.has(password)) return 'Your password cannot be your phone number'
+  }
+  return null
+}
+
+export const registerSchema = z
+  .object({
+    name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80, 'Name is too long'),
+    phone: rawPhone,
+    country: z.enum(COUNTRY_KEYS as [string, ...string[]]).default('UG'),
+    password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
+  })
+  .superRefine((v, ctx) => {
+    // The phone arrives here in whatever dial format the user typed — the
+    // policy check covers its forms (raw, digits-only, local 0-prefix).
+    const err = passwordPolicyError(v.password, v.phone)
+    if (err) ctx.addIssue({ code: 'custom', path: ['password'], message: err })
+  })
 
 export const loginSchema = z.object({
   phone: rawPhone,
   password: z.string().min(1, 'Password is required'),
 })
+
+// Password reset — step 1 (ask for a code). No country field: login copes
+// with any dial format, so does this.
+export const passwordResetRequestSchema = z.object({
+  phone: rawPhone,
+})
+
+// Password reset — step 2 (code + new password). Same password rules as
+// register, checked against the phone in the same payload.
+export const passwordResetConfirmSchema = z
+  .object({
+    phone: rawPhone,
+    code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code from the SMS'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
+  })
+  .superRefine((v, ctx) => {
+    const err = passwordPolicyError(v.newPassword, v.phone)
+    if (err) ctx.addIssue({ code: 'custom', path: ['newPassword'], message: err })
+  })
 
 const priceSchema = z
   .number({ message: 'Price must be a number' })

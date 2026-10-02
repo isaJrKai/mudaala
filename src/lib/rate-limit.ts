@@ -51,3 +51,10 @@ export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 30)
 // Register: 20 accounts per IP per window (one device onboarding a market
 // stall's worth of sellers stays clear; a script farm does not).
 export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 20)
+
+// Password reset codes: 3 codes per phone per hour, 10 per IP per hour.
+// A tighter, longer window than login — an SMS gateway costs real money and
+// a flood of codes is both a harassment vector and a bill.
+export const RESET_WINDOW_MS = 60 * 60_000
+export const RESET_PHONE_MAX = Number(process.env.RATE_LIMIT_RESET_PHONE_MAX ?? 3)
+export const RESET_IP_MAX = Number(process.env.RATE_LIMIT_RESET_IP_MAX ?? 10)
