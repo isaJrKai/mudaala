@@ -5,19 +5,18 @@
 // Every accepted image is then re-encoded through sharp: EXIF-rotated,
 // fitted inside 1200×1200, and written as WebP — a market photo lands
 // small enough for a data bundle, and no payload survives as-is.
-// Files land in public/uploads/ with random names, so nothing user-controlled
-// ever becomes a URL path segment. Served statically by Next (public/).
+// Storage sits behind an interface (src/lib/storage.ts): development writes
+// to the local disk (public/uploads, served statically by Next), production
+// writes to any S3-compatible bucket (Cloudflare R2, Supabase Storage) using
+// the STORAGE_* environment variables. The route itself never knows which.
 
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
-import { randomBytes } from 'node:crypto'
 import { ApiError, route, jsonOk, requireUser } from '@/lib/api'
 import { hit, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS } from '@/lib/rate-limit'
+import { chooseStorage } from '@/lib/storage'
 import sharp from 'sharp'
 
 const MAX_BYTES = 8 * 1024 * 1024 // 8MB pre-compression — phones shoot big
 const MAX_EDGE = 1200 // the largest edge a stored photo may have
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
 
 // Read the first bytes and say what the file REALLY is, if anything we accept.
 function sniffImage(b: Uint8Array): 'jpg' | 'png' | 'webp' | null {
@@ -33,12 +32,6 @@ function sniffImage(b: Uint8Array): 'jpg' | 'png' | 'webp' | null {
     b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50 // "WEBP"
   ) return 'webp'
   return null
-}
-
-// Random public name — same shape as the existing seed files. Everything is
-// stored as .webp because the pipeline re-encodes every accepted image.
-function randomName(): string {
-  return `${randomBytes(4).toString('hex')}-${randomBytes(8).toString('hex')}.webp`
 }
 
 export async function POST(request: Request) {
@@ -82,10 +75,16 @@ export async function POST(request: Request) {
       throw new ApiError(400, 'That image could not be processed — try another photo')
     }
 
-    await fs.mkdir(UPLOAD_DIR, { recursive: true })
-    const name = randomName()
-    await fs.writeFile(path.join(UPLOAD_DIR, name), output)
+    // Everything is stored as .webp because the pipeline re-encodes every
+    // accepted image; the storage provider picks the name and the URL.
+    let url: string
+    try {
+      url = await chooseStorage().save(output, 'webp')
+    } catch (err) {
+      console.error('[upload] storage write failed:', err)
+      throw new ApiError(502, 'The photo could not be stored right now — please try again')
+    }
 
-    return jsonOk({ url: `/uploads/${name}` }, 201)
+    return jsonOk({ url }, 201)
   })
 }

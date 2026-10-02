@@ -3,7 +3,7 @@ import { route, jsonOk, requireUser, ApiError } from '@/lib/api'
 import { getSessionUser } from '@/lib/auth'
 import { listingUpdateSchema, listingStatusSchema, isTransitionAllowed, fieldErrors, normalizePhone, type CountryKey } from '@/lib/validation'
 import { db } from '@/lib/db'
-import { expireOverdueListings, getOwnedListingOr404, buildSearchText, sanitizePhotos, serializeListing } from '@/lib/listings'
+import { expireOverdueListings, getOwnedListingOr404, sanitizePhotos, serializeListing } from '@/lib/listings'
 import { LISTING_ACTIVE_DAYS, countryDef, findProhibitedItem } from '@/lib/constants'
 
 type Params = { params: Promise<{ id: string }> }
@@ -163,13 +163,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: { id },
       data: {
         ...merged,
-        searchText: buildSearchText({
-          title: merged.title,
-          description: merged.description,
-          category: merged.category,
-          area: merged.area,
-          county: merged.county,
-        }),
       },
     })
     return jsonOk({ listing: serializeListing(updated) })

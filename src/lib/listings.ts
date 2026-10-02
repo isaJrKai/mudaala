@@ -14,13 +14,6 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 }
 
-function buildSearchText(parts: { title: string; description: string; category: string; area?: string | null; county: string }): string {
-  return [parts.title, parts.description, parts.category, parts.area ?? '', parts.county]
-    .join(' ')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 // Lazy expiry sweep — idempotent, runs on reads that matter.
 // Persisted timestamps decide; expired listings are marked EXPIRED and owners notified.
@@ -150,7 +143,16 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
   const where: Prisma.ListingWhereInput = { status: { in: includeStatuses } }
 
   if (query.q) {
-    where.searchText = { contains: query.q.toLowerCase() }
+    // Postgres-friendly case-insensitive match across the fields a buyer
+    // scans (Prisma's `mode: 'insensitive'` compiles to ILIKE). The old
+    // precomputed search column is gone — the database does the searching.
+    where.OR = [
+      { title: { contains: query.q, mode: 'insensitive' } },
+      { description: { contains: query.q, mode: 'insensitive' } },
+      { category: { contains: query.q, mode: 'insensitive' } },
+      { area: { contains: query.q, mode: 'insensitive' } },
+      { county: { contains: query.q, mode: 'insensitive' } },
+    ]
   }
   if (query.type) where.type = query.type
   if (query.category) where.category = query.category
@@ -275,7 +277,15 @@ function whereFromQuery(query: ListingQuery): Prisma.ListingWhereInput {
   if (query.category) where.category = query.category
   if (query.county) where.county = query.county
   if (query.unit) where.unit = query.unit
-  if (query.q) where.searchText = { contains: query.q.toLowerCase() }
+  if (query.q) {
+    where.OR = [
+      { title: { contains: query.q, mode: 'insensitive' } },
+      { description: { contains: query.q, mode: 'insensitive' } },
+      { category: { contains: query.q, mode: 'insensitive' } },
+      { area: { contains: query.q, mode: 'insensitive' } },
+      { county: { contains: query.q, mode: 'insensitive' } },
+    ]
+  }
   if (query.minPrice !== undefined || query.maxPrice !== undefined) {
     where.price = {
       ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}),
@@ -312,4 +322,3 @@ export async function getOwnedListingOr404(id: string, userId: string): Promise<
   return listing
 }
 
-export { buildSearchText }
