@@ -17,16 +17,19 @@ interface ShareAdRowProps {
   url: string
   priceLabel?: string | null
   label?: string
+  // What is being shared, for the sentence: "Check this ad on Mudaala" vs
+  // "Check this shop on Mudaala".
+  noun?: string
 }
 
-export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad' }: ShareAdRowProps) {
+export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad', noun = 'ad' }: ShareAdRowProps) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current)
   }, [])
 
-  const shareText = `Check this ad on Mudaala: ${title}${priceLabel ? ` — ${priceLabel}` : ''}`
+  const shareText = `Check this ${noun} on Mudaala: ${title}${priceLabel ? ` — ${priceLabel}` : ''}`
   const waHref = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${url}`)}`
 
   async function copyLink() {

@@ -21,7 +21,6 @@ import {
   telLink,
   formatPhonePretty,
   mapsSearchUrl,
-  adPath,
 } from '@/lib/format'
 import { categoryLabel, unitLabel, countryDef } from '@/lib/constants'
 import { ShareAdRow } from './share-row'
@@ -83,12 +82,12 @@ export function ListingDetail({ id }: { id: string }) {
     queryFn: () => apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`),
   })
 
-  // The canonical ad-page URL: window origin + keyword slug + id. Derived
-  // during render, not synced through state — the origin is stable for the
-  // life of the page, and only the browser ever has a listing to share
-  // (the query only runs client-side), so no SSR guard is needed in practice.
+  // The canonical ad-page URL: window origin + /l/{id}. Derived during
+  // render, not synced through state — the origin is stable for the life of
+  // the page, and only the browser ever has a listing to share (the query
+  // only runs client-side), so no SSR guard is needed in practice.
   const listing = data?.listing
-  const shareUrl = listing ? `${window.location.origin}${adPath(listing.title, listing.id)}` : null
+  const shareUrl = listing ? `${window.location.origin}/l/${listing.id}` : null
 
   if (isLoading) {
     return (

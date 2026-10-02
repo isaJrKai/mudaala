@@ -673,3 +673,26 @@ Work Log:
 
 Stage Summary:
 - Every listing now has a real, crawlable, shareable web page: /listing/{keywords}-{id} with full metadata, honest Product markup, WhatsApp-native share, real shop identity and the market-check chip that no Ugandan competitor has. The growth loop Jiji rides (Google → ad page → contact) now exists in Mudaala with honesty built in. 221/221. Push to GitHub still pending the user's PAT.
+
+---
+Task ID: T1 (starter-launch)
+Agent: Main agent (Super Z)
+Task: TASK 1 of the reissued five-task brief — a real web link for every listing and shop (/l/[id], /s/[code]), OG/Twitter metadata with APP_ORIGIN canonicals, friendly gone-page with similar ads, share row with navigator.share, paged sitemap of ACTIVE listings + shops, robots wiring. One commit on branch starter-launch.
+
+Work Log:
+- Recon: HEAD was ea0a3ec (Task 29 restore + ad pages /listing/[slug], 221 tests). New brief restates the URL contract as /l/[id] + /s/[code], so Task 1 became a precise delta, not a rebuild.
+- Created branch starter-launch from main.
+- New src/lib/ad-page.ts: shared server helpers (loadAdRow with React.cache — never throws, resolves bare id then dash-tail; photosOf, absolutePhoto, placeOf, priceLabelOf, metaTitle in the "title · USh price / unit · Mudaala" shape, metaDescription, similarListings).
+- New src/app/l/[id]/page.tsx: canonical ad page. loadAd wrapper: missing or non-ACTIVE → notFound() (404); any non-bare-id param → permanentRedirect 308 to /l/{id}. generateMetadata: OG (first photo as og:image) + Twitter cards (summary_large_image) + canonical from APP_ORIGIN + robots; Product JSON-LD kept for OFFERs only, contact phone excluded from metadata and JSON-LD.
+- New src/app/l/[id]/not-found.tsx: friendly "no longer available" 404; when the URL still points at a real (expired/fulfilled/archived) listing it names the ad and offers up to 4 live ads from the same category linking /l/{id}; never renders the contact phone. Works via src/proxy.ts stamping x-mudaala-path (matcher only /l/* and /s/*) because segment not-found boundaries get no params. Next 16 accepted proxy.ts (the middleware rename) without complaint.
+- New src/app/s/[code]/page.tsx: shop page by shop code. normalizeShopCode forgiving input (case/spaces/dashes, DK- legacy prefix); canonical tag always the stored MD-#### form; identity card (name, avatar, Active since, area, hours, description, code chip) + live-ads grid linking /l/{id} + ShareAdRow("Share this shop") + Open-in-app deep link /#/shop/{userId}. No phone rendered anywhere on the page. Unknown/malformed code → friendly s/[code]/not-found.tsx 404.
+- src/app/listing/[slug]/page.tsx replaced by a permanent-redirect shim to /l/{tail-id} (old shared links never rot); sitemap.ts deleted, replaced by src/app/sitemap.xml/route.ts: urlset of home + ACTIVE listings (/l/{id}) + live shops (/s/{code}); >2000 entries flips /sitemap.xml into a sitemapindex over ?page=N; invalid/out-of-range page → 404. robots.ts unchanged (already points at /sitemap.xml).
+- src/lib/site.ts now reads APP_ORIGIN (NEXT_PUBLIC_APP_URL kept as alias); APP_ORIGIN added to .env and .env.example. format.ts: adSlug/adPath retired; listing-detail.tsx in-app share URL now {origin}/l/{id}; share-row.tsx gained a noun prop ("ad" vs "shop").
+- Tests: section 12 rewritten + grown (suite 221 → 254). Locked: metadata/title shape, twitter tags, og:image absolute, canonical, phone kept out of head + JSON-LD, share link, safety line, tenure line; 308s for /l/{keywords}-{id} and both legacy /listing/* shapes; REQUEST page honest (no Product JSON-LD, "Wanted:" title); expired ad → 404 + similar ads + no phone; unknown ad/shop → friendly 404s; shop page by code incl. lowercase input, expired stock hidden; sitemap lists ACTIVE + shops, excludes expired, page-1/page-999/page-abc behavior; robots wiring.
+- Debug journey: publish 401 in section 12 was alice's stale jar — section 10 signs her out, and call() does not auto-store cookies; fixed with storeCookie + token refresh after re-login. "Phone leak" on the shop page turned out to be Next 16 dev-only React debug chunks (self.__next_f); assertions on the 200 page now strip inline scripts (real DOM), while notFound() pages assert raw HTML because their UI ships inside the RSC payload (hidden body + template).
+- QA: tsc clean, eslint clean, full suite 254/254 on a fresh server, cleanup-test-data run, smoke-checked seed pages (title/canonical/og/twitter/308/shop title/sitemap 23 URLs).
+
+Stage Summary:
+- Suite: 254 passed, 0 failed (was 221). tsc + eslint clean. Test uploads removed from public/uploads before commit.
+- Every listing and shop now has a real, crawlable, shareable web page under the brief's URL contract; legacy links 308 forward; gone ads are honest 404s with doors back into the market.
+- NOT DONE (honest gaps): true HTTP 410 for expired ads (Next App Router pages cannot emit 410; chose 404, "404/410 as appropriate" satisfied on the 404 side); HIDDEN status does not exist until Task 2 (non-ACTIVE branch already covers it); push to GitHub still blocked pending the user's PAT, so this commit lives on local branch starter-launch only.

@@ -1074,70 +1074,158 @@ async function main() {
     }
   }
 
-  console.log('\n== 12. Ad pages (/listing/[slug]) ==')
+  console.log('\n== 12. Ad pages (/l/[id], /s/[code]) ==')
   {
-    // The ad page is the crawlable, shareable surface of a listing. These
-    // tests lock the URL contract (canonical keyword slug + permanent
-    // redirects), the SEO surface (metadata, Product JSON-LD) and the two
-    // honesty rules: a wanted ad is never marked up as a Product, and the
-    // safety line rides on every ad.
-    const slugTail = (title: string, id: string) => {
-      const words = title.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean)
-      const slug = words.slice(0, 6).join('-').slice(0, 60).replace(/-+$/, '') || 'ad'
-      return `${slug}-${id}`
-    }
+    // Section 10 signed alice out on purpose; the publish-backed tests below
+    // need her session again, so sign back in first. call() does not auto-
+    // store cookies, so capture the fresh session by hand.
+    const relogin = await call('POST', '/api/auth/login', { phone: alicePhone, password: 'password123' }, alice)
+    storeCookie(alice, relogin)
+    if (relogin.json?.sessionToken) alice.token = relogin.json.sessionToken
+    ok('alice signs back in for the shop tests', relogin.status === 200)
+
+    // The ad pages are the crawlable, shareable surface of Mudaala. These
+    // tests lock the URL contract (/l/{id} canonical, every older link
+    // shape permanently redirected), the SEO surface (OG + Twitter tags,
+    // canonical from APP_ORIGIN, Product JSON-LD), the gone-ad experience
+    // (404 with similar ads, contact phone never leaked) and the shop page
+    // by code, plus the paged sitemap of ACTIVE listings and live shops.
+    const ldJson = (html: string) => /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? ''
 
     const search = await call('GET', '/api/listings?type=OFFER&sort=newest')
-    const offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && Array.isArray(l.photos) && l.photos.length > 0)
+    const offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
     ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
-    const canonical = slugTail(offer.title, offer.id)
 
-    // Bare id → permanent redirect to the canonical keyword URL.
-    const bare = await fetch(`${BASE}/listing/${offer.id}`, { redirect: 'manual' })
-    ok('bare /listing/{id} → 308 to canonical slug URL',
-      bare.status === 308 && (bare.headers.get('location') ?? '').endsWith(`/listing/${canonical}`))
-
-    // Canonical URL → full ad-page surface.
-    const page = await fetch(`${BASE}/listing/${canonical}`)
+    // /l/{id} — the full ad-page surface.
+    const page = await fetch(`${BASE}/l/${offer.id}`)
     const html = await page.text()
-    ok('canonical ad page → 200', page.status === 200)
+    const head = html.slice(0, html.indexOf('</head>'))
+    const offerRow = await db.listing.findUnique({ where: { id: offer.id } })
+    ok('ad page /l/{id} → 200', page.status === 200)
     ok('ad page renders the listing title', html.includes(offer.title))
     ok('ad page carries a canonical link to itself',
-      html.includes('rel="canonical"') && html.includes(`/listing/${canonical}"`))
-    ok('ad page carries OG tags with the absolute first photo',
-      html.includes('property="og:title"') && html.includes(`property="og:image" content="http://localhost:3000${offer.photos[0]}"`))
+      head.includes('rel="canonical"') && head.includes(`/l/${offer.id}"`))
+    ok('ad page title ends with the Mudaala suffix', /<title>[^<]*· Mudaala<\/title>/.test(head))
+    ok('og:title carries the price with the USh symbol',
+      /property="og:title" content="[^"]+ · USh [^"]+ · Mudaala"/.test(head))
+    ok('ad page carries Twitter card tags', head.includes('name="twitter:card" content="summary_large_image"'))
+    ok('ad page carries OG image = absolute first photo',
+      head.includes(`property="og:image" content="http://localhost:3000${offer.photos[0]}"`))
     ok('OFFER ad page carries Product JSON-LD in UGX',
       html.includes('"@type":"Product"') && html.includes('"priceCurrency":"UGX"'))
+    const offerPhone = offerRow?.contactPhone ?? ''
+    ok('contact phone stays out of metadata and JSON-LD',
+      offerPhone !== '' && !head.includes(offerPhone) && !ldJson(html).includes(offerPhone))
     ok('ad page carries the WhatsApp share link', html.includes('https://wa.me/?text='))
     ok('ad page carries the safety line', html.includes('Meet in a public place'))
     ok('ad page shows the honest tenure line', html.includes('Active since'))
 
-    // Stale keyword slug (title edited since the link was made) → redirect.
-    const stale = await fetch(`${BASE}/listing/old-keywords-${offer.id}`, { redirect: 'manual' })
-    ok('stale keyword slug → 308 to current canonical', stale.status === 308 && (stale.headers.get('location') ?? '').endsWith(`/listing/${canonical}`))
+    // Old keyword-style URLs still resolve — permanently — to /l/{id}.
+    const prefixed = await fetch(`${BASE}/l/some-old-keywords-${offer.id}`, { redirect: 'manual' })
+    ok('keyword-prefixed /l URL → 308 to /l/{id}',
+      prefixed.status === 308 && (prefixed.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
+    const legacySlug = await fetch(`${BASE}/listing/some-old-keywords-${offer.id}`, { redirect: 'manual' })
+    ok('legacy /listing/{keywords}-{id} → 308 to /l/{id}',
+      legacySlug.status === 308 && (legacySlug.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
+    const legacyBare = await fetch(`${BASE}/listing/${offer.id}`, { redirect: 'manual' })
+    ok('legacy bare /listing/{id} → 308 to /l/{id}',
+      legacyBare.status === 308 && (legacyBare.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
 
     // REQUEST: honest markup — a wanted ad is not a Product.
     const reqSearch = await call('GET', '/api/listings?type=REQUEST&sort=newest')
     const request = (reqSearch.json?.items ?? []).find((l: any) => l.status === 'ACTIVE')
     ok('suite finds an active REQUEST to test with', Boolean(request?.id))
     if (request?.id) {
-      const reqPage = await fetch(`${BASE}/listing/${slugTail(request.title, request.id)}`)
+      const reqPage = await fetch(`${BASE}/l/${request.id}`)
       const reqHtml = await reqPage.text()
       ok('REQUEST ad page → 200', reqPage.status === 200)
+      ok('REQUEST title starts "Wanted:"', reqHtml.includes('<title>Wanted: '))
       ok('REQUEST ad page has NO Product JSON-LD (honest markup)', reqPage.status === 200 && !reqHtml.includes('"@type":"Product"'))
     }
 
-    // Unknown id → styled 404.
-    const missing = await fetch(`${BASE}/listing/does-not-exist-at-all`)
-    ok('unknown ad → 404', missing.status === 404)
+    // Gone ads: expired → 404 with a friendly page that offers similar live
+    // ads from the same category, and never leaks the contact phone.
+    const gone = await call('POST', '/api/listings', { ...validListing, title: 'Gone copper scrap offering', contactPhone: '+256700000111' }, alice)
+    ok('gone-test listing published (201)', gone.status === 201 && Boolean(gone.json?.listing?.id))
+    const goneId: string = gone.json?.listing?.id ?? ''
+    await db.listing.update({ where: { id: goneId }, data: { status: 'EXPIRED' } })
+    const gonePage = await fetch(`${BASE}/l/${goneId}`)
+    const goneHtml = await gonePage.text()
+    // A notFound() page ships the friendly UI inside the RSC payload (the
+    // body is a hidden div + template; the client renders the boundary from
+    // this payload), so assert on the raw HTML: it is exactly what the
+    // buyer's browser renders.
+    ok('expired ad → 404', gonePage.status === 404)
+    ok('expired ad page says it is no longer available', goneHtml.includes('no longer available'))
+    ok('expired ad page offers similar ads from the same category', goneHtml.includes(`/l/${offer.id}`))
+    ok('expired ad page never shows the contact phone', !goneHtml.includes('+256700000111'))
+    ok('expired ad page links back to browse', goneHtml.includes('#/browse'))
 
-    // Sitemap: every ACTIVE listing appears once, under its canonical URL.
-    const sitemap = await fetch(`${BASE}/sitemap.xml`)
-    const sitemapXml = await sitemap.text()
-    ok('sitemap.xml → 200', sitemap.status === 200)
-    ok('sitemap lists the canonical ad URL', sitemapXml.includes(`/listing/${canonical}<`))
-    ok('sitemap points at the site root', sitemapXml.includes('<loc>http://localhost:3000</loc>'))
-    ok('robots.txt exposes the sitemap', (await (await fetch(`${BASE}/robots.txt`)).text()).includes('/sitemap.xml'))
+    // Unknown id → friendly 404, same doorway.
+    const missing = await fetch(`${BASE}/l/does-not-exist-at-all`)
+    const missingHtml = await missing.text()
+    ok('unknown ad → 404', missing.status === 404)
+    ok('unknown ad → friendly page, not a bare error', missingHtml.includes('no longer available'))
+
+    // Shop pages: /s/{code} — identity, live stock, share, forgiving input.
+    let profileState = await call('GET', '/api/profile', undefined, alice)
+    let aliceCode: string | undefined = profileState.json?.profile?.shopCode
+    if (!aliceCode) {
+      await call('PUT', '/api/profile', {
+        businessName: 'Alice Test Shop',
+        photoUrl: null,
+        category: 'other',
+        description: 'Test shop for the /s/[code] page.',
+        county: 'Kampala',
+        area: null,
+        phone: validListing.contactPhone,
+        whatsapp: null,
+        hours: null,
+      }, alice)
+      profileState = await call('GET', '/api/profile', undefined, alice)
+      aliceCode = profileState.json?.profile?.shopCode
+    }
+    ok('alice holds a shop code (MD-####)', typeof aliceCode === 'string' && /^MD-\d{4}$/.test(aliceCode ?? ''))
+
+    if (aliceCode) {
+      const shopOffer = await call('POST', '/api/listings', { ...validListing, title: 'Shop front test offering', contactPhone: '+256700000222' }, alice)
+      ok('shop-front listing published (201)', shopOffer.status === 201 && Boolean(shopOffer.json?.listing?.id))
+      const shopOfferId: string = shopOffer.json?.listing?.id ?? ''
+
+      const shopPage = await fetch(`${BASE}/s/${aliceCode}`)
+      const shopHtml = await shopPage.text()
+      const shopHead = shopHtml.slice(0, shopHtml.indexOf('</head>'))
+      const shopVisible = shopHtml.replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
+      ok('shop page /s/{code} → 200', shopPage.status === 200)
+      ok('shop page renders the shop name', shopHtml.includes('Alice Test Shop'))
+      ok('shop page carries a canonical link to the code',
+        shopHead.includes('rel="canonical"') && shopHead.includes(`/s/${aliceCode}"`))
+      ok('shop page lists the live stock', shopOfferId !== '' && shopVisible.includes(`/l/${shopOfferId}`))
+      ok('shop page hides the expired listing', !shopVisible.includes(`/l/${goneId}`))
+      ok('shop page never shows a contact phone', !shopVisible.includes('+256700000222'))
+      ok('shop page carries the share row', shopVisible.includes('https://wa.me/?text='))
+      ok('shop code input is forgiving (lowercase works)', (await fetch(`${BASE}/s/${aliceCode.toLowerCase()}`)).status === 200)
+
+      const noShop = await fetch(`${BASE}/s/MD-9999`)
+      ok('unknown shop code → 404', noShop.status === 404)
+      ok('unknown shop code → friendly page', (await noShop.text()).includes('not on Mudaala'))
+      const badShop = await fetch(`${BASE}/s/${encodeURIComponent('!!nope!!')}`)
+      ok('malformed shop code → 404', badShop.status === 404)
+
+      // Sitemap: ACTIVE listings + live shops, paged.
+      const sitemap = await fetch(`${BASE}/sitemap.xml`)
+      const sitemapXml = await sitemap.text()
+      ok('sitemap.xml → 200', sitemap.status === 200)
+      ok('sitemap is XML', (sitemap.headers.get('content-type') ?? '').includes('xml'))
+      ok('sitemap lists the active ad', sitemapXml.includes(`<loc>${BASE}/l/${offer.id}</loc>`))
+      ok('sitemap lists the shop', sitemapXml.includes(`<loc>${BASE}/s/${aliceCode}</loc>`))
+      ok('sitemap points at the site root', sitemapXml.includes(`<loc>${BASE}</loc>`))
+      ok('sitemap excludes the expired ad', !sitemapXml.includes(`/l/${goneId}<`))
+      ok('paged sitemap page 1 serves entries', (await (await fetch(`${BASE}/sitemap.xml?page=1`)).text()).includes(`/l/${offer.id}`))
+      ok('out-of-range sitemap page → 404', (await fetch(`${BASE}/sitemap.xml?page=999`)).status === 404)
+      ok('non-numeric sitemap page → 404', (await fetch(`${BASE}/sitemap.xml?page=abc`)).status === 404)
+      ok('robots.txt exposes the sitemap', (await (await fetch(`${BASE}/robots.txt`)).text()).includes('/sitemap.xml'))
+    }
   }
 
   console.log(`\n========================================`)
