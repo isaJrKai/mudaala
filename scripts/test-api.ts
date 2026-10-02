@@ -1092,15 +1092,31 @@ async function main() {
     // by code, plus the paged sitemap of ACTIVE listings and live shops.
     const ldJson = (html: string) => /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? ''
 
-    const search = await call('GET', '/api/listings?type=OFFER&sort=newest')
-    const offer = (search.json?.items ?? []).find((l: any) => l.status === 'ACTIVE' && l.price !== null && Array.isArray(l.photos) && l.photos.length > 0)
+    // Fixture hunt goes through the DB, not API page 1: enough no-photo test
+    // offers push the seeded photo ads past the first page, and the ad-page
+    // tests must not depend on feed pagination.
+    const offerCandidates = await db.listing.findMany({
+      where: { type: 'OFFER', status: 'ACTIVE', price: { not: null } },
+      orderBy: { refreshedAt: 'desc' },
+      take: 200,
+    })
+    const offerFixture = offerCandidates.find((l) => {
+      try {
+        return JSON.parse(l.photos).length > 0
+      } catch {
+        return false
+      }
+    })
+    const offer = offerFixture
+      ? { ...offerFixture, photos: JSON.parse(offerFixture.photos) as string[] }
+      : undefined
     ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
+    if (!offer) throw new Error('ad-page fixture missing: need an active OFFER with photos')
 
     // /l/{id} — the full ad-page surface.
     const page = await fetch(`${BASE}/l/${offer.id}`)
     const html = await page.text()
     const head = html.slice(0, html.indexOf('</head>'))
-    const offerRow = await db.listing.findUnique({ where: { id: offer.id } })
     ok('ad page /l/{id} → 200', page.status === 200)
     ok('ad page renders the listing title', html.includes(offer.title))
     ok('ad page carries a canonical link to itself',
@@ -1113,7 +1129,7 @@ async function main() {
       head.includes(`property="og:image" content="http://localhost:3000${offer.photos[0]}"`))
     ok('OFFER ad page carries Product JSON-LD in UGX',
       html.includes('"@type":"Product"') && html.includes('"priceCurrency":"UGX"'))
-    const offerPhone = offerRow?.contactPhone ?? ''
+    const offerPhone = offerFixture?.contactPhone ?? ''
     ok('contact phone stays out of metadata and JSON-LD',
       offerPhone !== '' && !head.includes(offerPhone) && !ldJson(html).includes(offerPhone))
     ok('ad page carries the WhatsApp share link', html.includes('https://wa.me/?text='))
@@ -1132,8 +1148,10 @@ async function main() {
       legacyBare.status === 308 && (legacyBare.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
 
     // REQUEST: honest markup — a wanted ad is not a Product.
-    const reqSearch = await call('GET', '/api/listings?type=REQUEST&sort=newest')
-    const request = (reqSearch.json?.items ?? []).find((l: any) => l.status === 'ACTIVE')
+    const request = await db.listing.findFirst({
+      where: { type: 'REQUEST', status: 'ACTIVE' },
+      orderBy: { refreshedAt: 'desc' },
+    })
     ok('suite finds an active REQUEST to test with', Boolean(request?.id))
     if (request?.id) {
       const reqPage = await fetch(`${BASE}/l/${request.id}`)

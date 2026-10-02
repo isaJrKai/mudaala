@@ -78,8 +78,6 @@ export const loadAdRow = cache(async (param: string) => {
   return listing
 })
 
-export type AdRow = NonNullable<Awaited<ReturnType<typeof loadAdRow>>>
-
 // Live ads a gone page can offer instead: same category, real stock, the
 // freshest first. At most four — a 404 is a doorway, not a marketplace.
 export async function similarListings(category: string, excludeId: string) {

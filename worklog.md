@@ -711,3 +711,20 @@ Work Log:
 
 Stage Summary:
 - Sellers can copy their real shop web link exactly where they see their code — the "what do I actually share?" question answered in one place. Committed on starter-launch as the Task 1 addendum commit.
+
+---
+Task ID: T1h (starter-launch)
+Agent: Main agent (Super Z)
+Task: User-directed Task 1 hygiene pass — "review and fix the failures from task one, whatever has been failing, then clean the deads from task one."
+
+Work Log:
+- Re-verified the whole Task 1 surface on starter-launch: tsc clean, eslint clean (full repo), no never-imported files, no debug leftovers.
+- scripts/deadcode-scan.ts re-run: exactly one genuine Task 1 leftover — the exported AdRow type in src/lib/ad-page.ts, never referenced anywhere (the shop page defines its ShopRow locally). Deleted. The ui/* entries the scanner lists are the deliberate shadcn-anatomy keeps documented in Task 29; the validation.ts marker is a false positive (XXX in a phone-format doc comment).
+- Line-by-line review of every Task 1 file: ad-page helpers, proxy stamp, site origin, /l/[id] page + gone-page, /s/[code] page + 404, sitemap.xml route, legacy /listing 308 shim, robots.ts, share wiring. No unused imports, no phone leaks (gone-page and shop page never render numbers; the ad page destructures passwordHash out of the rendered owner), sitemap pagination math + XML escaping correct, share URLs consistent.
+- Fixed: the market-check chip hardcoded the 5-listing minimum as a literal while price-trends.ts exports MIN_SAMPLE = 5 (the page comment even named it). Now imports MIN_SAMPLE so the chip can never drift from the sweep's threshold.
+- Fixed (suite robustness + honesty): section 12 hunted its OFFER/REQUEST fixtures in API page 1 — accumulated no-photo test offers pushed the seeded photo ads off page 1 and the suite crashed. Fixture hunt now goes through the DB (Prisma, already used by the suite elsewhere), tolerant of odd photos values; the redundant offerRow re-fetch folded into the fixture; a missing fixture now throws a clear message instead of crashing on undefined. Typing the fixture surfaced 13 real TS18048 strictness holes the old untyped-any scrape hid — fixed with a narrowing guard. Still 254 assertions, no coverage change.
+- HTTP 410 verdict re-examined: Next App Router pages cannot emit custom status codes (notFound() is hardwired to 404); alternatives (route handler shadowing /l/[id], DB lookups in proxy) would duplicate expiry logic and add a DB hit to every ad view, for a status crawlers treat like 404 for deindexing. Kept 404 + honest gone-page + noindex on the gone branch. Revisit only if Task 2 HIDDEN takedowns need a deliberate-removal signal.
+- Workspace note: the platform's forced revert-to-main wiped uncommitted edits to Task 1 files repeatedly (branch-differing files do not survive it; untracked and branch-identical files do). This pass applied edits, verified and committed inside single atomic guarded calls; only committed state is treated as durable. An intermediate commit with a non-compiling suite was amended away before anything was reported green.
+
+Stage Summary:
+- Task 1 leaves zero dead code and one less magic number behind; the suite no longer depends on feed pagination for its fixtures and is strictly typed through section 12; whole gauntlet green. starter-launch: Task 1 commit + T1b addendum + this hygiene commit, tree clean.

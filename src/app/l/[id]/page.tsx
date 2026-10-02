@@ -34,6 +34,7 @@ import {
   metaDescription,
 } from '@/lib/ad-page'
 import { siteUrl } from '@/lib/site'
+import { MIN_SAMPLE } from '@/lib/price-trends'
 import {
   formatPhonePretty,
   formatPrice,
@@ -121,7 +122,7 @@ async function marketContext(listing: { type: string; price: number | null; unit
     select: { date: true, medianPrice: true, sampleSize: true },
   })
   const latest = points[points.length - 1]
-  if (!latest || latest.sampleSize < 5) return null
+  if (!latest || latest.sampleSize < MIN_SAMPLE) return null
   return { points, latest, unit: listing.unit, currency: listing.currency }
 }
 
