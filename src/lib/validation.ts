@@ -326,6 +326,13 @@ export const adminReportsQuerySchema = z.object({
   status: z.enum(['OPEN', 'ACTIONED', 'DISMISSED', 'ALL']).default('OPEN'),
 })
 
+
+// Deleting the account is the one action that cannot be undone, so the
+// password rides on the request itself - a stolen open tab alone is not enough.
+export const accountDeleteSchema = z.object({
+  password: z.string().min(1, 'Type your password to confirm'),
+})
+
 // Turn a ZodError into { field: message } for API error payloads.
 export function fieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {}

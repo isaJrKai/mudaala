@@ -2650,6 +2650,125 @@ async function main() {
     ok('22.2 zero users from this run remain', leftovers === 0)
   }
 
+  console.log(`\n== 23. Account ownership: export everything, leave with nothing ==`)
+  {
+    // One seller with one photo, one shop, one ad, one saved search, one
+    // filed report and one audit row - everything a real account accumulates.
+    const leaver: Jar = { cookie: '' }
+    const leaverPhone = uniquePhone()
+    await register(leaver, leaverPhone, 'Leaving Seller', 'quiet-harbor-31')
+    const tinyPng23 = await sharp({ create: { width: 8, height: 8, channels: 3, background: { r: 90, g: 20, b: 40 } } }).png().toBuffer()
+    const upload23 = await fetch(`${BASE}/api/upload`, {
+      method: 'POST',
+      headers: { cookie: leaver.cookie, ...(leaver.token ? { authorization: `Bearer ${leaver.token}` } : {}), 'cf-connecting-ip': autoEdgeIp() },
+      body: (() => {
+        const f = new FormData()
+        f.append('file', new Blob([new Uint8Array(tinyPng23)], { type: 'image/png' }), 't.png')
+        return f
+      })(),
+    })
+    const upload23Json = (await upload23.json().catch(() => null)) as { url?: string } | null
+    ok('23.1 fixture: photo uploaded, path known', upload23.status === 201 && typeof upload23Json?.url === 'string')
+    const leaverPhotoUrl = upload23Json?.url ?? ''
+    await call('PUT', '/api/profile', {
+      businessName: `Leaver Shop ${Date.now().toString(36)}`,
+      photoUrl: leaverPhotoUrl || null,
+      category: 'other',
+      description: null,
+      county: 'Kampala',
+      area: null,
+      phone: leaver.user?.phone,
+      whatsapp: null,
+      hours: null,
+    }, leaver)
+    const leaverListing = await call('POST', '/api/listings', { ...validListing, title: 'Leaver copper bundle', photos: leaverPhotoUrl ? [leaverPhotoUrl] : [] }, leaver)
+    ok('23.2 fixture: listing published with the photo', leaverListing.status === 201)
+    await call('POST', '/api/saved-searches', { name: 'Leaver watches copper', query: { q: 'copper' } }, leaver)
+    const leaverAdId: string = leaverListing.json?.listing?.id ?? ''
+    let leaverReportId = ''
+    if (leaverAdId) {
+      const leaverReport = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: leaverAdId, reason: 'WRONG_INFO' }, leaver)
+      leaverReportId = leaverReport.json?.report?.id ?? ''
+    }
+    const leaverAudit = await db.auditLog.create({
+      data: { actorId: leaver.user?.id ?? null, action: 'HIDE_LISTING', targetType: 'LISTING', targetId: leaverAdId || 'fixture' },
+    })
+
+    // Export: everything, with no secrets in it.
+    const exportNoAuth = await fetch(`${BASE}/api/account/export`)
+    ok('23.3 export without a session - 401', exportNoAuth.status === 401)
+    const exportRes = await fetch(`${BASE}/api/account/export`, {
+      headers: { cookie: leaver.cookie, ...(leaver.token ? { authorization: `Bearer ${leaver.token}` } : {}) },
+    })
+    const exportText = await exportRes.text()
+    let exported: any = null
+    try {
+      exported = JSON.parse(exportText)
+    } catch {
+      /* 23.4/23.5 report the failure */
+    }
+    ok(
+      '23.4 export carries the account, shop, ad, search and report',
+      exportRes.status === 200 &&
+        exported?.user?.phone === leaverPhone &&
+        exported?.profile !== null &&
+        (exported?.listings?.length ?? 0) === 1 &&
+        (exported?.savedSearches?.length ?? 0) === 1 &&
+        (exported?.reportsFiled?.length ?? 0) === 1,
+    )
+    ok(
+      '23.5 no secrets in the export: no password hash, no reset codes, no session tokens',
+      !exportText.includes('passwordHash') &&
+        !exportText.includes('codeHash') &&
+        (exported?.sessions ?? []).every((s: Record<string, unknown>) => !('id' in s) && 'createdAt' in s),
+    )
+
+    // The door itself: wrong password keeps everything, right password takes all.
+    const wrongDelete = await call('DELETE', '/api/account', { password: 'not-the-password' }, leaver)
+    ok(
+      '23.6 wrong password - 403 and the account stays',
+      wrongDelete.status === 403 && (await db.user.findUnique({ where: { phone: leaverPhone } })) !== null,
+    )
+    const storedPath = path.join(process.cwd(), 'public', leaverPhotoUrl)
+    ok('23.7 fixture: the photo file exists on disk before deletion', leaverPhotoUrl !== '' && fs.existsSync(storedPath))
+    const deleteRes = await call('DELETE', '/api/account', { password: 'quiet-harbor-31' }, leaver)
+    ok('23.8 right password - 200 deleted', deleteRes.status === 200 && deleteRes.json?.deleted === true)
+
+    const uid = leaver.user?.id ?? ''
+    const [goneUser, goneProfile, goneListings, goneSearches, goneNotifications, goneSessions, goneResets, keptReports, keptAudits] = await Promise.all([
+      db.user.findUnique({ where: { id: uid } }),
+      db.businessProfile.findUnique({ where: { userId: uid } }),
+      db.listing.count({ where: { userId: uid } }),
+      db.savedSearch.count({ where: { userId: uid } }),
+      db.notification.count({ where: { userId: uid } }),
+      db.session.count({ where: { userId: uid } }),
+      db.passwordReset.count({ where: { userId: uid } }),
+      db.report.findMany({ where: { id: leaverReportId || 'none' } }),
+      db.auditLog.findMany({ where: { id: leaverAudit.id } }),
+    ])
+    ok(
+      '23.9 nothing about the user remains in the database',
+      goneUser === null && goneProfile === null && goneListings === 0 && goneSearches === 0 && goneNotifications === 0 && goneSessions === 0 && goneResets === 0,
+    )
+    ok(
+      '23.10 filed reports are anonymised (reporterId null), audit rows too',
+      keptReports.every((r) => r.reporterId === null) && keptAudits.length === 1 && keptAudits[0]!.actorId === null,
+    )
+    ok('23.11 the photo is gone from storage', leaverPhotoUrl !== '' && !fs.existsSync(storedPath))
+    const meAfter = await call('GET', '/api/auth/me', undefined, leaver)
+    ok(
+      '23.12 the deleted account session no longer answers as anyone',
+      // The me endpoint's contract: no session = 200 with user null (401 on
+      // the Bearer channel). Either way, nobody is signed in.
+      meAfter.status === 401 || (meAfter.status === 200 && meAfter.json?.user === null),
+    )
+
+    // Hermetic tail: the anonymised rows outlived their owner on purpose, but
+    // this suite still leaves nothing behind.
+    if (leaverReportId) await db.report.delete({ where: { id: leaverReportId } }).catch(() => undefined)
+    await db.auditLog.delete({ where: { id: leaverAudit.id } }).catch(() => undefined)
+  }
+
   console.log(`\n========================================`)
   console.log(`RESULT: ${passed} passed, ${failed} failed`)
   if (failures.length > 0) {

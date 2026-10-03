@@ -325,3 +325,8 @@ export function apiPut<T>(url: string, data: unknown): Promise<T> {
 export function apiDelete<T>(url: string): Promise<T> {
   return apiFetch<T>(url, { method: 'DELETE' })
 }
+
+// DELETE with a JSON body (the account door needs the password on the way out).
+export function apiDeleteJson<T>(url: string, data: unknown): Promise<T> {
+  return apiFetch<T>(url, { method: 'DELETE', body: JSON.stringify(data) })
+}

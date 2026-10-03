@@ -292,6 +292,26 @@ export const copy = {
     shopCodeUnchanged: (code: string) => code,
   },
 
+  // Your data - export it or leave with it. The delete flow says the whole
+  // truth BEFORE the password box, because this one cannot be undone.
+  accountData: {
+    title: 'Your data',
+    exportLabel: 'Download my data',
+    exportHint: 'One JSON file: your account, shop, ads, saved searches, alerts and reports.',
+    exportFailed: 'The download did not start. Check your connection and try again.',
+    deleteLabel: 'Delete my account',
+    deleteWarningTitle: 'Delete your account?',
+    deleteWarningBody:
+      'This removes everything: your account, your shop, all your ads and their photos, your saved searches and alerts. Reports you filed stay, but no longer carry your name. This cannot be undone.',
+    deletePasswordLabel: 'Type your password to confirm',
+    deleteCta: 'Delete everything',
+    deleteCancel: 'Keep my account',
+    deleteWrongPassword: 'That password does not match. Nothing was deleted.',
+    deleteFailed: 'The account could not be deleted right now. Try again.',
+    deleteSuccessTitle: 'Account deleted',
+    deleteSuccessBody: 'Everything is gone. You are signed out, and we are sorry to see you go.',
+  },
+
   publish: {
     signInTitle: 'Sign in to post an ad',
     signInSub: 'An account keeps your ads, saved searches and alerts in one place. It takes less than a minute.',

@@ -2,7 +2,17 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BadgeCheck, Check, CheckCircle2, Circle, Info, Link2, User, Settings, LogOut, Store, MapPin } from 'lucide-react'
+import { BadgeCheck, Check, CheckCircle2, Circle, Info, Link2, User, Settings, LogOut, Store, MapPin, Download, Trash2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { apiGet, apiPut } from '@/lib/client'
+import { apiGet, apiPut, apiDeleteJson, clearSessionToken } from '@/lib/client'
 import type { BusinessProfileT, SessionUser } from '@/lib/client'
 import { businessProfileSchema, fieldErrors, MOMO_NETWORKS } from '@/lib/validation'
 import { CATEGORIES, countryDef } from '@/lib/constants'
@@ -130,7 +140,126 @@ export function AccountView() {
           Terms of Service
         </a>
       </div>
+
+      {/* Your data - one door out with everything, one door out for good. */}
+      <Separator />
+      <AccountDataSection user={user} />
     </div>
+  )
+}
+
+// Export everything Mudaala holds about the caller as one JSON download, and
+// the one-way door: delete the account. The dialog says the whole truth
+// BEFORE the password box, and the password is what makes the button real.
+function AccountDataSection({ user }: { user: SessionUser }) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const { navigate } = useAppStore()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function exportData() {
+    try {
+      const res = await fetch('/api/account/export')
+      if (!res.ok) throw new Error(`export failed: ${res.status}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mudaala-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast({ description: copy.accountData.exportFailed, variant: 'destructive' })
+    }
+  }
+
+  async function deleteAccount() {
+    if (busy || password === '') return
+    setBusy(true)
+    try {
+      await apiDeleteJson<{ deleted: boolean }>('/api/account', { password })
+      setDeleteOpen(false)
+      setPassword('')
+      // The server already destroyed the session; mirror that truth locally.
+      clearSessionToken()
+      queryClient.clear()
+      toast({ title: copy.accountData.deleteSuccessTitle, description: copy.accountData.deleteSuccessBody })
+      navigate({ name: 'browse' })
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : copy.accountData.deleteFailed
+      toast({ description: message, variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section aria-label={copy.accountData.title} className="space-y-3">
+      <h2 className="text-sm font-semibold">{copy.accountData.title}</h2>
+      <div className="rounded-lg border bg-card p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-md text-sm text-muted-foreground">{copy.accountData.exportHint}</p>
+          <Button variant="outline" className="shrink-0 gap-1.5" onClick={exportData}>
+            <Download className="size-4" aria-hidden /> {copy.accountData.exportLabel}
+          </Button>
+        </div>
+      </div>
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-md text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Leaving Mudaala?</span> Your ads, shop and photos go with you - for good.
+          </p>
+          <Button variant="outline" className="shrink-0 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="size-4" aria-hidden /> {copy.accountData.deleteLabel}
+          </Button>
+        </div>
+      </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!busy) setDeleteOpen(open)
+          if (!open) setPassword('')
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{copy.accountData.deleteWarningTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.accountData.deleteWarningBody}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="delete-account-password">{copy.accountData.deletePasswordLabel}</Label>
+            <Input
+              id="delete-account-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={busy}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>{copy.accountData.deleteCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                // The dialog must not close on click - only a successful
+                // deletion closes it. Wrong password keeps it open.
+                e.preventDefault()
+                deleteAccount()
+              }}
+              disabled={busy || password === ''}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {busy ? 'Deleting…' : copy.accountData.deleteCta}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   )
 }
 
