@@ -1176,3 +1176,22 @@ Work Log:
 
 Stage Summary:
 - Heart centred everywhere the chip renders (feed blocks, loved shelf). No data, schema, or copy changes. Explanations given in chat: OFFER/REQUEST, freshness dot, neg., Budget, -%, +N, camera tile, Loved, Near me, shop code.
+
+---
+Task ID: copy-discipline-dashes
+Agent: main (Super Z)
+Task: User flagged the long dash in the UI as an AI tell and demanded discipline in organisation, front end and back end. Remove every em/en dash and make the rule permanent.
+
+Work Log:
+- Found the dash the user actually saw: the CSRF login block error in proxy.ts carried a spaced em dash inside the message text.
+- Full sweep: every user-facing string now dash-free (proxy error, basket toasts, stat/expiry fallbacks, basket aria, hours placeholder, photo note, safety meta description, filter range chip, password and price validation messages, WhatsApp templates in format.ts and basket.ts, duplicate-report message, postgres settings errors, env boot messages, banned-item rejection reasons in constants.ts, upload/reports/lookup/admin/cron API messages).
+- Rewrites use plain sentences or colons, not hyphen joins. Filter range chip reads "from X" / "up to X" / "X to Y". New copy keys: basket.iconAria, basket.topBarHint, basket.listCapHint, home.statNotYet, mySales.notActive; listing photo note now reuses copy.listing.noPhotoNote.
+- content/ legal prose (terms, safety, privacy) rewritten dash-free by hand.
+- Comment sweep across src, scripts, README, prisma/schema.prisma: " - " replaces the em dash mechanically.
+- Enforced: test section 18 scans src, content, README and schema for U+2014/U+2013 (fails the suite), and copy.ts for the banned template words. README now documents the COPY RULE next to the PLACEHOLDER RULE.
+- Deleted four unreferenced one-off generator scripts (gen-final-report.js, report-kit.js, add-shop-faces.py, add-demo-photos.py); the photo generators contradict the placeholder rule. push-to-github.sh kept (active deploy path). Applied migration SQL comments left as historical record.
+- Gate: tsc clean, eslint clean, suite 406/0 via bugprobe.sh. Browser recon: browse renders clean, hearts still centred.
+
+Stage Summary:
+- The repo contains zero em dashes and zero en dashes in product code, content and docs; the suite now fails if one returns.
+- Standing rule recorded in README: all UI copy in src/lib/copy.ts, plain Kampala English, no template words, no long dashes anywhere.
