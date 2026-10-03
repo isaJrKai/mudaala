@@ -41,7 +41,7 @@ export interface BasketLineInfo {
   qty: number
 }
 
-interface StoredBasket {
+export interface StoredBasket {
   shops: Record<string, BasketShopInfo>
   lines: Record<string, Record<string, BasketLineInfo>>
   // Buyer bookkeeping, NOT basket content: shops whose list the buyer says

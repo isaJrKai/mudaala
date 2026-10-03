@@ -1,21 +1,22 @@
 'use client'
 
-// The desktop cart dock (xl+) - the tray that follows the buyer while they
-// shop, without taking the listing grid hostage.
+// The cart dock - the tray that follows the buyer while they shop, without
+// taking the listing grid hostage. One cart, two docks:
 //
-// Two states, one truth:
+//   xl AND UP - THE STRIP (resting): a 64px sliver docked to the right edge
+//   under the header. The cart glyph sits beside the header's basket glyph
+//   but is a different animal: the CART only collects (its own icon says
+//   so), the BASKET up top is where final decisions happen. The badge
+//   counts lines, the running total sits stacked. The shell only reserves
+//   64px, so the listings keep their width.
 //
-//   - THE STRIP (resting): a 64px sliver docked to the right edge under the
-//     header. The cart glyph sits beside the header's basket glyph but is
-//     a different animal: the CART only collects (its own icon says so),
-//     the BASKET up top is where final decisions happen. The badge counts
-//     lines, the running total sits stacked. The shell only reserves 64px,
-//     so the listings keep their width.
-//   - THE PANEL (invited): tapping the strip slides a w-80 sheet in from the
-//     edge. It floats (a hand's width off the bottom, rounded corner,
-//     shadow) and overlays the grid instead of squeezing it - the buyer
-//     invited it in, so the listings never reflow. Esc, the close button or
-//     navigating to the full basket view send it back.
+//   BELOW xl - THE BAR: phones (and tablets) get a slim bar that
+//   materialises with the first line and rides above the bottom nav, so
+//   the buyer always sees what the cart is holding. Tapping it invites
+//   THE SHEET: a bottom sheet with the same collector content as the xl
+//   side panel - lines, steppers, estimate, done chips. The buyer invited
+//   it in, so the listings never reflow; the scrim tap, the X, Esc or
+//   navigating to the full basket view send it back.
 //
 // Same basket state, same honesty rules as the full basket view:
 //
@@ -36,7 +37,7 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingCart, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ShoppingCart, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
@@ -50,6 +51,7 @@ import {
   useBasket,
   type BasketShopInfo,
   type BasketLineInfo,
+  type StoredBasket,
 } from '@/lib/basket'
 import { useLineStatuses, useRemoveLine } from '@/components/commerce/basket-view'
 import { cn } from '@/lib/utils'
@@ -72,6 +74,17 @@ export function RailShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Focus that survives the visibility transition: right after a commit the
+// element may still compute as visibility:hidden (the transition's
+// from-value) and a plain focus() silently no-ops. Retry on the next
+// frame until the focus takes, capped so a vanished target cannot loop.
+function focusWhenVisible(el: HTMLElement | null, depth = 0) {
+  if (!el) return
+  el.focus()
+  if (document.activeElement === el || depth >= 5) return
+  requestAnimationFrame(() => focusWhenVisible(el, depth + 1))
+}
+
 function CartDock() {
   const { navigate } = useAppStore()
   const basket = useBasket()
@@ -82,8 +95,13 @@ function CartDock() {
 
   const stripRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLElement>(null)
+  const barRef = useRef<HTMLButtonElement>(null)
+  const sheetRef = useRef<HTMLElement>(null)
 
-  // Esc sends the panel back behind the strip.
+  const atXl = () =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches
+
+  // Esc sends the panel and the sheet back behind their docks.
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
@@ -93,10 +111,13 @@ function CartDock() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
-  // Focus follows the invitation: into the panel when it opens, back to the
-  // strip when it closes. Skipped on first mount - a page load must not
-  // steal focus. visibility flips at the START of the transition for the
-  // element becoming visible, so both targets are focusable in time.
+  // Focus follows the invitation: into the panel or sheet when it opens,
+  // back to the strip or bar when it closes. Skipped on first mount - a
+  // page load must not steal focus. focusWhenVisible does the landing: the
+  // docks transition visibility discretely, so for one frame after the
+  // commit an element that just flipped to visible still computes as
+  // hidden (the transition's from-value) and a plain focus() would
+  // silently no-op - it retries on the next frame until the focus takes.
   const mountedRef = useRef(false)
   useEffect(() => {
     if (!mountedRef.current) {
@@ -104,15 +125,17 @@ function CartDock() {
       return
     }
     if (open) {
-      panelRef.current?.focus()
+      focusWhenVisible((atXl() ? panelRef : sheetRef).current)
     } else {
-      stripRef.current?.focus()
+      focusWhenVisible((atXl() ? stripRef : barRef).current)
     }
   }, [open])
 
-  // The strip answers an add the same way the top-bar basket does: a WAAPI
-  // one-shot pop, only when the units grow during this visit (a reload with
-  // a saved basket must not look like an add), skipped under reduced motion.
+  // The strip and the bar answer an add the same way the top-bar basket
+  // does: a WAAPI one-shot pop, only when the units grow during this visit
+  // (a reload with a saved basket must not look like an add), skipped under
+  // reduced motion. Only one of the two docks is on screen per breakpoint;
+  // animating both is harmless.
   const unitsRef = useRef<number | null>(null)
   useEffect(() => {
     if (unitsRef.current === null) {
@@ -126,14 +149,16 @@ function CartDock() {
       typeof window !== 'undefined' &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
-      stripRef.current?.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.07)', offset: 0.4 },
-          { transform: 'scale(1)' },
-        ],
-        { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
-      )
+      for (const el of [stripRef.current, barRef.current]) {
+        el?.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.07)', offset: 0.4 },
+            { transform: 'scale(1)' },
+          ],
+          { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+        )
+      }
     }
   }, [units])
 
@@ -186,15 +211,7 @@ function CartDock() {
         )}
       >
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-          <p className="flex items-center gap-2 text-sm font-semibold">
-            <ShoppingCart className="size-4 text-primary" aria-hidden />
-            {copy.cart.title}
-            {count > 0 ? (
-              <span className="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular-nums">
-                {count > 9 ? '9+' : count}
-              </span>
-            ) : null}
-          </p>
+          <CartTitle count={count} />
           <div className="flex items-center gap-1">
             {shopIds.length > 0 ? (
               <button
@@ -218,26 +235,143 @@ function CartDock() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-3">
-          {shopIds.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <ShoppingCart className="size-8 text-muted-foreground/50" aria-hidden />
-              <p className="text-sm font-medium">{copy.cart.emptyTitle}</p>
-              <p className="text-xs leading-relaxed text-muted-foreground">{copy.cart.emptySub}</p>
-              <Button size="sm" variant="outline" className="press mt-1" onClick={() => navigate({ name: 'browse' })}>
-                {copy.basket.browse}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {shopIds.map((shopId) => (
-                <RailShop key={shopId} shopId={shopId} shop={basket.shops[shopId]} lines={basket.lines[shopId]} />
-              ))}
-            </div>
+        <CartBody basket={basket} shopIds={shopIds} />
+      </aside>
+
+      {/* Below xl the bar materialises with the first line: cart glyph and
+          badge, the count in words, the running total. It rides above the
+          bottom nav (which carries the safe-area inset) and hides itself
+          while the sheet is open. At lg the bottom nav is gone, so the bar
+          drops to the viewport edge and clears the workspace sidebar. */}
+      {count > 0 ? (
+        <button
+          ref={barRef}
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-expanded={open}
+          aria-controls="cart-mobile-sheet"
+          aria-label={copy.cart.iconAria(count)}
+          className={cn(
+            'press fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+3.75rem)] z-30 flex items-center gap-2.5 rounded-xl border bg-card py-2.5 pl-3.5 pr-3 shadow-lg transition-all duration-200 motion-reduce:transition-none lg:bottom-4 lg:left-[16.75rem] xl:hidden',
+            open ? 'invisible translate-y-2 opacity-0' : 'visible translate-y-0 opacity-100',
           )}
+        >
+          <span className="relative flex shrink-0 items-center">
+            <ShoppingCart className="size-5 text-foreground/75" aria-hidden />
+            <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground tabular-nums">
+              {count > 9 ? '9+' : count}
+            </span>
+          </span>
+          <span className="text-sm font-semibold">{copy.cart.title}</span>
+          <span className="text-xs text-muted-foreground">{copy.cart.itemsLabel(count)}</span>
+          <span className="ml-auto flex items-center gap-1.5">
+            {total && totalAmount ? (
+              <span className="text-sm font-semibold tabular-nums">
+                {totalSymbol} {totalAmount}
+              </span>
+            ) : null}
+            <ChevronUp className="size-4 text-muted-foreground" aria-hidden />
+          </span>
+        </button>
+      ) : null}
+
+      {/* The sheet's scrim: tap it to send the sheet back. It sits above the
+          bottom nav (z-50 vs z-40) so a stray thumb cannot navigate away
+          mid-review; one tap returns the buyer to exactly where they were. */}
+      <div
+        aria-hidden
+        onClick={() => setOpen(false)}
+        className={cn(
+          'fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 motion-reduce:transition-none xl:hidden',
+          open ? 'visible opacity-100' : 'invisible opacity-0',
+        )}
+      />
+
+      {/* The sheet: same header and body as the xl panel, docked above the
+          bottom nav, capped at 70dvh so the buyer keeps their bearings. At
+          lg (nav gone) it floats a hand's width off the viewport bottom. */}
+      <aside
+        ref={sheetRef}
+        id="cart-mobile-sheet"
+        tabIndex={-1}
+        aria-label={copy.cart.railAria}
+        className={cn(
+          'fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+3.5rem)] z-50 mx-auto flex max-h-[70dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border bg-card shadow-xl outline-none transition-all duration-200 motion-reduce:transition-none lg:bottom-4 lg:rounded-2xl xl:hidden',
+          open ? 'visible translate-y-0 opacity-100' : 'invisible translate-y-6 opacity-0',
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
+          <CartTitle count={count} />
+          <div className="flex items-center gap-1">
+            {shopIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate({ name: 'basket' })}
+                className="press rounded px-1 py-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+              >
+                {copy.cart.openBasket}
+              </button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="press size-7"
+              onClick={() => setOpen(false)}
+              aria-label={copy.cart.closeSheet}
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
         </div>
+
+        <CartBody basket={basket} shopIds={shopIds} />
       </aside>
     </>
+  )
+}
+
+// The cart's title cluster, shared by the xl panel and the phone sheet.
+function CartTitle({ count }: { count: number }) {
+  return (
+    <p className="flex items-center gap-2 text-sm font-semibold">
+      <ShoppingCart className="size-4 shrink-0 text-primary" aria-hidden />
+      {copy.cart.title}
+      {count > 0 ? (
+        <span className="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular-nums">
+          {count > 9 ? '9+' : count}
+        </span>
+      ) : null}
+    </p>
+  )
+}
+
+// The collector body, shared by the xl panel and the phone sheet: the
+// empty state or one section per seller with steppers, trash, the estimate
+// and the done chip. Whatever renders here stays free of comms and money -
+// final decisions happen in the basket, through the header's door link.
+function CartBody({ basket, shopIds }: { basket: StoredBasket; shopIds: string[] }) {
+  const { navigate } = useAppStore()
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+      {shopIds.length === 0 ? (
+        <div className="flex h-full flex-col items-center justify-center gap-2 px-6 py-8 text-center">
+          <ShoppingCart className="size-8 text-muted-foreground/50" aria-hidden />
+          <p className="text-sm font-medium">{copy.cart.emptyTitle}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{copy.cart.emptySub}</p>
+          <Button size="sm" variant="outline" className="press mt-1" onClick={() => navigate({ name: 'browse' })}>
+            {copy.basket.browse}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {shopIds.map((shopId) => (
+            <RailShop key={shopId} shopId={shopId} shop={basket.shops[shopId]} lines={basket.lines[shopId]} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

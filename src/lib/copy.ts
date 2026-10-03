@@ -405,16 +405,19 @@ export const copy = {
     doneUndoAria: (shop: string) => `The ${shop} list is marked as done. Tap to undo`,
   },
 
-  // The cart dock (desktop): the tray that follows the buyer while they
-  // shop. It only collects - no comms and no money in it. The basket (the
-  // icon in the top bar) is where final decisions happen: pay each seller
-  // or send the list. Two names on purpose, two icons so the eye never
-  // mixes them up.
+  // The cart: the tray that follows the buyer while they shop, on every
+  // screen. Desktop (xl+) docks it as a side strip and side panel; phones
+  // get a bar above the bottom nav that opens a bottom sheet. It only
+  // collects - no comms and no money in it. The basket (the icon in the
+  // top bar) is where final decisions happen: pay each seller or send the
+  // list. Two names on purpose, two icons so the eye never mixes them up.
   cart: {
     title: 'Cart',
     iconAria: (n: number) => `Cart, ${n} ${n === 1 ? 'item' : 'items'}`,
+    itemsLabel: (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`,
     railAria: 'Your cart',
     hideRail: 'Hide the cart',
+    closeSheet: 'Close the cart',
     emptyTitle: 'Your cart is empty',
     emptySub: 'Tap the plus on any offer and it waits here while you shop.',
     openBasket: 'Open basket to pay',
