@@ -1301,3 +1301,25 @@ Stage Summary:
 - Commit 960c9f3 on main. Suite baseline now 418/0.
 - The mental model stays: minus = how many, trash = none of this one, Clear list = drop the whole seller. Undo exists because the basket has no server copy; a mis-tap on a 28px target must not be permanent.
 - Not done / open: nothing blocking. Optional future: the same Undo pattern could cover Clear list (whole-shop remove) if mis-taps there ever show up.
+
+---
+Task ID: pay-sheet-v1
+Agent: main (Super Z)
+Task: Isaac approved the mobile-money pay sheet ("lets go bro") after the merchant-code architecture discussion: pass-through only, Mudaala never holds or moves money, telco rails do what they do, cautions in the flow.
+
+Work Log:
+- Schema + migration 20261003122615: BusinessProfile.momoMerchantCode (String?) + momoNetwork (String?), nullable, documented as self-reported pass-through identity.
+- Validation: momoMerchantCodeSchema (digits 3-15, no letters - a pasted shop code or phone number is rejected), momoNetwork enum MTN/AIRTEL, both .nullish() so pre-existing payloads keep passing; refine: the pair stands or falls together; human messages instead of raw zod.
+- Pay sheet (new pay-sheet.tsx): merchant mode shows the code big + the honest note ("The shop entered this code itself. Mudaala cannot verify it."), the MTN dial string *165*3*CODE*AMOUNT# built ONLY when an estimate exists (never a half-typed string), tap-to-dial via tel: link on Android, and on iOS the link is DELIBERATELY withheld (iOS strips * and # from tel: strings, which can CALL a wrong number) - copy-the-dial-code instead. Airtel gets the *185# menu path, not a fabricated deep chain. No-code shops get the same sheet on their personal number. The beera steady block (agree the amount first / money goes straight to the shop, cannot be reversed / name on the confirmation must match) is styled like the app's other honesty surfaces.
+- Surfaces: shop page contact row (third button, no estimate - "agree the amount first") and basket shop card footer (Pay + Call in one row under the WhatsApp send, estimate from basketSubtotal of sendable lines). The sheet fetches FRESH shop data via the shared ['shop', id] query key - a stale basket snapshot never shows an old code; on fetch failure it falls back to the P2P path with the basket's phone.
+- PRE-EXISTING BUG FOUND + FIXED (account-view): on a direct page load, Radix Select fired onValueChange('') for controlled values not yet in its unmounted item registry, wiping category/county (and momoNetwork) to '' - Save then failed with raw zod enum errors. The three account selects now ignore the '' reset and render their current value explicitly via SelectValue children. Verified fixed on hard reload (fiber state keeps Kampala/scrap-recyclables/MTN); publish-form.tsx has the same latent pattern - flagged as follow-up, not touched.
+- Seller form: network select + code input + honest helper text ("Only enter your own merchant code... Mudaala never touches the money"). Browser round-trip verified: hydrate 600200/MTN, type 600205, Save → PUT 200 → DB persisted → restored to 600200.
+- Suite: API round-trip in section 3b (set, public shop page carries it, code-without-network 400, letters 400, clears) + pure schema section 21 (pair/absent, lone code, digits-only, two rails); hermetic sweep renumbered 22. Baseline 427/0.
+- Seed: Kisenyi = MTN 600200, Ntinda = AIRTEL 200415 in seed.ts; live sandbox patched via scripts/set-seed-momo.ts (dev-only derived data).
+- Gate: tsc clean, eslint clean, suite 427/0 via bugprobe.sh (rerun after the select fix).
+- Browser verified (agent-browser, desktop + iPhone device emulation + 390px): shop-page sheet (MTN code + menu path, no-estimate note), basket sheet with estimate "USh 40,000" and dial string *165*3*600200*40000# plus Dial this (desktop) vs copy-only (iPhone UA - guard proven), Nakato P2P sheet (personal number + coaching), Airtel sheet (menu path, no dial string), mobile layout clean; seller form round-trip over PUT. Shots: tool-results/pay-sheet-shop-mtn.png, pay-sheet-basket-estimate.png, pay-sheet-personal.png, pay-sheet-airtel.png, pay-sheet-iphone.png, pay-sheet-mobile.png. Note: dev server had to be restarted mid-verification (it had died; restarted with the sandbox DATABASE_URL).
+
+Stage Summary:
+- Commit 17839e1 on main. Suite baseline now 427/0.
+- The architecture line held: no credentials needed (that was the point of v1), money moves buyer-to-seller on telco rails, Mudaala is a road sign with the exact dial string.
+- Open / next: v2 request-to-pay prototype behind a flag (needs registered business + merchant agreement for production; sandbox is free to build). publish-form.tsx Selects share the Radix hydration-reset pattern (same guard would fix it). Airtel deep dial string deliberately not fabricated until verified against a real Airtel merchant flow.
