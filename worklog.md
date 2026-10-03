@@ -1213,3 +1213,20 @@ Stage Summary:
 - Commit 6a00956 on main. 158 files changed, +60 / -1,615.
 - New suite baseline: 407/0.
 - Not done / open: the login CSRF false positive on cross-origin iframe preview ("This request was blocked for your protection") remains unfixed pending user confirmation; fix must keep rejecting forged origins.
+
+---
+Task ID: csrf-preview-login-fix-verify
+Agent: main (Super Z)
+Task: User confirmed "yeah fix it" for the login CSRF false positive (legit logins through the cross-origin preview iframe hitting the "blocked for your protection" message).
+
+Work Log:
+- Found the fix already implemented and committed earlier this session (1cad0c6, 07:18): proxy.ts gained CSRF_TRUSTED_HOSTS, a comma-separated host allowlist (dot prefix = cookie-Domain suffix semantics) checked in originOwnsDeployment when the preview edge rewrites Host and sends no x-forwarded-host. Local .env carries .space-z.ai,.preview-platform.example; CI and .env.example were updated in the same commit.
+- Live verification with curl against the running dev server: POST /api/auth/login with Origin https://preview-test123.space-z.ai returns 200 + real session (allowlist active in the running process); Origin https://evil.example returns 403 with the friendly block message; no-Origin server clients pass. A lookalike (space-z.ai.evil.example) is rejected by the suffix logic (suite 15.27b).
+- End-to-end UI proof: agent-browser sign-in dialog with the Nakato fixture lands on the signed-in home, no block message (tool-results/csrf-fix-signedin.png).
+- Gap closed: README env table now documents CSRF_TRUSTED_HOSTS next to FRAME_ANCESTORS (unset stays strict Host matching).
+- Gate: tsc clean, eslint clean, suite 407/0 via bugprobe.sh (15.27/15.27a/15.27b all green).
+
+Stage Summary:
+- Commit c368f42 on main (docs only; the behavioural fix is 1cad0c6).
+- CSRF posture unchanged: forged and lookalike origins are still 403; the allowlist is server-side env config, not client input; unset = previous strict behaviour.
+- If the user still sees the block in the preview, ask for the exact URL in the address bar: the embed origin may need its own entry in CSRF_TRUSTED_HOSTS.
