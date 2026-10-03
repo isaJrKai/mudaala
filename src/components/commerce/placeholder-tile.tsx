@@ -3,6 +3,7 @@
 import { Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { categoryLabel } from '@/lib/constants'
+import { copy } from '@/lib/copy'
 
 /**
  * PLACEHOLDER RULE - the one neutral photo placeholder.
@@ -19,7 +20,7 @@ export function PlaceholderTile({
   note,
   className,
   iconClassName,
-  label = 'Photo coming from the seller',
+  label = copy.common.photoPending,
 }: {
   category?: string
   /** Non-category tiles (shop covers, hero): a plain name line instead. */

@@ -76,6 +76,7 @@ export const copy = {
     request: 'REQUEST',
     errorTitle: 'Something went wrong',
     connectionHint: 'Check your connection and try again.',
+    photoPending: 'Photo coming from the seller',
   },
 
   // The listing card (row on mobile, compact block in desktop grids).
@@ -223,7 +224,12 @@ export const copy = {
     directions: 'Get directions',
     directionsHint: '(Google Maps, for pickup)',
     directionsAria: (place: string) => `Get directions to ${place}`,
+    shareAria: 'Share this ad',
     aboutSeller: 'About the seller',
+    aboutSellerRequest: 'Who is buying',
+    shopCodeLabel: 'Shop code',
+    shopCodeHint: 'Type it into Mudaala search to find this shop again.',
+    footerHint: 'Looking for something else?',
     memberSince: (d: string) => `Member since ${d}`,
     visitShop: (shop: string) => `Visit ${shop}'s shop`,
     visitShopAria: (shop: string) => `Visit ${shop}'s shop`,

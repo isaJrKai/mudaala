@@ -136,7 +136,7 @@ export function ReportsDashboard() {
                 <p className="mt-2 text-[13px] text-muted-foreground">(the reported target no longer exists)</p>
               )}
 
-              {r.details ? <p className="mt-1.5 text-[13.5px] leading-snug">“{r.details}”</p> : null}
+              {r.details ? <p className="mt-1.5 text-[13.5px] leading-snug">"{r.details}"</p> : null}
 
               {r.status === 'OPEN' ? (
                 <div className="mt-3 flex flex-wrap gap-2">

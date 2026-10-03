@@ -335,14 +335,14 @@ export function ListingDetail({ id }: { id: string }) {
           seller forwards on WhatsApp opens as a real web page with photos,
           price and the shop, not a dead app fragment. */}
       {shareUrl ? (
-        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Share this ad">
+        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.shareAria}>
           <ShareAdRow title={listing.title} url={shareUrl} priceLabel={sharePriceLabel} />
         </section>
       ) : null}
 
       {/* Seller - real account info; no verification claims are made. */}
-      <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">
-        <h2 className="text-sm font-semibold">{copy.listing.aboutSeller}</h2>
+      <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.aboutSeller}>
+        <h2 className="text-sm font-semibold">{listing.type === 'OFFER' ? copy.listing.aboutSeller : copy.listing.aboutSellerRequest}</h2>
         <div className="mt-2 flex items-center gap-3">
           {shopPhoto ? (
             <img src={shopPhoto} alt="" className="size-11 shrink-0 rounded-md border object-cover" />

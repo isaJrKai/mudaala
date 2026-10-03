@@ -45,7 +45,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
   },
 }, {
   // guide-lib.js / generate-deployment-guide.js are local-only (gitignored)
-  // one-off generators — never committed, never linted.
+  // one-off generators: never committed, never linted.
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/generate-deployment-guide.js", "scripts/guide-lib.js"]
 }];
 

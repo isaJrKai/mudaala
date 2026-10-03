@@ -11,7 +11,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { renderMarkdown } from '@/lib/markdown'
 
-export interface LegalDoc {
+interface LegalDoc {
   file: string
   title: string
   description: string

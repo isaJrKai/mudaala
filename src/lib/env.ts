@@ -4,7 +4,7 @@
 // that 503, settings that cannot decrypt, canonical URLs pointing at
 // localhost). In development the same problems are warnings, not walls.
 
-export interface EnvReport {
+interface EnvReport {
   ok: boolean
   errors: string[]
   warnings: string[]

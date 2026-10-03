@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 // Security headers (Task 4). frame-ancestors is env-tunable because the
-// sandbox/preview legitimately embeds the app in a cross-origin iframe —
-// production should set FRAME_ANCESTORS='none' (or a specific parent origin)
+// sandbox/preview legitimately embeds the app in a cross-origin iframe.
+// Production should set FRAME_ANCESTORS='none' (or a specific parent origin)
 // in .env. X-Frame-Options mirrors the self/none cases; it is omitted when
 // frame-ancestors names custom origins, since XFO cannot express a list.
 const frameAncestors = process.env.FRAME_ANCESTORS ?? "'self'"
@@ -37,17 +37,17 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Hide the dev-tools indicator so it never covers the mobile bottom nav.
   devIndicators: false,
-  // Type errors fail the build — never ship unchecked types.
+  // Type errors fail the build: never ship unchecked types.
   typescript: {
     ignoreBuildErrors: false,
   },
   reactStrictMode: false,
-  // Enables forbidden()/unauthorized() from next/navigation — the /admin
+  // Enables forbidden()/unauthorized() from next/navigation, so the /admin
   // moderation desk returns a real HTTP 403 for non-admins.
   experimental: {
     authInterrupts: true,
   },
-  // Task 4 — security headers on every response.
+  // Task 4: security headers on every response.
   async headers() {
     return [
       {

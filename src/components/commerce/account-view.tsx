@@ -279,7 +279,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
             <div className="mt-2 flex items-center gap-2">
               <a
                 href={shopUrl}
-                className="min-w-0 flex-1 truncate font-mono text-xs font-medium text-foreground underline-offset-2 hover:underline"
+                className="min-w-0 flex-1 truncate text-xs font-medium text-foreground underline-offset-2 hover:underline"
                 title={shopUrl}
               >
                 {shopUrl}

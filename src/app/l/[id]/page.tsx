@@ -35,6 +35,7 @@ import {
   metaDescription,
 } from '@/lib/ad-page'
 import { siteUrl } from '@/lib/site'
+import { copy } from '@/lib/copy'
 import {
   formatPhonePretty,
   formatPrice,
@@ -240,7 +241,7 @@ export default async function AdPage({ params }: Params) {
           // small camera icon. Inline markup keeps the page JS-free.
           <div
             role="img"
-            aria-label="Photo coming from the seller"
+            aria-label={copy.common.photoPending}
             className="flex h-48 w-full flex-col items-center justify-center gap-2 rounded-lg border bg-muted text-center"
           >
             <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-8 text-muted-foreground/70">
@@ -330,8 +331,8 @@ export default async function AdPage({ params }: Params) {
 
         {/* The seller - real account facts only: named shop, real code, real
             start date. No badges, no ratings, nothing Mudaala cannot prove. */}
-        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">
-          <h2 className="text-sm font-semibold">{listing.type === 'OFFER' ? 'About the seller' : 'Who is buying'}</h2>
+        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.aboutSeller}>
+          <h2 className="text-sm font-semibold">{listing.type === 'OFFER' ? copy.listing.aboutSeller : copy.listing.aboutSellerRequest}</h2>
           <div className="mt-2 flex items-center gap-3">
             {shopPhoto ? (
               <img src={shopPhoto} alt="" className="size-11 shrink-0 rounded-full border object-cover" />
@@ -346,7 +347,9 @@ export default async function AdPage({ params }: Params) {
                 {shopDisplayName}
               </p>
               <p className="text-sm text-muted-foreground">
-                Active since {new Date(activeSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+                {copy.listing.memberSince(
+                  new Date(activeSince).toLocaleDateString('en', { month: 'short', year: 'numeric' }),
+                )}
                 {owner.profile?.area || owner.profile?.county
                   ? ` · ${[owner.profile?.area, owner.profile?.county].filter(Boolean).join(', ')}`
                   : ''}
@@ -355,26 +358,26 @@ export default async function AdPage({ params }: Params) {
           </div>
           {owner.profile?.shopCode ? (
             <p className="mt-2.5 text-sm text-muted-foreground">
-              Shop code{' '}
-              <span className="rounded border bg-secondary px-1.5 py-0.5 font-mono text-[13px] font-semibold text-foreground">
+              {copy.listing.shopCodeLabel}{' '}
+              <span className="rounded border bg-secondary px-1.5 py-0.5 text-[13px] font-semibold tracking-widest text-foreground">
                 {owner.profile.shopCode}
               </span>{' '}
-              - type it into Mudaala search to find this shop again.
+              {copy.listing.shopCodeHint}
             </p>
           ) : null}
           {owner.profile?.description ? <p className="mt-2 text-sm text-muted-foreground">{owner.profile.description}</p> : null}
-          {owner.profile?.hours ? <p className="mt-1 text-sm text-muted-foreground">Hours: {owner.profile.hours}</p> : null}
+          {owner.profile?.hours ? <p className="mt-1 text-sm text-muted-foreground">{copy.listing.hours(owner.profile.hours)}</p> : null}
           <Button asChild variant="outline" className="press mt-3 w-full gap-1.5">
-            <a href={`/#/shop/${owner.id}`} aria-label={`Visit ${shopDisplayName} in the app`}>
-              <Store className="size-4" aria-hidden /> Visit {shopDisplayName} in the app
+            <a href={`/#/shop/${owner.id}`} aria-label={copy.listing.visitShopAria(shopDisplayName)}>
+              <Store className="size-4" aria-hidden /> {copy.listing.visitShop(shopDisplayName)}
             </a>
           </Button>
         </section>
 
         {/* Contact - owner-provided details only, same as everywhere in the
             app. The safety card comes FIRST: read before contact happens. */}
-        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Contact">
-          <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
+        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.contact(shopDisplayName)}>
+          <h2 className="text-sm font-semibold">{copy.listing.contact(shopDisplayName)}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
           <div className="mt-3">
             <SafetyCard />
@@ -382,7 +385,7 @@ export default async function AdPage({ params }: Params) {
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
-                <Phone className="size-4" aria-hidden /> Call seller
+                <Phone className="size-4" aria-hidden /> {copy.common.call}
               </a>
             </Button>
             {whatsapp ? (
@@ -398,9 +401,9 @@ export default async function AdPage({ params }: Params) {
             ) : null}
           </div>
           <Button asChild variant="outline" className="press mt-2 h-11 w-full gap-1.5 text-[15px]">
-            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Get directions to ${placeOf(listing)}`}>
-              <Navigation className="size-4" aria-hidden /> Get directions
-              <span className="text-xs font-normal text-muted-foreground">(Google Maps - for pickup)</span>
+            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={copy.listing.directionsAria(placeOf(listing))}>
+              <Navigation className="size-4" aria-hidden /> {copy.listing.directions}
+              <span className="text-xs font-normal text-muted-foreground">{copy.listing.directionsHint}</span>
             </a>
           </Button>
           <div className="mt-3">
@@ -408,16 +411,16 @@ export default async function AdPage({ params }: Params) {
           </div>
         </section>
 
-        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Share this ad">
+        <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.shareAria}>
           <ShareAdRow title={listing.title} url={canonicalUrl} priceLabel={priceLabel} />
         </section>
       </main>
 
       <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
         <p>
-          Mudaala - trade locally, discover more.{' '}
+          {copy.listing.footerHint}{' '}
           <a href="/#/browse" className="font-medium text-primary underline-offset-2 hover:underline">
-            Browse the market
+            {copy.home.browseMarket}
           </a>
         </p>
       </footer>

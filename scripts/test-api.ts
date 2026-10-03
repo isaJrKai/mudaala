@@ -1209,7 +1209,7 @@ async function main() {
       offerPhone !== '' && !head.includes(offerPhone) && !ldJson(html).includes(offerPhone))
     ok('ad page carries the WhatsApp share link', html.includes('https://wa.me/?text='))
     ok('ad page carries the safety line', html.includes('Meet in a public place'))
-    ok('ad page shows the honest tenure line', html.includes('Active since'))
+    ok('ad page shows the honest tenure line', html.includes('Member since'))
 
     // Old keyword-style URLs still resolve - permanently - to /l/{id}.
     const prefixed = await fetch(`${BASE}/l/some-old-keywords-${offer.id}`, { redirect: 'manual' })
@@ -1470,7 +1470,7 @@ async function main() {
     // ---- Safety card before Call/Chat, and the report button on the page ----
     const livePage = await fetch(`${BASE}/l/${cleanId}`)
     const liveHtml = await livePage.text()
-    ok('ad page carries the safety card before contact', liveHtml.indexOf('Before you call') !== -1 && liveHtml.indexOf('Before you call') < liveHtml.indexOf('Call seller'))
+    ok('ad page carries the safety card before contact', liveHtml.indexOf('Before you call') !== -1 && liveHtml.indexOf('Before you call') < liveHtml.indexOf('aria-label="Call '))
     ok('safety card says never pay in advance', liveHtml.includes('Never pay in advance'))
     ok('ad page carries the report control', liveHtml.includes('aria-label="Report this ad"'))
 
@@ -2127,13 +2127,21 @@ async function main() {
     for (const root of roots) {
       if (fs.existsSync(root)) scanDir(root)
     }
-    for (const extra of [readmePath, schemaPath]) {
+    for (const extra of [readmePath, schemaPath, path.join(root, 'next.config.ts'), path.join(root, 'eslint.config.mjs'), path.join(root, 'scripts', 'seed.ts')]) {
       if (fs.existsSync(extra)) {
         seen.add(extra)
         if (/[\u2014\u2013]/.test(fs.readFileSync(extra, 'utf8'))) dashFiles.push(path.relative(process.cwd(), extra))
       }
     }
-    ok('18.1 no em or en dashes anywhere in src, content, README or schema', dashFiles.length === 0, dashFiles.slice(0, 5).join(', '))
+    ok('18.1 no em or en dashes anywhere in src, content, README, schema, config or seed', dashFiles.length === 0, dashFiles.slice(0, 5).join(', '))
+
+    // scripts/ is tooling, not a screenshot album. Verification shots live in
+    // tool-results/ (gitignored) or download/. One committed PNG and the
+    // directory fills with a hundred again.
+    const binaries = fs
+      .readdirSync(path.join(root, 'scripts'))
+      .filter((f) => /\.(png|jpe?g|gif|webp|ico|pdf)$/i.test(f))
+    ok('18.3 scripts/ carries no binary screenshots or images', binaries.length === 0, binaries.slice(0, 5).join(', '))
 
     // The UI voice lives in copy.ts; template-speak is banned there.
     const copyText = fs.readFileSync(path.join(root, 'src', 'lib', 'copy.ts'), 'utf8')

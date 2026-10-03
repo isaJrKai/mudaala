@@ -49,14 +49,14 @@ export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? 'support@mudaala.app'
 // case-insensitively. Keep the messages friendly and specific - a seller
 // whose ad was rejected should always learn WHY, and what not to do next.
 
-export interface ProhibitedRule {
+interface ProhibitedRule {
   id: string
   label: string // short name for moderation surfaces
   patterns: RegExp[]
   message: string // shown to the seller on rejection
 }
 
-export const PROHIBITED_ITEMS: ProhibitedRule[] = [
+const PROHIBITED_ITEMS: ProhibitedRule[] = [
   {
     id: 'weapons',
     label: 'Weapons & ammunition',

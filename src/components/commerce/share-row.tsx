@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Link2, Share2 } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
+import { copy } from '@/lib/copy'
 
 interface ShareAdRowProps {
   title: string
@@ -22,7 +23,7 @@ interface ShareAdRowProps {
   noun?: string
 }
 
-export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad', noun = 'ad' }: ShareAdRowProps) {
+export function ShareAdRow({ title, url, priceLabel, label = copy.listing.shareAria, noun = 'ad' }: ShareAdRowProps) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => {
