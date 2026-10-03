@@ -7,7 +7,7 @@ import { BottomNav } from '@/components/commerce/bottom-nav'
 import { AuthDialog } from '@/components/commerce/auth-dialog'
 import { ShopSetupDialog } from '@/components/commerce/shop-setup-dialog'
 import { SiteFooter } from '@/components/commerce/site-footer'
-import { RailShell } from '@/components/commerce/basket-rail'
+import { RailShell } from '@/components/commerce/cart-dock'
 
 export default function Home() {
   return (

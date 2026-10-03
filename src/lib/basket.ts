@@ -1,8 +1,9 @@
 // Mudaala - the buyer's basket: per-shop lists that collect what the buyer
-// picks while shopping, and end as ONE mobile-money payment per seller.
-// Not a supermarket cart: there is no order tracking, no delivery - the
-// basket holds the list and the running estimate, the pay sheet hands over
-// the seller's own code or number, and the telco moves the money.
+// picks while shopping, and end as ONE mobile-money payment or ONE WhatsApp
+// message per seller. Not a supermarket cart: there is no order tracking,
+// no delivery - the basket holds the list and the running estimate, the pay
+// sheet hands over the seller's own code or number, and the telco moves the
+// money (or the seller's own WhatsApp receives the list).
 //
 //   • Baskets are keyed BY SHOP (one seller fulfills one list; mixing shops
 //     in one "order" would promise things no single seller can honor).
@@ -19,7 +20,7 @@
 // no mismatch warning, no hydration flash logic needed).
 
 import { useSyncExternalStore } from 'react'
-import { formatPrice } from './format'
+import { formatPrice, formatQuantity } from './format'
 
 const STORAGE_KEY = 'mudaala.basket.v1'
 const MAX_LINES_PER_SHOP = 20
@@ -255,6 +256,26 @@ export function markShopDone(shopId: string, done: boolean): void {
     delete doneShops[shopId]
   }
   commit({ ...state, doneShops })
+}
+
+// ---- The list message: talk, not money. -----------------------------------
+
+// The WhatsApp text for ONE seller's list: what they sell, how many, at the
+// price the buyer saw, ending on the availability question a market seller
+// expects. Only FRESH lines ride in (the caller filters), so the message
+// never asks for something the shop no longer has.
+function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
+  const rows = lines.map((line) => {
+    const qty = formatQuantity(line.qty, line.unit) ?? `${line.qty}`
+    const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'
+    return `• ${line.title}: ${qty} @ ${price}`
+  })
+  return `Hi ${shopName}! I'd like to order from your Mudaala shop:\n${rows.join('\n')}\nIs everything available?`
+}
+
+export function orderWhatsAppHref(shop: BasketShopInfo, lines: BasketLineInfo[]): string {
+  const digits = (shop.whatsapp ?? shop.phone).replace(/\D/g, '')
+  return `https://wa.me/${digits}?text=${encodeURIComponent(orderMessage(shop.name, lines))}`
 }
 
 // Estimated subtotal - only when every priced line shares one currency (the

@@ -316,7 +316,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
               // Same as the heart: row tiles stay clean; the desktop block
               // and the ad page carry the add-to-basket button.
               className="press absolute bottom-1 left-1 z-20 hidden items-center justify-center rounded-md bg-black/70 text-white hover:bg-black/85 sm:bottom-1.5 sm:left-1.5 sm:inline-flex sm:size-8"
-              aria-label={copy.card.addBasketAria(listing.title)}
+              aria-label={copy.card.addCartAria(listing.title)}
             >
               {added ? (
                 <Check className="size-4 animate-in fade-in zoom-in-75 text-emerald-300 motion-reduce:animate-none" style={{ animationDuration: '150ms' }} aria-hidden />

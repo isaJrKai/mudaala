@@ -1,15 +1,16 @@
 'use client'
 
-// The desktop basket dock (xl+) - the always-visible summary of what the
-// buyer is collecting, without taking the listing grid hostage.
+// The desktop cart dock (xl+) - the tray that follows the buyer while they
+// shop, without taking the listing grid hostage.
 //
 // Two states, one truth:
 //
 //   - THE STRIP (resting): a 64px sliver docked to the right edge under the
-//     header, its top border continuing the header's bottom line. The basket
-//     glyph fills as units land, the badge counts lines, the running total
-//     sits stacked. The motivation stays on screen; the shell only reserves
-//     64px, so the listings keep their width.
+//     header. The cart glyph sits beside the header's basket glyph but is
+//     a different animal: the CART only collects (its own icon says so),
+//     the BASKET up top is where final decisions happen. The badge counts
+//     lines, the running total sits stacked. The shell only reserves 64px,
+//     so the listings keep their width.
 //   - THE PANEL (invited): tapping the strip slides a w-80 sheet in from the
 //     edge. It floats (a hand's width off the bottom, rounded corner,
 //     shadow) and overlays the grid instead of squeezing it - the buyer
@@ -18,17 +19,16 @@
 //
 // Same basket state, same honesty rules as the full basket view:
 //
-//   - Lines are re-checked against the public API before anything can be
-//     paid (the SAME query the basket view runs, so one fetch serves both).
-//   - A gone or unavailable line can ride in the list but never in the
-//     estimate, and the panel says so.
+//   - Lines are re-checked against the public API; a gone or unavailable
+//     line can ride in the list but never in the estimate, and the panel
+//     says so.
 //   - The subtotal is labelled an estimate. The seller confirms.
 //
-// Like the full basket view, the panel only COLLECTS - no WhatsApp, no
-// call, and no pay buttons either: while the buyer shops, the basket keeps
-// its hands out of the money. Payment happens at the basket view, reached
-// from the basket icon in the header, so the one payment door stays the
-// one door. Comms live on the shop and listing pages.
+// The cart only COLLECTS - no WhatsApp, no call, and no pay buttons: while
+// the buyer shops, the cart keeps its hands out of the money and out of
+// the seller's phone. Final decisions (pay, send the list, call) happen in
+// the basket, reached from the basket icon in the header - the door link
+// in the panel says exactly that. Comms and money both live there.
 //
 // RailShell also owns the shell column: on the buying views it reserves the
 // strip's width (xl:pr-16) so the resting dock never covers content, and on
@@ -36,13 +36,12 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingBasket, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingCart, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
 import {
   basketCount,
-  basketFillLevel,
   basketSubtotal,
   basketUnits,
   isShopDone,
@@ -53,13 +52,12 @@ import {
   type BasketLineInfo,
 } from '@/lib/basket'
 import { useLineStatuses, useRemoveLine } from '@/components/commerce/basket-view'
-import { BasketGlyph } from './basket-icon'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
 
 // The views where a buyer is shopping: the buying loop itself plus the two
 // buyer watch surfaces (saved searches, alerts). The basket view is its own
-// full checkout and does not need a mini basket beside it; seller views need
+// full checkout and does not need a cart beside it; seller views need
 // the width.
 const RAIL_VIEWS: ViewName[] = ['home', 'browse', 'listing', 'shop', 'saved', 'notifications']
 
@@ -69,12 +67,12 @@ export function RailShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={cn('flex min-h-dvh flex-col lg:ml-60', rail && 'xl:pr-16')}>
       {children}
-      {rail ? <BasketDock /> : null}
+      {rail ? <CartDock /> : null}
     </div>
   )
 }
 
-function BasketDock() {
+function CartDock() {
   const { navigate } = useAppStore()
   const basket = useBasket()
   const shopIds = Object.keys(basket.lines)
@@ -156,13 +154,13 @@ function BasketDock() {
         onClick={() => setOpen(true)}
         aria-expanded={open}
         aria-controls="basket-rail-panel"
-        aria-label={copy.basket.iconAria(count)}
+        aria-label={copy.cart.iconAria(count)}
         className={cn(
           'press fixed right-0 top-14 z-30 hidden w-16 flex-col items-center gap-1.5 rounded-l-xl border bg-card py-3 shadow-sm transition-all duration-200 motion-reduce:transition-none xl:flex',
           open ? 'invisible translate-x-full' : 'visible translate-x-0',
         )}
       >
-        <BasketGlyph fill={basketFillLevel(units)} className="size-6" />
+        <ShoppingCart className="size-6 text-foreground/75" aria-hidden />
         {count > 0 ? (
           <span className="flex h-4 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground tabular-nums">
             {count > 9 ? '9+' : count}
@@ -181,7 +179,7 @@ function BasketDock() {
         ref={panelRef}
         id="basket-rail-panel"
         tabIndex={-1}
-        aria-label={copy.basket.railAria}
+        aria-label={copy.cart.railAria}
         className={cn(
           'fixed bottom-4 right-0 top-14 z-30 hidden w-80 flex-col overflow-hidden rounded-l-xl border bg-card shadow-xl outline-none transition-all duration-200 motion-reduce:transition-none xl:flex',
           open ? 'visible translate-x-0' : 'invisible translate-x-full',
@@ -189,8 +187,8 @@ function BasketDock() {
       >
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <ShoppingBasket className="size-4 text-primary" aria-hidden />
-            {copy.basket.title}
+            <ShoppingCart className="size-4 text-primary" aria-hidden />
+            {copy.cart.title}
             {count > 0 ? (
               <span className="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular-nums">
                 {count > 9 ? '9+' : count}
@@ -204,7 +202,7 @@ function BasketDock() {
                 onClick={() => navigate({ name: 'basket' })}
                 className="press rounded px-1 py-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
               >
-                {copy.basket.openBasket}
+                {copy.cart.openBasket}
               </button>
             ) : null}
             <Button
@@ -213,7 +211,7 @@ function BasketDock() {
               size="icon"
               className="press size-7"
               onClick={() => setOpen(false)}
-              aria-label={copy.basket.hideRail}
+              aria-label={copy.cart.hideRail}
             >
               <ChevronRight className="size-4" aria-hidden />
             </Button>
@@ -223,9 +221,9 @@ function BasketDock() {
         <div className="flex-1 overflow-y-auto px-3 py-3">
           {shopIds.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-              <ShoppingBasket className="size-8 text-muted-foreground/50" aria-hidden />
-              <p className="text-sm font-medium">{copy.basket.emptyTitle}</p>
-              <p className="text-xs leading-relaxed text-muted-foreground">{copy.basket.emptySub}</p>
+              <ShoppingCart className="size-8 text-muted-foreground/50" aria-hidden />
+              <p className="text-sm font-medium">{copy.cart.emptyTitle}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{copy.cart.emptySub}</p>
               <Button size="sm" variant="outline" className="press mt-1" onClick={() => navigate({ name: 'browse' })}>
                 {copy.basket.browse}
               </Button>

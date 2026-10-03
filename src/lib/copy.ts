@@ -85,7 +85,7 @@ export const copy = {
     visitShopAria: (shop: string) => `Visit shop: ${shop}`,
     callAria: (shop: string, title: string) => `Call ${shop} about ${title}`,
     whatsappAria: (shop: string, title: string) => `WhatsApp ${shop} about ${title}`,
-    addBasketAria: (title: string) => `Add ${listingTitle(title)} to basket`,
+    addCartAria: (title: string) => `Add ${listingTitle(title)} to cart`,
     photoCount: (n: number) => `+${n}`,
   },
 
@@ -228,8 +228,8 @@ export const copy = {
     expiredNote: 'This ad has expired and may no longer be available.',
     archivedNote: 'The owner has archived this ad.',
     contact: (shop: string) => `Contact ${shop}`,
-    addToBasket: 'Add to basket',
-    addedToBasket: 'Added to basket',
+    addToCart: 'Add to cart',
+    addedToCart: 'Added to cart',
     directions: 'Get directions',
     directionsHint: '(Google Maps, for pickup)',
     directionsAria: (place: string) => `Get directions to ${place}`,
@@ -365,10 +365,10 @@ export const copy = {
     removed: (title: string) => `${title} removed`,
     undo: 'Undo',
     iconAria: (n: number) => `Basket, ${n} ${n === 1 ? 'item' : 'items'}`,
-    topBarHint: 'Your basket collects as you shop. Pay from it up in the top bar when you are ready.',
+    topBarHint: 'Your cart collects as you shop. Pay from the basket up in the top bar when you are ready.',
     listCapHint: 'A shop list holds at most 20 items. Open the basket and remove something first.',
-    viewSubOne: 'Your list lives on this phone. Pay the seller here when you are ready.',
-    viewSubMany: 'Your list lives on this phone. Pay each seller here, shop by shop.',
+    viewSubOne: 'Your list lives on this phone. Pay the seller here, or send the list on WhatsApp.',
+    viewSubMany: 'Your list lives on this phone. Pay or message each seller, shop by shop. Sellers only see their own list.',
     itemsOnList: (n: number) => `${n} ${n === 1 ? 'item' : 'items'} on your list`,
     shopListAria: (name: string) => `Basket for ${name}`,
     openShopAria: (name: string) => `Open shop: ${name}`,
@@ -385,10 +385,13 @@ export const copy = {
       `${n} of ${total} items will NOT be included. They are no longer available.`,
     estimateNote: 'estimate. The seller confirms the final total.',
     nothingReadyToPay: 'Nothing ready to pay for',
+    sendList: 'Send list on WhatsApp',
+    sendListAria: (n: number, shop: string) => `Send your list of ${n} items to ${shop} on WhatsApp`,
+    nothingToSend: 'Nothing to send',
+    noWhatsappNote: 'This shop has no WhatsApp on the listing. Call with your list instead.',
+    callWithList: 'Call with list',
+    callWithListAria: (shop: string) => `Call ${shop} about your list`,
     clearList: 'Clear this list',
-    openBasket: 'Open basket to pay',
-    railAria: 'Your basket',
-    hideRail: 'Hide the basket',
     statSellers: 'Sellers',
     statItems: 'Items',
     statTotal: 'Estimated total',
@@ -400,6 +403,21 @@ export const copy = {
     markDoneAria: (shop: string) => `Mark the ${shop} list as done`,
     doneChip: 'Done',
     doneUndoAria: (shop: string) => `The ${shop} list is marked as done. Tap to undo`,
+  },
+
+  // The cart dock (desktop): the tray that follows the buyer while they
+  // shop. It only collects - no comms and no money in it. The basket (the
+  // icon in the top bar) is where final decisions happen: pay each seller
+  // or send the list. Two names on purpose, two icons so the eye never
+  // mixes them up.
+  cart: {
+    title: 'Cart',
+    iconAria: (n: number) => `Cart, ${n} ${n === 1 ? 'item' : 'items'}`,
+    railAria: 'Your cart',
+    hideRail: 'Hide the cart',
+    emptyTitle: 'Your cart is empty',
+    emptySub: 'Tap the plus on any offer and it waits here while you shop.',
+    openBasket: 'Open basket to pay',
   },
 
   // The sidebar shop-code card: a buyer types the code from a shop's poster

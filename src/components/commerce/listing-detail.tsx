@@ -195,11 +195,11 @@ export function ListingDetail({ id }: { id: string }) {
                     style={{ animationDuration: '150ms' }}
                     aria-hidden
                   />
-                  {copy.listing.addedToBasket}
+                  {copy.listing.addedToCart}
                 </>
               ) : (
                 <>
-                  <Plus className="size-4" aria-hidden /> {copy.listing.addToBasket}
+                  <Plus className="size-4" aria-hidden /> {copy.listing.addToCart}
                 </>
               )}
             </Button>
