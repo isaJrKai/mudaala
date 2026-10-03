@@ -13,7 +13,7 @@ import { apiGet, apiPost } from '@/lib/client'
 import type { ListingsPage, ShopLookupResponse, ListingDetail as ListingDetailT, Listing, ListingShopOwner as ListingShopOwnerT, ShopPage as ShopPageT } from '@/lib/client'
 import { normalizeShopName, normalizeShopCode, telLink } from '@/lib/format'
 import { haversineMeters, formatDistance } from '@/lib/geo'
-import { CATEGORIES, COUNTIES, UNITS, HERO_IMAGE_PATH } from '@/lib/constants'
+import { CATEGORIES, COUNTIES, UNITS } from '@/lib/constants'
 import { useAppStore, filtersToQuery, DEFAULT_FILTERS } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { unlove, useLovedIds } from '@/lib/loved'
@@ -69,32 +69,6 @@ interface NearMeState {
 }
 
 const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
-
-// The hero's photo slot. The photo is OURS to set (HERO_IMAGE_PATH in
-// lib/constants - a file the team drops into /public), so until that file
-// exists the neutral placeholder tile stands in: no stock, no seed, no
-// claim. If the path is set but the file is missing (a deploy that forgot
-// the image), onError swaps the broken frame back to the tile.
-function HeroSlot({ className }: { className: string }) {
-  const [broken, setBroken] = useState(false)
-  if (HERO_IMAGE_PATH === '' || broken) {
-    return (
-      <PlaceholderTile
-        label={copy.hero.tileLabel}
-        iconClassName="size-7"
-        className={className}
-      />
-    )
-  }
-  return (
-    <img
-      src={HERO_IMAGE_PATH}
-      alt={copy.hero.photoAlt}
-      onError={() => setBroken(true)}
-      className={cn('object-cover', className)}
-    />
-  )
-}
 
 // Browse - the primary user task: find who buys/sells what, nearby.
 export function ListingsBrowse() {
@@ -198,37 +172,22 @@ export function ListingsBrowse() {
     <div className="space-y-3">
       {/* The front door - one green ribbon and the words that matter:
           what this place is and what to do first. No eyebrow labels, no
-          slogan chips. The photo slot is OURS to set (HERO_IMAGE_PATH in
-          lib/constants): until the team drops a file in, the grey tile
-          makes no claim; phones get a short photo strip under the words
-          once a photo exists. */}
+          slogan chips, no photo slot: the grey "coming soon" tile read as
+          unfinished, so the ribbon stands on its words alone. */}
       <section aria-labelledby="browse-heading">
         <MudaalaCurve className="block h-6 w-full text-primary sm:h-9" />
         <div className="bg-primary text-primary-foreground">
-          <div className="sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,42%)]">
-            <div className="px-5 py-5 sm:px-8 sm:py-9">
-              <h1 id="browse-heading" className="text-[22px] font-bold leading-tight tracking-tight sm:text-3xl">
-                {copy.browse.heading}
-              </h1>
-              <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
-                {/* One line on the phone keeps the whole ribbon ~150px tall;
-                    the full sentence earns its space where there's room. */}
-                <span className="sm:hidden">Shops post what they sell. You call them direct.</span>
-                <span className="hidden sm:inline">{copy.browse.sub}</span>
-              </p>
-            </div>
-            <div className="relative hidden sm:block">
-              <HeroSlot className="absolute inset-0 h-full w-full" />
-              {/* The sweep that ties the tile into the ribbon. */}
-              <MudaalaCurve className="absolute -left-24 bottom-0 block h-10 w-[calc(100%+6rem)] text-primary sm:h-14" />
-            </div>
+          <div className="px-5 py-5 sm:px-8 sm:py-9">
+            <h1 id="browse-heading" className="text-[22px] font-bold leading-tight tracking-tight sm:text-3xl">
+              {copy.browse.heading}
+            </h1>
+            <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
+              {/* One line on the phone keeps the whole ribbon ~150px tall;
+                  the full sentence earns its space where there's room. */}
+              <span className="sm:hidden">Shops post what they sell. You call them direct.</span>
+              <span className="hidden sm:inline">{copy.browse.sub}</span>
+            </p>
           </div>
-          {HERO_IMAGE_PATH !== '' ? (
-            <div className="relative h-24 sm:hidden">
-              <HeroSlot className="absolute inset-0 h-full w-full" />
-              <MudaalaCurve className="absolute -left-24 bottom-0 block h-6 w-[calc(100%+6rem)] text-primary" />
-            </div>
-          ) : null}
         </div>
         <MudaalaCurve className="block h-6 w-full text-background sm:h-9" />
       </section>

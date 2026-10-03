@@ -145,14 +145,6 @@ export const copy = {
     lovedLoadError: 'Could not load your loved items',
   },
 
-  // The green ribbon at the top of Browse.
-  hero: {
-    // No photo here until WE set one (HERO_IMAGE_PATH in lib/constants);
-    // the flat grey tile stands in until then.
-    tileLabel: 'Real shop photo coming soon',
-    photoAlt: 'Mudaala - buy and sell near you',
-  },
-
   home: {
     welcomeTitle: 'Welcome to Mudaala',
     welcomeSub:
