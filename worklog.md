@@ -1161,3 +1161,18 @@ Stage Summary:
 - Ops incident worth remembering: the dev server was OOM-killed mid-session (kernel log shows 9 OOM kills historically); on relaunch next-server hung at "Starting..." with a corrupted Turbopack cache — `rm -rf .next` + relaunch fixed it. Boot recipe: export the postgres DATABASE_URL first (platform shell exports a SQLite file: URL that breaks prisma db:push), optionally NODE_OPTIONS=--max-old-space-size=2560 to keep the kernel OOM killer away.
 - Screenshot harnesses kept (untracked → committed): scripts/task6-shots.sh, scripts/task6-shots-extra.sh; fixture IDs inside go stale after any reseed (update via /api/listings?q=...).
 - Not done / out of scope: real seller photos (by design — grey tiles until real uploads); signed-in dashboard deeper polish beyond copy/serif/Sparkles removal; Inter is not self-hosted (CSS stack falls back to system-ui locally — self-hosting via next/font when network allows is a small follow-up).
+
+---
+Task ID: heart-centre-fix
+Agent: main (Super Z)
+Task: User reported "the heart in loved is not centred properly" + asked for plain-language explanation of on-screen markers (OFFER/REQUEST, dots, neg., Budget, camera tiles, Loved, Near me, shop code).
+
+Work Log:
+- Diagnosed by measurement (agent-browser eval): block-card heart chip computed display block, svg offsets offLeft 0 / offRight 16. Root cause: ListingBlock passed "hidden sm:block" to HeartButton, overriding the base inline-flex; items-center/justify-center dead at sm+. The add-to-basket chip was correct ("sm:inline-flex"), which is why only the heart looked off.
+- Fix: listing-card.tsx one line, sm:block -> sm:inline-flex. Verified post-fix: display flex (absolute blockification), offsets 8/8/8/8; Loved shelf screenshot confirms centred red hearts.
+- Gate: tsc clean, eslint clean, suite 404/0 via bugprobe.sh (hermetic sweep 0 leftovers).
+- Commit dffff9a on main (repo convention).
+- In-chat: explained the browse markers to the user in plain Kampala English (no file changes for the explanation).
+
+Stage Summary:
+- Heart centred everywhere the chip renders (feed blocks, loved shelf). No data, schema, or copy changes. Explanations given in chat: OFFER/REQUEST, freshness dot, neg., Budget, -%, +N, camera tile, Loved, Near me, shop code.
