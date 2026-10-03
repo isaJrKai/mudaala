@@ -7,13 +7,16 @@ import { route, jsonOk, parseBody, ApiError } from '@/lib/api'
 import { reportCreateSchema } from '@/lib/validation'
 import { getSessionUser } from '@/lib/auth'
 import { hit, REPORT_DAY_MAX, REPORT_IP_DAY_MAX, REPORT_WINDOW_MS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/client-ip'
 import { createReport, DuplicateReportError, TargetNotFoundError } from '@/lib/reports'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   return route(async () => {
     const data = await parseBody(request, reportCreateSchema)
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+    // The edge-stamped address: bucketing AND guest dedupe both key on it,
+    // so a forged x-forwarded-for can neither buy budget nor dodge dedupe.
+    const ip = getClientIp(request)
     const user = await getSessionUser()
 
     // Volume cap: per user when signed in, per IP for guests. The response

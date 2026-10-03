@@ -3,13 +3,8 @@ import { loginSchema, phoneCandidates } from '@/lib/validation'
 import { db } from '@/lib/db'
 import { verifyPassword, createSession, setSessionCookie, toPublicUser } from '@/lib/auth'
 import { hit, clear, RATE_WINDOW_MS, LOGIN_FAIL_MAX, LOGIN_IP_MAX } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/client-ip'
 import { NextResponse } from 'next/server'
-
-// The caller's IP - first hop of x-forwarded-for, or "local" when absent
-// (direct dev access). Behind a proxy only the first hop is honest anyway.
-function clientIp(request: Request): string {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
-}
 
 function tooMany(retryAfterSeconds: number): NextResponse {
   return NextResponse.json(
@@ -21,7 +16,7 @@ function tooMany(retryAfterSeconds: number): NextResponse {
 export async function POST(request: Request) {
   return route(async () => {
     const data = await parseBody(request, loginSchema)
-    const ip = clientIp(request)
+    const ip = getClientIp(request)
 
     // Per-IP flood barrier: one machine hammering many phones.
     const ipVerdict = hit(`login:ip:${ip}`, LOGIN_IP_MAX, RATE_WINDOW_MS)

@@ -27,6 +27,7 @@ import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
 import { bearerAuthEnabled } from '../src/lib/env-flags'
 import { validateEnv } from '../src/lib/env'
 import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
+import { getClientIp } from '../src/lib/client-ip'
 import { pickMovers, MOVER_MIN_SAMPLE, MOVER_MIN_PCT, MOVER_LIMIT } from '../src/lib/price-movers'
 import { addToBasket, setLineQty, restoreLine, markShopDone, isShopDone, readBasket, basketCount } from '../src/lib/basket'
 import { businessProfileSchema, MOMO_NETWORKS } from '../src/lib/validation'
@@ -51,15 +52,16 @@ function loadDotEnv(file = '.env') {
 }
 loadDotEnv()
 
-// Every request the suite makes carries a run-unique x-forwarded-for, so the
-// suite acts like a crowd of distinct devices: per-IP rate-limit buckets and
-// per-IP report dedupe never trip on the suite's own ordinary traffic. Tests
-// that specifically exercise an IP budget pass their OWN fixed IP via
-// extraHeaders, which overrides this one. (Run-salted so two runs against a
-// server that was not restarted never share a bucket either.)
+// Every request the suite makes carries a run-unique IP on the header the
+// server trusts (cf-connecting-ip by default) - the suite plays the edge, so
+// per-IP rate-limit buckets and per-IP report dedupe never trip on the
+// suite's own ordinary traffic. Tests that specifically exercise an IP
+// budget pass their OWN fixed IP via extraHeaders, which overrides this one.
+// (Run-salted so two runs against a server that was not restarted never
+// share a bucket either.)
 const RUN_SALT = 1 + (Date.now() % 200)
-let xffCounter = 0
-const autoXff = () => `10.${RUN_SALT}.${xffCounter++ % 250}.7`
+let edgeIpCounter = 0
+const autoEdgeIp = () => `10.${RUN_SALT}.${edgeIpCounter++ % 250}.7`
 
 let passed = 0
 let failed = 0
@@ -93,7 +95,7 @@ async function call(
     method,
     headers: {
       'Content-Type': 'application/json',
-      'x-forwarded-for': autoXff(),
+      'cf-connecting-ip': autoEdgeIp(),
       ...(jar?.cookie ? { cookie: jar.cookie } : {}),
       ...(jar?.token ? { authorization: `Bearer ${jar.token}` } : {}),
       ...extraHeaders,
@@ -1402,7 +1404,7 @@ async function main() {
     // Both guest calls share ONE run-salted fixed IP: the suite normally salts
     // every request, but this test asserts SAME-guest (same-IP) dedupe, so the
     // pair must arrive from one address.
-    const guestIp = { 'x-forwarded-for': `203.0.115.${(RUN_SALT % 200) + 20}` }
+    const guestIp = { 'cf-connecting-ip': `203.0.115.${(RUN_SALT % 200) + 20}` }
     const guestReport = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM', details: 'looks fake' }, undefined, guestIp)
     ok('guest report → 201', guestReport.status === 201 && Boolean(guestReport.json?.report?.id))
     const guestDup = await call('POST', '/api/reports', { targetType: 'LISTING', targetId, reason: 'SCAM' }, undefined, guestIp)
@@ -1745,21 +1747,21 @@ async function main() {
     const ipFixed = `203.0.115.${(RUN_SALT % 200) + 7}`
     let lastLogin = { status: 0 }
     for (let i = 0; i < 20; i++) {
-      lastLogin = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'x-forwarded-for': ipFixed })
+      lastLogin = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'cf-connecting-ip': ipFixed })
     }
     ok('15.16 twenty login attempts from one IP all answered (401)', lastLogin.status === 401)
-    const ipBlocked = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'x-forwarded-for': ipFixed })
+    const ipBlocked = await call('POST', '/api/auth/login', { phone: uniquePhone(), password: 'whatever-123' }, undefined, { 'cf-connecting-ip': ipFixed })
     ok('15.17 the 21st login attempt from that IP inside 15 min → 429', ipBlocked.status === 429)
 
     // ---- 15e. Register flood: 5 accounts per IP per hour ----
     const regFixed = `203.0.115.${(RUN_SALT % 200) + 8}`
     let lastReg: { status: number; json: any } = { status: 0, json: null }
     for (let i = 0; i < 5; i++) {
-      lastReg = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
+      lastReg = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'cf-connecting-ip': regFixed })
       if (lastReg.json?.user?.id) createdUserIds.add(lastReg.json.user.id)
     }
     ok('15.18 five accounts from one IP are allowed', lastReg.status === 201)
-    const regBlocked = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'x-forwarded-for': regFixed })
+    const regBlocked = await call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Reg Flood', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, { 'cf-connecting-ip': regFixed })
     ok('15.19 the 6th account from that IP within the hour → 429', regBlocked.status === 429)
 
     // ---- 15f. Publish flood: 20 listings per user per day ----
@@ -1795,7 +1797,7 @@ async function main() {
     const upload = (jar: Jar) =>
       fetch(`${BASE}/api/upload`, {
         method: 'POST',
-        headers: { cookie: jar.cookie, ...(jar.token ? { authorization: `Bearer ${jar.token}` } : {}) },
+        headers: { cookie: jar.cookie, ...(jar.token ? { authorization: `Bearer ${jar.token}` } : {}), 'cf-connecting-ip': autoEdgeIp() },
         body: (() => {
           const f = new FormData()
           f.append('file', new Blob([new Uint8Array(tinyPng)], { type: 'image/png' }), 't.png')
@@ -1875,7 +1877,7 @@ async function main() {
       .toBuffer()
     const exifUpload = await fetch(`${BASE}/api/upload`, {
       method: 'POST',
-      headers: { cookie: termsJar.cookie, ...(termsJar.token ? { authorization: `Bearer ${termsJar.token}` } : {}) },
+      headers: { cookie: termsJar.cookie, ...(termsJar.token ? { authorization: `Bearer ${termsJar.token}` } : {}), 'cf-connecting-ip': autoEdgeIp() },
       body: (() => {
         const f = new FormData()
         f.append('file', new Blob([new Uint8Array(exifJpeg)], { type: 'image/jpeg' }), 'exif.jpg')
@@ -1929,6 +1931,81 @@ async function main() {
       ok('15.40 user B marking user A\u2019s notification read is a no-op', bMarkRead.status === 200 && stillUnread)
     } else {
       ok('15.40 user B marking user A\u2019s notification read is a no-op (no fixture)', false, 'owner A had no unread notification')
+    }
+
+    // ---- 15l. Client-IP trust: a forged x-forwarded-for buys nothing ----
+    {
+      // Pure-function units: the belief order, on plain Requests.
+      const req = (h: Record<string, string>) => new Request('http://suite.local/x', { headers: h })
+      const savedNodeEnv = process.env.NODE_ENV
+      const savedTrusted = process.env.TRUSTED_IP_HEADER
+      const mutableEnv = process.env as Record<string, string | undefined>
+      try {
+        ok(
+          '15.41 the edge-stamped header wins over a forged x-forwarded-for',
+          getClientIp(req({ 'cf-connecting-ip': '198.51.100.9', 'x-forwarded-for': '1.2.3.4' })) === '198.51.100.9',
+        )
+        ok(
+          '15.42 TRUSTED_IP_HEADER renames the believed header',
+          getClientIp(req({ 'x-real-ip': '198.51.100.8', 'cf-connecting-ip': '1.2.3.4' }), { TRUSTED_IP_HEADER: 'x-real-ip' }) === '198.51.100.8',
+        )
+        ok(
+          '15.43 x-real-ip is the first alternative when the edge header is absent',
+          getClientIp(req({ 'x-real-ip': '198.51.100.7' })) === '198.51.100.7',
+        )
+        ok(
+          '15.44 x-vercel-forwarded-for is believed client-first',
+          getClientIp(req({ 'x-vercel-forwarded-for': '203.0.113.7, 10.0.0.1' })) === '203.0.113.7',
+        )
+        mutableEnv.NODE_ENV = 'production'
+        ok(
+          '15.45 in production the LAST x-forwarded-for entry is the connection address - forged first entries are ignored',
+          getClientIp(req({ 'x-forwarded-for': '1.2.3.4, 9.9.9.9' })) === '9.9.9.9',
+        )
+        delete mutableEnv.NODE_ENV
+        ok(
+          '15.46 no trusted headers in dev - one honest "local" bucket',
+          getClientIp(req({ 'x-forwarded-for': '5.6.7.8' })) === 'local',
+        )
+      } finally {
+        mutableEnv.NODE_ENV = savedNodeEnv
+        if (savedTrusted === undefined) delete mutableEnv.TRUSTED_IP_HEADER
+        else mutableEnv.TRUSTED_IP_HEADER = savedTrusted
+      }
+
+      // Against the live server: the register cap keys on the edge address.
+      // Every request below wears a DIFFERENT forged first x-forwarded-for -
+      // under the old first-hop trust each one opened a fresh bucket.
+      const spoofRegIp = `203.0.115.${(RUN_SALT % 200) + 21}`
+      let spoofCounter = 0
+      const spoofOnce = () =>
+        call('POST', '/api/auth/register', { phone: uniquePhone(), name: 'Spoof Rider', password: 'quiet-harbor-31', country: 'UG', acceptTerms: true }, undefined, {
+          'cf-connecting-ip': spoofRegIp,
+          'x-forwarded-for': `10.99.${spoofCounter % 250}.${spoofCounter++ % 250}`,
+        })
+      let lastSpoofReg: { status: number; json: any } = { status: 0, json: null }
+      for (let i = 0; i < 5; i++) {
+        lastSpoofReg = await spoofOnce()
+        if (lastSpoofReg.json?.user?.id) createdUserIds.add(lastSpoofReg.json.user.id)
+      }
+      ok('15.47 five accounts from one edge IP, each with a fresh forged x-forwarded-for, are allowed', lastSpoofReg.status === 201)
+      const spoofBlocked = await spoofOnce()
+      ok('15.48 the 6th, again with a brand-new forged x-forwarded-for - 429, the spoof bought nothing', spoofBlocked.status === 429)
+
+      // Guest-report dedupe also keys on the edge address: changing the
+      // forged header does not turn the same guest into a new one.
+      const dedupeOwner: Jar = { cookie: '' }
+      await register(dedupeOwner, uniquePhone(), 'Dedupe Fixture', 'quiet-harbor-31')
+      const dedupeAd = await call('POST', '/api/listings', { ...validListing, title: 'Spoof dedupe target', description: 'Clean test stove for the dedupe flow.', contactPhone: '+256700000666' }, dedupeOwner)
+      const dedupeTarget = dedupeAd.json?.listing?.id ?? ''
+      if (dedupeTarget) {
+        const dedupeBase = { 'cf-connecting-ip': `203.0.115.${(RUN_SALT % 200) + 22}` }
+        const dupA = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: dedupeTarget, reason: 'SCAM' }, undefined, { ...dedupeBase, 'x-forwarded-for': '10.98.1.1' })
+        const dupB = await call('POST', '/api/reports', { targetType: 'LISTING', targetId: dedupeTarget, reason: 'SCAM' }, undefined, { ...dedupeBase, 'x-forwarded-for': '10.98.2.2' })
+        ok('15.49 same guest, forged x-forwarded-for changed - still a 409 duplicate', dupA.status === 201 && dupB.status === 409)
+      } else {
+        ok('15.49 same guest, forged x-forwarded-for changed - still a 409 duplicate', false, 'fixture ad did not publish')
+      }
     }
   }
 

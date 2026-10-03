@@ -12,6 +12,7 @@
 
 import { ApiError, route, jsonOk, requireUser } from '@/lib/api'
 import { hit, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/client-ip'
 import { chooseStorage } from '@/lib/storage'
 import sharp from 'sharp'
 
@@ -39,7 +40,13 @@ export async function POST(request: Request) {
     const user = await requireUser('Sign in to upload photos')
 
     // 30 photos per user per hour: a whole catalogue shoot in a sitting is
-    // fine; bulk-filling the disk is not.
+    // fine; bulk-filling the disk is not. The IP bucket rides beside it so
+    // one machine juggling accounts cannot multiply the budget.
+    const ip = getClientIp(request)
+    const ipVerdict = hit(`upload:ip:${ip}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
+    if (!ipVerdict.ok) {
+      throw new ApiError(429, 'That is a lot of photos - please wait a while before uploading more')
+    }
     const verdict = hit(`upload:user:${user.id}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
     if (!verdict.ok) {
       throw new ApiError(429, 'That is a lot of photos - please wait a while before uploading more')

@@ -3,14 +3,16 @@ import { route, jsonOk, jsonError, parseBody } from '@/lib/api'
 import { registerSchema, normalizePhone, countryPhoneMessage, passwordProblem, type CountryKey } from '@/lib/validation'
 import { hashPassword, createSession, setSessionCookie, toPublicUser } from '@/lib/auth'
 import { hit, REGISTER_WINDOW_MS, REGISTER_IP_MAX } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/client-ip'
 import { TERMS_VERSION } from '@/lib/constants'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   return route(async () => {
     // Per-IP cap: account creation is the expensive thing to flood (5 per
-    // IP per hour).
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+    // IP per hour). The IP is the edge-stamped address - a client-forged
+    // x-forwarded-for does not open a fresh bucket.
+    const ip = getClientIp(request)
     const verdict = hit(`register:ip:${ip}`, REGISTER_IP_MAX, REGISTER_WINDOW_MS)
     if (!verdict.ok) {
       return NextResponse.json(

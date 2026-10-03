@@ -13,6 +13,7 @@ import { db } from '@/lib/db'
 import { route, jsonOk, jsonError, parseBody } from '@/lib/api'
 import { forgotPasswordSchema, phoneCandidates } from '@/lib/validation'
 import { hit, RESET_PHONE_MAX, RESET_IP_MAX, RESET_WINDOW_MS } from '@/lib/rate-limit'
+import { getClientIp } from '@/lib/client-ip'
 import { chooseSmsProvider, generateResetCode, hashResetCode } from '@/lib/sms'
 import { NextResponse } from 'next/server'
 
@@ -26,7 +27,7 @@ const OK_BODY = {
 export async function POST(request: Request) {
   return route(async () => {
     const data = await parseBody(request, forgotPasswordSchema)
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
+    const ip = getClientIp(request)
 
     const candidates = phoneCandidates(data.phone)
     const phone = candidates[0]
