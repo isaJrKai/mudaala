@@ -1421,3 +1421,19 @@ Stage Summary:
 - Commit 7b99bd6 on main. Suite baseline stays 431/0.
 - The cart now follows the buyer on every screen: side strip/panel on desktop, bar/sheet above the bottom nav on phones - collector everywhere, money only in the basket.
 - Open: none for this round. v2 request-to-pay stays parked per Isaac.
+
+---
+Task ID: whatsapp-table-hero-tabs
+Agent: main (Super Z)
+Task: Isaac asked three things at once: (1) can a list of more than one thing be sent through WhatsApp in the form of a table, (2) the "Buy and sell near you" banner photo - he thinks it is meant to be set up by us, and (3) do all those category tabs show on the phone, "if jumia can find a way for tabs to show on phone can't we too".
+
+Work Log:
+- WhatsApp table (lib/basket.ts): orderMessage now sends two-plus fresh lines as an aligned table inside WhatsApp's triple-backtick monospace block. Columns ITEM (titles clipped at 20 chars with an ellipsis, never wrapped - a wrapped row breaks alignment) | QTY (unit in the cell, "1 bunch") | EST (bare amounts, currency named once in the prose under the table). Rules above/below the rows, TOTAL row only when every line is priced (a sum that silently skips "ask" rows would read as the whole order); prose reads "Estimate: USh 30,000 - you confirm the final total." / "Estimate so far: ..." with ask rows / "Prices on asking." Closing "Is everything available?" kept. One line still rides as the plain bullet (a table for one thing is ceremony); mixed currencies in one shop fall back to bullets so no cell ever shows a bare number without its money. Column widths derive from content per message. Verified in the decoded href: single-line Kisenyi = bullet, two-line Nakato = table with right-aligned QTY/EST and TOTAL 30,000.
+- Hero photo slot (lib/constants HERO_IMAGE_PATH + listings-browse HeroSlot): the slot belongs to the team, not any one shop - drop a file into /public and set the path, one line. Shipped state is '' so the neutral placeholder tile stands on desktop and phone and the app requests nothing (console stays clean). When a path is set: desktop keeps the 42% right tile slot, phones get a short h-24 strip under the words with the curve sweep (a hero photo Isaac never sees on his main device would look broken - phones now get it too). A path set but file missing swaps back to the tile via onError, so a deploy that forgets the image never shows a broken frame. Verified all three states with a temp grey file (render both slots) and a missing path (tile returns), then removed the file - nothing stock shipped, per the placeholder rule.
+- Tabs on the phone: verified, no change needed. All twelve category pills (All + 11 aisles) render in one horizontally scrollable strip - scrollWidth 1493 vs 358 client width at 390px, cut-off pill as the swipe affordance, same pattern as Jumia - and the bottom nav carries the primary tabs. Screenshot proof in tool-results/category-tabs-390.png.
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh (no API surface changed; baseline held).
+
+Stage Summary:
+- Commit d985026 on main. Suite baseline stays 431/0.
+- The WhatsApp list now reads like an order book for multi-item baskets; the hero photo is a one-line team switch waiting for our file; the tabs question needed no code - they already show, swipeable, on the phone.
+- Open (flagged to Isaac): send the real photo for the hero (or say the word) - drop it at public/hero-banner.jpg and set HERO_IMAGE_PATH to '/hero-banner.jpg' and it goes live on desktop and phone. v2 request-to-pay stays parked.
