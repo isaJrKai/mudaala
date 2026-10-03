@@ -1366,3 +1366,21 @@ Stage Summary:
 - The one-line model: the basket collects while you shop; the basket icon is where you pay; WhatsApp and call live where you browse.
 - v2 request-to-pay stays parked per Isaac ("wait up on v2").
 - Open: none.
+
+---
+Task ID: one-payment-door
+Agent: main (Super Z)
+Task: Isaac re-explained the model: "what i mean is that the cart is just for collecting stuff, you just do shopping payment happens at the baskt up here i am just collecting different stuff from different buyers". The previous round had left two stray payment doors outside the basket: the shop page kept its own Pay button (from the pay-sheet-v1 round) and the desktop rail panel paid per shop. Under the stated model - payment happens AT the basket, reached from the basket icon up top - those doors contradict it.
+
+Work Log:
+- shop-view.tsx: removed the Pay button from the contact row (now Call + WhatsApp only, comms live where you browse), removed the shop-page PaySheet (the no-estimate edition), payOpen state, Smartphone and PaySheet imports. The public shop payload keeps momoMerchantCode/network/name - the basket's fresh-shop query reads them.
+- basket-rail.tsx: RailShop lost its per-shop pay button and PaySheet (plus payQuery, apiGet/ShopPage imports, useQuery import). The panel is now a pure collector: lines, steppers, trash, estimate, mark done. The panel header link reworded to "Open basket to pay" (copy.basket.openBasket) - the door names where payment happens. File header comment rewritten: the basket keeps its hands out of the money while the buyer shops.
+- copy.ts: topBarHint (the toast on every add) now teaches the model - "Your basket collects as you shop. Pay from it up in the top bar when you are ready." nothingReadyToPay stays (basket view only).
+- PaySheet call sites after the sweep: exactly one, basket-view.tsx - the surface the basket icon opens. Seller-side momo fields in account-view untouched (configuration, not a payment door).
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh (no API surface changed; baseline held).
+- Browser verified (agent-browser): 390px shop page shows Call + WhatsApp and NO pay button; add-to-basket pops the badge; basket icon up top opens the basket; per-shop pay opens the sheet with live tel: href *165*3*600200*20000# and the estimate (tool-results/model-basket-pays-390.png); 1536px rail panel: payButtons 0, comms 0, door true (model-rail-collects-1536.png); "Open basket to pay" navigates to #/basket. Console + page errors clean.
+
+Stage Summary:
+- Commit 7c4d7d2 on main. Suite baseline stays 431/0.
+- The model is now literal: the cart collects stuff from different sellers while you shop; the basket icon up top is the one payment door; shop pages and the dock never touch money.
+- Open: none. v2 request-to-pay stays parked.
