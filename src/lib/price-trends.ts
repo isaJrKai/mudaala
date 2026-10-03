@@ -12,8 +12,9 @@ import { db } from '@/lib/db'
 // the chart stays empty instead of pretending the market spoke.
 export const MIN_SAMPLE = 5
 
-// The Home chart window: the last 7 recorded days.
-const TREND_DAYS = 7
+// The Home chart window: the last 7 recorded days. Exported so the
+// price-movers read on the route covers exactly the same week.
+export const TREND_DAYS = 7
 
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10)

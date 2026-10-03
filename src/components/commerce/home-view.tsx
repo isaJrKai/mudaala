@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ArrowDownUp,
   Bell,
   Bookmark,
   CalendarClock,
@@ -20,6 +21,8 @@ import {
   RefreshCw,
   Search,
   Tag,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -225,6 +228,8 @@ function SignedInHome() {
       </section>
 
       <BestOffers location={data.location} />
+
+      <MarketMoversCard />
 
       <section className="grid gap-4 lg:grid-cols-5">
         <SavedSearchesCard
@@ -657,6 +662,78 @@ function SavedSearchesCard({
 // ---------------------------------------------------------------- price trends
 
 const TREND_COLORS = ['#18583B', '#4A8A68', '#B8860B'] as const
+
+// "Moving this week" - the market-wide companion to the personal trends
+// chart: the categories whose recorded median moved most, either direction.
+// Same query key as PriceTrendsCard, so one fetch serves both cards. A quiet
+// market renders no card at all - an empty list titled "moving" would be a
+// promise the data cannot keep.
+function MarketMoversCard() {
+  const { navigate, setFilters } = useAppStore()
+  const trendsQuery = useQuery({
+    queryKey: ['price-trends'],
+    queryFn: () => apiGet<PriceTrendsData>('/api/price-trends'),
+    staleTime: 5 * 60_000,
+  })
+
+  if (trendsQuery.isLoading) return null
+  if (trendsQuery.isError || !trendsQuery.data || trendsQuery.data.movers.length === 0) return null
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ArrowDownUp className="size-4 text-primary" aria-hidden />
+          {copy.home.moversTitle}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">{copy.home.moversSub}</p>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="divide-y">
+          {trendsQuery.data.movers.map((m) => (
+            <button
+              key={`${m.category}|${m.unit}|${m.currency}`}
+              type="button"
+              onClick={() => {
+                setFilters({ category: m.category })
+                navigate({ name: 'browse' })
+              }}
+              className="press -mx-1 flex w-full items-center gap-3 rounded-md px-1 py-2.5 text-left hover:bg-secondary/50"
+              aria-label={copy.home.moversRowAria(
+                m.categoryLabel,
+                m.unit,
+                formatPrice(m.lastMedian, null, m.currency),
+                Math.abs(m.pct),
+                m.sampleSize,
+                m.direction === 'down' ? copy.home.moverDownWord : copy.home.moverUpWord,
+              )}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{m.categoryLabel}</span>
+                <span className="block text-[11px] text-muted-foreground">{copy.home.moversPerUnit(m.unit)}</span>
+              </span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums">{formatPrice(m.lastMedian, null, m.currency)}</span>
+              <span
+                className={cn(
+                  'flex w-16 shrink-0 items-center justify-end gap-1 text-xs font-semibold tabular-nums',
+                  m.direction === 'down' ? 'text-emerald-700' : 'text-amber-700',
+                )}
+              >
+                {m.direction === 'down' ? (
+                  <TrendingDown className="size-3.5 shrink-0" aria-hidden />
+                ) : (
+                  <TrendingUp className="size-3.5 shrink-0" aria-hidden />
+                )}
+                {Math.abs(m.pct)}%
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">{copy.home.moversSource(trendsQuery.data.minSample)}</p>
+      </CardContent>
+    </Card>
+  )
+}
 
 function PriceTrendsCard({ className }: { className?: string }) {
   const trendsQuery = useQuery({

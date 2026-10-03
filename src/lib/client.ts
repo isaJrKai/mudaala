@@ -270,8 +270,21 @@ interface PriceTrendSeries {
   points: { date: string; medianPrice: number; sampleSize: number }[]
 }
 
+export interface PriceMover {
+  category: string
+  categoryLabel: string
+  unit: string
+  currency: string
+  firstMedian: number
+  lastMedian: number
+  pct: number
+  sampleSize: number
+  direction: 'up' | 'down'
+}
+
 export interface PriceTrendsData {
   series: PriceTrendSeries[]
+  movers: PriceMover[]
   source: string
   minSample: number
 }

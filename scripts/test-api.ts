@@ -26,6 +26,7 @@ import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
 import { bearerAuthEnabled } from '../src/lib/env-flags'
 import { validateEnv } from '../src/lib/env'
 import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
+import { pickMovers, MOVER_MIN_SAMPLE, MOVER_MIN_PCT, MOVER_LIMIT } from '../src/lib/price-movers'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -2150,7 +2151,60 @@ async function main() {
     ok('18.2 copy.ts carries no banned template words (seamless, empower, discover, unlock)', bannedHits.length === 0, bannedHits.slice(0, 3).join(' | '))
   }
 
-  console.log(`\n== 19. Hermetic sweep - this run leaves no fixtures behind ==`)
+  console.log(`\n== 19. Market movers - pickMovers (pure logic, no db) ==`)
+  {
+    const label = (key: string) => (key === 'farm-produce' ? 'Farm Produce' : key)
+    const row = (category: string, date: string, medianPrice: number, sampleSize = 6) =>
+      ({ category, unit: 'bunch', currency: 'UGX', date, medianPrice, sampleSize })
+
+    const basic = pickMovers(
+      [row('farm-produce', '2026-09-25', 18000), row('farm-produce', '2026-10-01', 16500)],
+      label,
+    )
+    ok(
+      '19.1 a falling median becomes a down mover with a signed whole percent',
+      basic.length === 1 &&
+        basic[0].direction === 'down' &&
+        basic[0].pct === -8 &&
+        basic[0].categoryLabel === 'Farm Produce' &&
+        basic[0].sampleSize === 6,
+      JSON.stringify(basic),
+    )
+
+    const thin = pickMovers(
+      [
+        row('farm-produce', '2026-09-25', 18000, 6),
+        row('farm-produce', '2026-10-01', 16500, 4), // latest day too thin
+        row('hardware-building', '2026-10-01', 50000), // a single recorded day
+      ],
+      label,
+    )
+    ok('19.2 two sampled days minimum: one quiet endpoint or one lonely day never moves', thin.length === 0, JSON.stringify(thin))
+
+    const wiggle = pickMovers(
+      [row('farm-produce', '2026-09-25', 10000), row('farm-produce', '2026-10-01', 10090)],
+      label,
+    )
+    ok('19.3 a sub-threshold wiggle is the market breathing, not moving', wiggle.length === 0, JSON.stringify(wiggle))
+
+    const groups = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    const many = pickMovers(
+      groups.flatMap((g, i) => [row(g, '2026-09-25', 10000), row(g, '2026-10-01', 10000 + (8 - i) * 1000)]),
+      label,
+    )
+    ok(
+      '19.4 movers sort by size of the move and the list caps at six',
+      many.length === MOVER_LIMIT && many[0].pct === 80 && many[5].pct === 30,
+      JSON.stringify(many.map((m) => m.pct)),
+    )
+    ok(
+      '19.5 the honesty bars hold: five listings behind a median, two percent to count as moving, six slots',
+      MOVER_MIN_SAMPLE === 5 && MOVER_MIN_PCT === 2 && MOVER_LIMIT === 6,
+      `${MOVER_MIN_SAMPLE}/${MOVER_MIN_PCT}/${MOVER_LIMIT}`,
+    )
+  }
+
+  console.log(`\n== 20. Hermetic sweep - this run leaves no fixtures behind ==`)
   {
     const ids = [...createdUserIds]
     // Targets the fixtures own or were reported about: listings + shop
@@ -2191,14 +2245,14 @@ async function main() {
       where: { listingId: { not: null }, ...(liveIds.length ? { NOT: { listingId: { in: liveIds } } } : {}) },
     })
     ok(
-      '19.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
+      '20.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
       delUsers.count === aliveBefore,
     )
     console.log(
       `swept: ${delUsers.count} user(s), ${delReports.count} report(s), ${delAudits.count} audit row(s), ${delDangling.count} dangling notification(s)`,
     )
     const leftovers = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
-    ok('19.2 zero users from this run remain', leftovers === 0)
+    ok('20.2 zero users from this run remain', leftovers === 0)
   }
 
   console.log(`\n========================================`)

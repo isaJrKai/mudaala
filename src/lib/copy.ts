@@ -199,6 +199,15 @@ export const copy = {
     trendsNotEnoughSub: (min: number) =>
       `Price lines appear once ${min}+ active listings share a category and unit. The market builds them up a little every day.`,
     trendsMoreData: (n: number) => ` · ${n} of your categories need more data before a line can be drawn.`,
+    moversTitle: 'Moving this week',
+    moversSub: 'Market prices that shifted most in the last 7 days, across all Mudaala shops.',
+    moversPerUnit: (unit: string) => `per ${unit}`,
+    moverUpWord: 'up',
+    moverDownWord: 'down',
+    moversRowAria: (label: string, unit: string, price: string, pct: number, n: number, word: string) =>
+      `${label} per ${unit}: median ${price}, ${word} ${pct} percent this week, from ${n} listings`,
+    moversSource: (min: number) =>
+      `Median asking prices from live Mudaala listings. A number needs ${min} or more listings behind it before it counts.`,
     updated: (t: string) => `Updated ${t}`,
     statNotYet: 'Not yet',
   },
