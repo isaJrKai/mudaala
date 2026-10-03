@@ -30,7 +30,7 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Phone, ShoppingBasket } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, Phone, ShoppingBasket } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { formatPrice, telLink } from '@/lib/format'
@@ -40,6 +40,8 @@ import {
   basketFillLevel,
   basketSubtotal,
   basketUnits,
+  isShopDone,
+  markShopDone,
   orderWhatsAppHref,
   setLineQty,
   useBasket,
@@ -51,10 +53,11 @@ import { BasketGlyph } from './basket-icon'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
 
-// The views where a buyer is shopping and the dock earns its place. The
-// basket view is its own full checkout and does not need a mini basket
-// beside it; seller views need the width.
-const RAIL_VIEWS: ViewName[] = ['home', 'browse', 'listing', 'shop']
+// The views where a buyer is shopping: the buying loop itself plus the two
+// buyer watch surfaces (saved searches, alerts). The basket view is its own
+// full checkout and does not need a mini basket beside it; seller views need
+// the width.
+const RAIL_VIEWS: ViewName[] = ['home', 'browse', 'listing', 'shop', 'saved', 'notifications']
 
 export function RailShell({ children }: { children: React.ReactNode }) {
   const { view } = useAppStore()
@@ -246,6 +249,8 @@ function RailShop({
   lines: Record<string, BasketLineInfo>
 }) {
   const { navigate } = useAppStore()
+  const basket = useBasket()
+  const done = isShopDone(basket, shopId)
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
@@ -275,6 +280,7 @@ function RailShop({
           </span>
         )}
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{shop.name}</span>
+        {done ? <Check className="size-3.5 shrink-0 text-emerald-700" aria-hidden /> : null}
         <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{entries.length}</span>
       </button>
 
@@ -380,6 +386,19 @@ function RailShop({
             </a>
           </Button>
         ) : null}
+
+        <button
+          type="button"
+          onClick={() => markShopDone(shopId, !done)}
+          className={cn(
+            'press flex w-full items-center justify-center gap-1.5 rounded text-[11px] font-medium',
+            done ? 'text-emerald-700 hover:text-emerald-800' : 'text-muted-foreground hover:text-emerald-700',
+          )}
+          aria-label={done ? copy.basket.doneUndoAria(shop.name) : copy.basket.markDoneAria(shop.name)}
+        >
+          {done ? <CheckCircle2 className="size-3" aria-hidden /> : <Check className="size-3" aria-hidden />}
+          {done ? copy.basket.doneChip : copy.basket.markDone}
+        </button>
       </div>
     </section>
   )

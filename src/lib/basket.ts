@@ -42,6 +42,11 @@ export interface BasketLineInfo {
 interface StoredBasket {
   shops: Record<string, BasketShopInfo>
   lines: Record<string, Record<string, BasketLineInfo>>
+  // Buyer bookkeeping, NOT basket content: shops whose list the buyer says
+  // is handled (sent on WhatsApp, called, or walked in). It resets the moment
+  // that shop's lines change - the seller has not seen the new version, so
+  // the queue must not claim it is done.
+  doneShops?: Record<string, true>
 }
 
 const EMPTY: StoredBasket = { shops: {}, lines: {} }
@@ -55,7 +60,11 @@ function parseStored(): StoredBasket {
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as StoredBasket
     if (!parsed || typeof parsed !== 'object' || !parsed.shops || !parsed.lines) return EMPTY
-    return parsed
+    const out: StoredBasket = { shops: parsed.shops, lines: parsed.lines }
+    if (parsed.doneShops && typeof parsed.doneShops === 'object' && !Array.isArray(parsed.doneShops)) {
+      out.doneShops = parsed.doneShops
+    }
+    return out
   } catch {
     return EMPTY
   }
@@ -127,6 +136,21 @@ export interface BasketAddListing {
   user?: { id: string; name: string; profile: { businessName: string; photoUrl?: string | null } | null } | null
 }
 
+// Drop the done mark for shops whose list just changed - a sent list that
+// was edited is no longer sent, as far as anyone honest can know.
+function withoutDone(next: StoredBasket, shopIds: string[]): StoredBasket {
+  if (!next.doneShops) return next
+  const doneShops = { ...next.doneShops }
+  let touched = false
+  for (const shopId of shopIds) {
+    if (doneShops[shopId]) {
+      delete doneShops[shopId]
+      touched = true
+    }
+  }
+  return touched ? { ...next, doneShops } : next
+}
+
 /** Add one unit. REQUESTs are not buyable - the caller hides the button, the
  *  store refuses them anyway. Returns false when nothing was added. */
 export function addToBasket(listing: BasketAddListing): boolean {
@@ -156,7 +180,7 @@ export function addToBasket(listing: BasketAddListing): boolean {
       },
     },
   }
-  commit(next)
+  commit(withoutDone(next, [shopId]))
   return true
 }
 
@@ -174,10 +198,10 @@ export function setLineQty(shopId: string, listingId: string, qty: number): void
     delete lines[shopId]
     const shops = { ...state.shops }
     delete shops[shopId]
-    commit({ shops, lines })
+    commit(withoutDone({ shops, lines }, [shopId]))
     return
   }
-  commit({ ...state, lines: { ...lines, [shopId]: shopLines } })
+  commit(withoutDone({ ...state, lines: { ...lines, [shopId]: shopLines } }, [shopId]))
 }
 
 export function removeShop(shopId: string): void {
@@ -185,7 +209,24 @@ export function removeShop(shopId: string): void {
   const lines = { ...state.lines }
   delete shops[shopId]
   delete lines[shopId]
-  commit({ shops, lines })
+  commit(withoutDone({ shops, lines }, [shopId]))
+}
+
+// The buyer's own bookkeeping: "this seller has my list". One tap on, one
+// tap off - the app never marks a list done by itself, because only the
+// buyer knows whether the WhatsApp message actually went.
+export function isShopDone(basket: StoredBasket, shopId: string): boolean {
+  return basket.doneShops?.[shopId] === true
+}
+
+export function markShopDone(shopId: string, done: boolean): void {
+  const doneShops = { ...(state.doneShops ?? {}) }
+  if (done) {
+    doneShops[shopId] = true
+  } else {
+    delete doneShops[shopId]
+  }
+  commit({ ...state, doneShops })
 }
 
 // ---- The order message: the actual "checkout". -----------------------------

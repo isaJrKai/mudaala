@@ -383,6 +383,17 @@ export const copy = {
     openBasket: 'Open basket',
     railAria: 'Your basket',
     hideRail: 'Hide the basket',
+    statSellers: 'Sellers',
+    statItems: 'Items',
+    statTotal: 'Estimated total',
+    totalMixed: 'Each list shows its own total',
+    waitingOne: '1 seller is waiting for their list.',
+    waitingMany: (n: number) => `${n} sellers are waiting for their list.`,
+    waitingNone: 'Every seller has their list.',
+    markDone: 'Mark as done',
+    markDoneAria: (shop: string) => `Mark the ${shop} list as done`,
+    doneChip: 'Done',
+    doneUndoAria: (shop: string) => `The ${shop} list is marked as done. Tap to undo`,
   },
 
   // The sidebar shop-code card: a buyer types the code from a shop's poster

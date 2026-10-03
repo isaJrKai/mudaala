@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Minus, Phone, Plus, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, CheckCircle2, Minus, Phone, Plus, Store, Trash2, TriangleAlert } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
@@ -22,7 +22,10 @@ import { formatPrice, telLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import {
   addToBasket,
+  basketCount,
   basketSubtotal,
+  isShopDone,
+  markShopDone,
   orderWhatsAppHref,
   removeShop,
   setLineQty,
@@ -120,12 +123,52 @@ export function BasketView() {
     )
   }
 
+  // The queue at a glance: how many sellers, how many things, and (when the
+  // whole basket speaks one currency) one combined estimate. The waiting
+  // line is the gentle pull: sellers who have not been handled yet.
+  const allLines = shopIds.flatMap((shopId) => Object.values(basket.lines[shopId]))
+  const combined = basketSubtotal(allLines)
+  const doneCount = shopIds.filter((shopId) => isShopDone(basket, shopId)).length
+  const waiting = shopIds.length - doneCount
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">{copy.basket.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
           {shopIds.length > 1 ? copy.basket.viewSubMany : copy.basket.viewSubOne}
+        </p>
+      </div>
+
+      <div className="rounded-lg border bg-secondary/40 px-4 py-3">
+        <div className="flex flex-wrap gap-x-10 gap-y-3">
+          <div>
+            <p className="text-sm font-semibold tabular-nums">{shopIds.length}</p>
+            <p className="text-xs text-muted-foreground">{copy.basket.statSellers}</p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold tabular-nums">{basketCount(basket)}</p>
+            <p className="text-xs text-muted-foreground">{copy.basket.statItems}</p>
+          </div>
+          {combined ? (
+            <div>
+              <p className="text-sm font-semibold tabular-nums">{formatPrice(combined.amount, null, combined.currency)}</p>
+              <p className="text-xs text-muted-foreground">{copy.basket.statTotal}</p>
+            </div>
+          ) : (
+            <div className="max-w-48">
+              <p className="text-xs font-medium leading-snug">{copy.basket.totalMixed}</p>
+            </div>
+          )}
+        </div>
+        <p
+          className={cn(
+            'mt-2.5 flex items-center gap-1.5 text-xs',
+            waiting === 0 ? 'font-medium text-emerald-700' : 'text-muted-foreground',
+          )}
+        >
+          {waiting === 0 ? <CheckCircle2 className="size-3.5 shrink-0" aria-hidden /> : null}
+          {waiting === 0 ? copy.basket.waitingNone : waiting === 1 ? copy.basket.waitingOne : copy.basket.waitingMany(waiting)}
         </p>
       </div>
 
@@ -183,6 +226,8 @@ function BasketShopSection({
   lines: Record<string, BasketLineInfo>
 }) {
   const { navigate } = useAppStore()
+  const basket = useBasket()
+  const done = isShopDone(basket, shopId)
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
@@ -245,6 +290,11 @@ function BasketShopSection({
             {copy.basket.itemsOnList(entries.length)}
           </span>
         </span>
+        {done ? (
+          <span className="flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+            <Check className="size-3" aria-hidden /> {copy.basket.doneChip}
+          </span>
+        ) : null}
       </button>
 
       <ul className="divide-y">
@@ -351,15 +401,31 @@ function BasketShopSection({
           </Button>
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="press h-8 gap-1.5 text-muted-foreground hover:text-destructive"
-          onClick={() => removeShop(shopId)}
-        >
-          <Trash2 className="size-3.5" aria-hidden /> {copy.basket.clearList}
-        </Button>
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'press h-8 gap-1.5',
+              done ? 'text-emerald-700 hover:text-emerald-800' : 'text-muted-foreground hover:text-emerald-700',
+            )}
+            onClick={() => markShopDone(shopId, !done)}
+            aria-label={done ? copy.basket.doneUndoAria(shop.name) : copy.basket.markDoneAria(shop.name)}
+          >
+            {done ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
+            {done ? copy.basket.doneChip : copy.basket.markDone}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="press h-8 gap-1.5 text-muted-foreground hover:text-destructive"
+            onClick={() => removeShop(shopId)}
+          >
+            <Trash2 className="size-3.5" aria-hidden /> {copy.basket.clearList}
+          </Button>
+        </div>
       </div>
     </section>
   )
