@@ -2032,6 +2032,30 @@ async function main() {
     // exactly as earlier assertions left it.
     await db.listing.update({ where: { id: ph17Id }, data: { isSeed: false, photos: originalPhotos } })
 
+    // The cloud photo migration is fail-closed: with no configured bucket it
+    // refuses to run at all, so a half-configured deploy can never silently
+    // half-copy the photo set (seed or real) somewhere unrecoverable. The
+    // seed exclusion inside the script is enforced in code (seed folder never
+    // uploaded, seed paths never rewritten) — exercised by review, not by a
+    // live bucket here; what the suite CAN pin is that the gate stays shut.
+    let migrationRefusal = ''
+    try {
+      execSync('npx tsx scripts/migrate-uploads-to-s3.ts', {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          STORAGE_ENDPOINT: '',
+          STORAGE_BUCKET: '',
+          STORAGE_KEY: '',
+          STORAGE_SECRET: '',
+          STORAGE_PUBLIC_URL: '',
+        },
+      })
+    } catch (e) {
+      migrationRefusal = String((e as { stderr?: Buffer }).stderr ?? e)
+    }
+    ok('17.16 the cloud photo migration refuses to run without a configured bucket (fail closed)', migrationRefusal.includes('Refusing to run'))
+
     // Section cleanup: the fixture listing + its user never persist.
     await db.listing.delete({ where: { id: ph17Id } }).catch(() => undefined)
     await db.user.delete({ where: { id: ph17.user?.id ?? '' } }).catch(() => undefined)

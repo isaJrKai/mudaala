@@ -115,6 +115,12 @@ npx tsx scripts/remove-seed-data.ts          # dry-run: see what would go
 npx tsx scripts/remove-seed-data.ts --yes    # delete seed rows + seed photo files
 ```
 
+Run that BEFORE any production data copy or cloud migration — the copy
+should carry only real accounts and real listings, never fixtures. The
+cloud photo migration (`scripts/migrate-uploads-to-s3.ts`) is seed-safe on
+its own: it uploads only real user photos (the seed folder is excluded)
+and never rewrites a seed photo path to a bucket URL.
+
 Wherever a photo is missing, the app shows the neutral placeholder tile
 (flat grey, category name, small camera icon) — no stock, AI-generated or
 illustrated images ship in production. Seed photos never reach sitemaps,

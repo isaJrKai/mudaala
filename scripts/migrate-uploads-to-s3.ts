@@ -4,10 +4,16 @@
  * When a deployment switches from local-disk storage to S3-compatible storage
  * (STORAGE_* env), the photos that already live in public/uploads/ must follow.
  * This script:
- *   1. uploads every file in public/uploads/ to the bucket under photos/<name>,
+ *   1. uploads every REAL USER photo in public/uploads/ to the bucket under
+ *      photos/<name> — PLACEHOLDER RULE: the seed folder is never uploaded,
+ *      and never rewritten to a bucket URL (seed rows and legacy rows still
+ *      referencing /uploads/seed/ are skipped and reported),
  *   2. optionally (--rewrite) rewrites the URLs stored in the database
  *      (listing photos arrays + business profile photos) from /uploads/<name>
  *      to the bucket's public URL, so every existing listing keeps working.
+ *
+ *   Launch sequence: run scripts/remove-seed-data.ts BEFORE any production
+ *   data copy or this migration, so fixtures are already gone.
  *
  *   STORAGE_* env must be set (the bucket the photos move to), e.g.
  *   bun scripts/migrate-uploads-to-s3.ts            # upload only
@@ -51,19 +57,37 @@ async function main() {
 
   if (REWRITE) {
     const base = (env.publicUrl ?? `${env.endpoint}/${env.bucket}`).replace(/\/$/, '')
+    // PLACEHOLDER RULE — a seed photo path must never become a bucket URL:
+    // the upload sweep above never uploaded seed files, so rewriting such a
+    // reference would point at a photo that does not exist in the bucket.
+    // This second guard keeps any seed path untouched even if the row-level
+    // skips below ever miss one.
+    const SEED_PATH = '/uploads/seed/'
     const mapUrl = (url: string) => {
       const m = /^\/uploads\/(.+)$/.exec(url)
-      return m ? `${base}/photos/${m[1]}` : url
+      if (!m) return url
+      if (m[1].startsWith('seed/')) return url
+      return `${base}/photos/${m[1]}`
     }
     let touched = 0
+    let skippedSeed = 0
+    // Every row referencing a local upload — flagged seed rows are skipped
+    // here (not filtered out silently), and so are LEGACY rows that predate
+    // the isSeed flag but still point into /uploads/seed/. Remove-seed-data
+    // deletes those before any production copy; until then they must never
+    // be rewritten to the bucket.
     const listings = await db.listing.findMany({
-      where: { photos: { contains: '/uploads/' }, isSeed: false },
+      where: { photos: { contains: '/uploads/' } },
     })
     for (const l of listings) {
       let photos: string[] = []
       try {
         photos = JSON.parse(l.photos) as string[]
       } catch {
+        continue
+      }
+      if (l.isSeed || photos.some((p) => typeof p === 'string' && p.includes(SEED_PATH))) {
+        skippedSeed++
         continue
       }
       const next = JSON.stringify(photos.map(mapUrl))
@@ -73,14 +97,22 @@ async function main() {
       }
     }
     const profiles = await db.businessProfile.findMany({
-      where: { photoUrl: { contains: '/uploads/' }, isSeed: false },
+      where: { photoUrl: { contains: '/uploads/' } },
     })
     for (const p of profiles) {
       if (!p.photoUrl) continue
-      await db.businessProfile.update({ where: { id: p.id }, data: { photoUrl: mapUrl(p.photoUrl) } })
-      touched++
+      if (p.isSeed || p.photoUrl.includes(SEED_PATH)) {
+        skippedSeed++
+        continue
+      }
+      const next = mapUrl(p.photoUrl)
+      if (next !== p.photoUrl) {
+        await db.businessProfile.update({ where: { id: p.id }, data: { photoUrl: next } })
+        touched++
+      }
     }
     console.log(`${touched} database row(s) rewritten to the bucket's public URL`)
+    console.log(`${skippedSeed} seed row(s) left untouched (PLACEHOLDER RULE — never migrated, never rewritten)`)
   }
 
   await db.$disconnect()
