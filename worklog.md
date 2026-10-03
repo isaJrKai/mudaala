@@ -1346,3 +1346,23 @@ Stage Summary:
 - Commit ab7f155 on main. Suite baseline now 431/0.
 - The name check is now a three-way contract: the seller states the name the code brings, the sheet prints it under the code, the buyer compares SCREEN to SHEET. The shop name is no longer part of the promise.
 - Open / next: publish-form.tsx Selects still share the Radix hydration-reset pattern (guard known); v2 request-to-pay behind a flag still parked pending registered business + merchant agreement.
+
+---
+Task ID: basket-collect-and-pay
+Agent: main (Super Z)
+Task: Isaac's reshape directive: "the basket cart we designed better not have whatsapp or call, it just collects ur stuff as you're shopping, payment happens up on the basket icon where we pay from", plus a mobile-first pass ("this app will mainly serve mobile phone users... the curve on the header watch out"). v2 stays parked.
+
+Work Log:
+- Model change: basket surfaces are now collector + payer, nothing else. All WhatsApp/Call buttons removed from the BasketShopSection footer (full basket view) and the RailShop footer (xl dock panel). copy.basket keys deleted: sendList, sendListAria, nothingToSend, noWhatsappNote, callWithList, callWithListAria. lib/basket.ts: orderWhatsAppHref + private orderMessage deleted (the wa.me builder had no other callers), formatQuantity import dropped with them.
+- Pay is now the basket's single action: full-width primary button (was an outline sibling in a 2-col row next to Call). A list with every line stale renders a disabled "Nothing ready to pay for" instead of the old dead WhatsApp button. The rail panel GAINED the pay sheet (same ['shop', id] fresh-fetch rule as the full view: the sheet opens on the shop's data as it is NOW; on fetch failure it falls back to the P2P path with the basket's phone) - previously pay was full-view-only while the panel still offered WhatsApp/call.
+- Copy reworded to the new mental model: topBarHint "Pay each shop from your list when you are ready", viewSubOne "Pay the seller here when you are ready", viewSubMany "Pay each seller here, shop by shop", new nothingReadyToPay key. Header comments on basket-view, basket-rail and basket.ts rewritten: the basket collects; comms live on the shop and listing pages.
+- Comms untouched where they belong: listing cards, listing detail and the shop page keep Call/WhatsApp (and the shop page keeps its own Pay button, approved in the pay-sheet-v1 round).
+- Mobile header (the curve): layout.tsx viewport gained viewportFit: "cover", and the sticky app-header pads itself with pt-[env(safe-area-inset-top)] so a notch or curved corner in standalone/webview contexts never eats the brand bar (the inset is 0 in normal browsers, so it is invisible there). The bottom nav already carried the bottom inset.
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh (no API surface changed; baseline held).
+- Browser verified (agent-browser): 390px basket = lines + steppers + trash + estimate + ONE green "Pay by mobile money" + done/clear, zero WhatsApp/call elements (tool-results/basket-collect-390.png); sheet from the basket carries estimate USh 40,000, "Expect Ssalongo Ssemakula" and dial string *165*3*600200*40000# as a live tel: href (pay-sheet-basket-390.png); 1536 rail panel shows per-shop pay buttons and no comms (rail-panel-pay-1536.png); Nakato P2P sheet from the panel shows the personal number with the owner's-name coaching (rail-panel-personal.png); the browse ribbon MudaalaCurve renders clean at 390px (browse-curve-390.png); console + dev.log clean.
+
+Stage Summary:
+- Commit 772d10b on main. Suite baseline stays 431/0.
+- The one-line model: the basket collects while you shop; the basket icon is where you pay; WhatsApp and call live where you browse.
+- v2 request-to-pay stays parked per Isaac ("wait up on v2").
+- Open: none.
