@@ -20,12 +20,67 @@ log_step_end() {
 	local step_name="${1:-Unknown step}"
 	local end_time
 	end_time=$(date +%s)
-	local duration=$((end_time - STEP_START_TIME))
+	duration=$((end_time - STEP_START_TIME))
 	echo "=========================================="
 	echo "[$(date '+%Y-%m-%d %H:%M:%S')] Completed: $step_name"
 	echo "[LOG] Step: $step_name | Duration: ${duration}s"
 	echo "=========================================="
 	echo ""
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mudaala preview runtime (Task 5 and later): the schema is PostgreSQL, but the
+# platform rewrites .env at every boot with the SQLite sandbox URL
+# (DATABASE_URL=file:...). dev.sh is therefore the single source of truth for
+# the sandbox runtime: it boots a user-space PostgreSQL (.pgtool, no root
+# needed) and exports the environment the app actually expects. Production
+# never runs this script — production is systemd + a real Postgres
+# (docs/deploy-cloudflare.md).
+# ─────────────────────────────────────────────────────────────────────────────
+export DATABASE_URL="${DATABASE_URL_OVERRIDE:-postgresql://postgres:postgres@localhost:5432/mudaala}"
+export AUTH_BEARER_FALLBACK="1"
+export CRON_SECRET="${CRON_SECRET:-dev-cron-secret}"
+export SETTINGS_ENC_KEY="${SETTINGS_ENC_KEY:-dev-settings-enc-key}"
+export ADMIN_PHONES="${ADMIN_PHONES:-+256712000001}"
+export CSRF_TRUSTED_HOSTS="${CSRF_TRUSTED_HOSTS:-.space-z.ai,.preview-platform.example}"
+# The 4GB sandbox OOM-killed next-server twice during hardening round 2
+# (worklog: hardening-round-2). Cap the heap before it happens again.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+
+PG_TOOL_DIR="$PROJECT_DIR/.pgtool"
+
+pg_port_open() {
+	(exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null && return 0 || return 1
+}
+
+start_postgres() {
+	log_step_start "PostgreSQL (embedded, user-space)"
+	if pg_port_open; then
+		echo "[DEV] PostgreSQL already listening on 5432 — reusing it."
+		log_step_end "PostgreSQL (already up)"
+		return 0
+	fi
+	if [ ! -d "$PG_TOOL_DIR/node_modules" ]; then
+		echo "[DEV] Installing embedded-postgres binaries..."
+		mkdir -p "$PG_TOOL_DIR"
+		(
+			cd "$PG_TOOL_DIR"
+			[ -f package.json ] || npm init -y >/dev/null 2>&1
+			npm i embedded-postgres --no-audit --no-fund >/dev/null 2>&1
+		) || true
+	fi
+	echo "[DEV] Starting PostgreSQL..."
+	nohup node "$PG_TOOL_DIR/start-pg.js" >"$PG_TOOL_DIR/pg.log" 2>&1 </dev/null &
+	for _ in $(seq 1 60); do
+		if pg_port_open; then
+			echo "[DEV] PostgreSQL is up on 5432."
+			log_step_end "PostgreSQL (embedded)"
+			return 0
+		fi
+		sleep 1
+	done
+	echo "[DEV] ERROR: PostgreSQL did not come up — see $PG_TOOL_DIR/pg.log"
+	return 1
 }
 
 start_mini_services() {
@@ -120,15 +175,33 @@ if ! command -v bun >/dev/null 2>&1; then
 	exit 1
 fi
 
+start_postgres
+
 log_step_start "bun install"
 echo "[BUN] Installing dependencies..."
 bun install
 log_step_end "bun install"
 
 log_step_start "bun run db:push"
-echo "[BUN] Setting up database..."
+echo "[BUN] Setting up database (Prisma schema -> PostgreSQL)..."
 bun run db:push
 log_step_end "bun run db:push"
+
+log_step_start "Seed check"
+# Seed only a truly empty database (idempotent across restarts).
+USER_COUNT=$(bun -e "
+import { PrismaClient } from '@prisma/client';
+const db = new PrismaClient();
+process.stdout.write(String(await db.user.count()));
+await db.\$disconnect();
+" 2>/dev/null | tail -c 8 || true)
+if [ "${USER_COUNT:-0}" = "0" ]; then
+	echo "[DEV] Empty database - seeding development fixtures..."
+	bun scripts/seed.ts || echo "[DEV] seed failed (continuing - the app still boots)"
+else
+	echo "[DEV] Database already has users (${USER_COUNT:-?}) - skipping seed"
+fi
+log_step_end "Seed check"
 
 log_step_start "Starting Next.js dev server"
 echo "[BUN] Starting development server..."
