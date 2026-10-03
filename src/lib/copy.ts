@@ -226,6 +226,13 @@ export const copy = {
     directions: 'Get directions',
     directionsHint: '(Google Maps, for pickup)',
     directionsAria: (place: string) => `Get directions to ${place}`,
+    // The number is a tap, not markup: scrapers sweeping ad pages get nothing,
+    // a real buyer taps once and sees what any ad always showed.
+    showNumber: 'Show number',
+    showNumberHint: 'The number stays out of the page until you ask for it.',
+    showNumberLoading: 'Showing…',
+    showNumberError: 'Could not load the number.',
+    retry: 'Try again',
     shareAria: 'Share this ad',
     aboutSeller: 'About the seller',
     aboutSellerRequest: 'Who is buying',

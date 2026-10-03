@@ -237,3 +237,9 @@ export const REPORT_IP_DAY_MAX = Number(process.env.RATE_LIMIT_REPORT_IP_MAX ?? 
 export const RESET_PHONE_MAX = Number(process.env.RATE_LIMIT_RESET_PHONE_MAX ?? 3)
 export const RESET_IP_MAX = Number(process.env.RATE_LIMIT_RESET_IP_MAX ?? 10)
 export const RESET_WINDOW_MS = 60 * 60 * 1000
+
+// Contact reveal: showing a seller's number on the ad page costs 20 per IP
+// per hour (env-tunable). A scraper sweeping every ad for numbers hits the
+// wall long before a real buyer, who needs exactly one reveal, ever notices.
+export const CONTACT_WINDOW_MS = 60 * 60_000
+export const CONTACT_IP_MAX = Number(process.env.RATE_LIMIT_CONTACT_IP_MAX ?? 20)

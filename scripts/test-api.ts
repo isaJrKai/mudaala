@@ -1516,12 +1516,63 @@ async function main() {
     const cleanId: string = stillAllowed.status === 201 ? stillAllowed.json?.listing?.id : ''
     if (cleanId) fixtureListings.push(cleanId)
 
-    // ---- Safety card before Call/Chat, and the report button on the page ----
+    // ---- Safety card first, and the report button on the page ----
     const livePage = await fetch(`${BASE}/l/${cleanId}`)
     const liveHtml = await livePage.text()
-    ok('ad page carries the safety card before contact', liveHtml.indexOf('Before you call') !== -1 && liveHtml.indexOf('Before you call') < liveHtml.indexOf('aria-label="Call '))
+    ok(
+      'ad page carries the safety card before contact',
+      liveHtml.indexOf('Before you call') !== -1 && liveHtml.indexOf('Before you call') < liveHtml.indexOf('Show number'),
+    )
     ok('safety card says never pay in advance', liveHtml.includes('Never pay in advance'))
     ok('ad page carries the report control', liveHtml.includes('aria-label="Report this ad"'))
+
+    // ---- Phone privacy: the number is a tap, not markup ----
+    // The clean ad's contact phone is validListing's. None of its forms may
+    // appear in the server HTML - not pretty, not tel:, not wa.me.
+    const cleanPhone: string = validListing.contactPhone
+    const cleanDigits = cleanPhone.replace(/\D/g, '')
+    const phoneVariants = [cleanPhone, cleanDigits, `tel:${cleanPhone}`, `wa.me/${cleanDigits}`]
+    ok(
+      'ad page HTML carries no phone digits in any form',
+      phoneVariants.every((v) => !liveHtml.includes(v)),
+    )
+    const contactReveal = await call('GET', `/api/listings/${cleanId}/contact`)
+    ok(
+      'contact endpoint reveals the number on tap (200, phone + whatsapp)',
+      contactReveal.status === 200 && contactReveal.json?.phone === cleanPhone && typeof contactReveal.json?.whatsapp === 'string' && contactReveal.json.whatsapp.startsWith('+256'),
+    )
+    const contactCap = Number(process.env.RATE_LIMIT_CONTACT_IP_MAX ?? 20)
+    const contactIp = `203.0.115.${(RUN_SALT % 200) + 23}`
+    let lastReveal = { status: 0 }
+    for (let i = 0; i < contactCap + 1; i++) {
+      lastReveal = await call('GET', `/api/listings/${cleanId}/contact`, undefined, undefined, { 'cf-connecting-ip': contactIp })
+    }
+    ok(`the ${contactCap + 1}th reveal from one IP inside the hour → 429`, lastReveal.status === 429)
+
+    // The shop page pins the same promise: identity and stock, never a phone.
+    const privacyShop: Jar = { cookie: '' }
+    await register(privacyShop, uniquePhone(), 'Privacy Shopkeeper', 'quiet-harbor-31')
+    await call('PUT', '/api/profile', {
+      businessName: `Privacy Shop ${Date.now().toString(36)}`,
+      photoUrl: null,
+      category: 'other',
+      description: null,
+      county: 'Kampala',
+      area: null,
+      phone: '+256700000777',
+      whatsapp: null,
+      hours: null,
+    }, privacyShop)
+    const privacyShopCode = (await db.businessProfile.findFirst({ where: { userId: privacyShop.user?.id ?? '' } }))?.shopCode ?? ''
+    if (privacyShopCode) {
+      const shopPageHtml = await (await fetch(`${BASE}/s/${privacyShopCode}`)).text()
+      ok(
+        'shop page HTML carries no phone numbers at all',
+        !shopPageHtml.includes('256700000777') && !shopPageHtml.includes(cleanDigits) && !shopPageHtml.includes('wa.me/2'),
+      )
+    } else {
+      ok('shop page HTML carries no phone numbers at all', false, 'privacy shop profile had no code')
+    }
 
     // ---- Hermetic cleanup: this section's fixtures never outlive the run ----
     const sectionReporterIds = [repA.user?.id, repB.user?.id, repC.user?.id, volume.user?.id].filter(Boolean) as string[]

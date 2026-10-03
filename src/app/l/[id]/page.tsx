@@ -16,8 +16,8 @@
 import type { Metadata } from 'next'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { cache } from 'react'
-import { MapPin, Navigation, Package, Phone, Store } from 'lucide-react'
-import { WhatsAppIcon } from '@/components/commerce/brand-icons'
+import { MapPin, Navigation, Package, Store } from 'lucide-react'
+import { ShowNumber } from '@/components/commerce/show-number'
 import { StatusBadge, TypeBadge } from '@/components/commerce/badges'
 import { ShareAdRow } from '@/components/commerce/share-row'
 import { SafetyCard } from '@/components/commerce/safety-card'
@@ -38,14 +38,11 @@ import { siteUrl } from '@/lib/site'
 import { copy } from '@/lib/copy'
 import { SiteFooter } from '@/components/commerce/site-footer'
 import {
-  formatPhonePretty,
   formatPrice,
   formatQuantity,
   formatDateTime,
   timeAgo,
   expiryLabel,
-  telLink,
-  whatsappLink,
   mapsSearchUrl,
 } from '@/lib/format'
 import { categoryLabel, countryDef, unitLabel, type ListingStatus, type ListingType } from '@/lib/constants'
@@ -165,7 +162,6 @@ export default async function AdPage({ params }: Params) {
   const photos = photosOf(listing.photos).filter((p) => !p.includes('/uploads/seed/'))
   const quantity = formatQuantity(listing.quantity, listing.unit)
   const priceLabel = priceLabelOf(listing)
-  const whatsapp = listing.contactWhatsapp ?? (listing.type === 'OFFER' ? listing.contactPhone : listing.contactWhatsapp)
   const shopDisplayName = owner.profile?.businessName?.trim() || owner.name
   const shopPhoto = owner.profile?.photoUrl ?? null
   const activeSince = owner.profile?.createdAt ?? owner.createdAt
@@ -375,32 +371,15 @@ export default async function AdPage({ params }: Params) {
           </Button>
         </section>
 
-        {/* Contact - owner-provided details only, same as everywhere in the
-            app. The safety card comes FIRST: read before contact happens. */}
+        {/* Contact - the safety card comes FIRST: read before contact happens.
+            The number itself is NOT in this HTML: a crawler sweeping ad pages
+            collects nothing, a buyer taps "Show number" once and calls. */}
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label={copy.listing.contact(shopDisplayName)}>
           <h2 className="text-sm font-semibold">{copy.listing.contact(shopDisplayName)}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
           <div className="mt-3">
             <SafetyCard />
           </div>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Button asChild className="press h-11 flex-1 text-[15px]">
-              <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
-                <Phone className="size-4" aria-hidden /> {copy.common.call}
-              </a>
-            </Button>
-            {whatsapp ? (
-              <Button
-                asChild
-                variant="outline"
-                className="press h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
-              >
-                <a href={whatsappLink(whatsapp, listing.title, listing.type as ListingType)} target="_blank" rel="noopener noreferrer">
-                  <WhatsAppIcon className="size-4" aria-hidden /> WhatsApp
-                </a>
-              </Button>
-            ) : null}
-          </div>
+          <ShowNumber listingId={listing.id} listingTitle={listing.title} listingType={listing.type as ListingType} />
           <Button asChild variant="outline" className="press mt-2 h-11 w-full gap-1.5 text-[15px]">
             <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={copy.listing.directionsAria(placeOf(listing))}>
               <Navigation className="size-4" aria-hidden /> {copy.listing.directions}
