@@ -1384,3 +1384,21 @@ Stage Summary:
 - Commit 7c4d7d2 on main. Suite baseline stays 431/0.
 - The model is now literal: the cart collects stuff from different sellers while you shop; the basket icon up top is the one payment door; shop pages and the dock never touch money.
 - Open: none. v2 request-to-pay stays parked.
+
+---
+Task ID: cart-vs-basket
+Agent: main (Super Z)
+Task: Isaac drew the line properly: "let me distinguish the button we just built i will call it cart, the upper basket where we from is the basket. changes had to happen in the cart only, the upper basket would remain untouched. cos that where final decisions happen, this cart is just for collecting stuff, actually give it a cart icon to distinguish it". Two surfaces, two names: the CART is the collecting tray (dock), the BASKET is the upper surface where final decisions happen. The round-1 comms removal had over-applied to the basket; Isaac's earlier complaint ("again you have removed whatsapp and call from the upper basket") was about exactly that.
+
+Work Log:
+- Vocabulary split in copy.ts: new copy.cart section (title "Cart", iconAria "Cart, N items", railAria, hideRail, emptyTitle/emptySub, openBasket "Open basket to pay"); copy.basket keeps the basket strings and REGAINED the round-1 deleted keys (sendList, sendListAria, nothingToSend, noWhatsappNote, callWithList, callWithListAria) recovered from git. viewSubOne/Many reworded to pay-or-send. topBarHint now teaches the split: "Your cart collects as you shop. Pay from the basket up in the top bar when you are ready." Add-act keys renamed: card.addCartAria, listing.addToCart/addedToCart ("Add to cart").
+- lib/basket.ts: orderMessage + orderWhatsAppHref restored (formatQuantity import back) - the wa.me list builder only ever receives FRESH lines. Header comment: the list ends as one payment or one WhatsApp message per seller.
+- basket-view.tsx (the BASKET, final decisions): per-shop footer now Pay (primary, full width) + "Send list on WhatsApp" (emerald outline) + "Call with list" (outline), stacked on mobile, 2-col on sm+. nothingToSend disabled state and noWhatsappNote restored. File-top comment rewritten: the basket is where the list turns into a decision. Toast on add: "Added to cart".
+- basket-rail.tsx renamed to cart-dock.tsx (git mv, page.tsx import updated); BasketDock renamed CartDock. The CART keeps its own ShoppingCart icon on strip, panel header and empty state (BasketGlyph/basketFillLevel stay ONLY on the header's basket icon), copy from copy.cart, still a pure collector: no comms, no pay, door link to the basket.
+- Gates: tsc clean, eslint clean, suite 431/0 (no API change, baseline held).
+- Browser verified (agent-browser): strip "Cart, 0 items" with lucide-shopping-cart vs header "Basket, 0 items" with the basket glyph; cart panel collects from TWO sellers at once (Kisenyi + Nakato) titled "Cart" with the door link (tool-results/cart-collects-1536.png); basket per seller shows Pay + WhatsApp + Call with live hrefs - wa.me message carries "Hi Kisenyi Scrap Dealers!... COPPER SCRAP 99.5% clean: 1 kg @ USh 20,000 / Is everything available?" and tel:+256776123456 (basket-final-decisions-1536.png); 390px: no horizontal overflow, WhatsApp button 324px full width (basket-final-decisions-390.png); toast reads "Added to cart / Your cart collects as you shop. Pay from the basket up in the top bar when you are ready." Console + errors clean.
+
+Stage Summary:
+- Commit 479759f on main. Suite baseline stays 431/0.
+- The model Isaac named: CART = collects while you shop (own icon, own dock). BASKET = upper surface, final decisions: pay each seller, send the list, call. The header basket icon is untouched.
+- Open (flagged to Isaac, not built): the cart dock is desktop-only today (xl); mobile has the basket icon only. A mobile cart surface is a decision for him. v2 request-to-pay stays parked.
