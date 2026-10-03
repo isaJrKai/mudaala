@@ -80,7 +80,10 @@ export function useAddedFlash(): [boolean, (ok: boolean) => void] {
 // Live status per line - the public detail endpoint, one call per line.
 // A basket holds at most 20 lines per shop, so this stays light. 'GONE'
 // covers 404 (deleted); anything not ACTIVE is flagged as unavailable.
-function useLineStatuses(shopId: string, ids: string[]) {
+// Exported because the desktop basket rail runs the SAME query (same key,
+// so React Query serves both surfaces from one fetch) and the honesty rule
+// travels with it: nothing ships to WhatsApp without this check.
+export function useLineStatuses(shopId: string, ids: string[]) {
   return useQuery({
     queryKey: ['basket-check', shopId, ids.join(',')],
     enabled: ids.length > 0,
@@ -122,7 +125,7 @@ export function BasketView() {
       <div>
         <h1 className="text-xl font-semibold tracking-tight">{copy.basket.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Your list lives on this phone. {shopIds.length > 1 ? 'One message per shop. Sellers only see their own list.' : 'Send it and the seller confirms what is available.'}
+          {shopIds.length > 1 ? copy.basket.viewSubMany : copy.basket.viewSubOne}
         </p>
       </div>
 
@@ -218,14 +221,14 @@ function BasketShopSection({
   }, [subtotalAmount])
 
   return (
-    <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Basket for ${shop.name}`}>
+    <section className="overflow-hidden rounded-lg border bg-card" aria-label={copy.basket.shopListAria(shop.name)}>
       {/* Shop header - taps through, because buyers often want the full
           catalogue next to their list. */}
       <button
         type="button"
         onClick={() => navigate({ name: 'shop', id: shopId })}
         className="press flex w-full items-center gap-2.5 border-b px-4 py-3 text-left hover:bg-secondary/50"
-        aria-label={`Open shop: ${shop.name}`}
+        aria-label={copy.basket.openShopAria(shop.name)}
       >
         {shop.photoUrl ? (
           <img src={shop.photoUrl} alt="" className="size-9 shrink-0 rounded-full border object-cover" />
@@ -239,7 +242,7 @@ function BasketShopSection({
             <Store className="size-3.5 shrink-0 text-muted-foreground" aria-hidden /> {shop.name}
           </span>
           <span className="block truncate text-xs text-muted-foreground tabular-nums">
-            {entries.length} {entries.length === 1 ? 'item' : 'items'} on your list
+            {copy.basket.itemsOnList(entries.length)}
           </span>
         </span>
       </button>
@@ -255,18 +258,18 @@ function BasketShopSection({
                   type="button"
                   onClick={() => navigate({ name: 'listing', id: listingId })}
                   className="block max-w-full truncate text-left text-sm font-medium hover:underline"
-                  aria-label={`Open listing: ${line.title}`}
+                  aria-label={copy.basket.openLineAria(line.title)}
                 >
                   {line.title}
                 </button>
                 <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                  {line.price !== null ? formatPrice(line.price, null, line.currency) : 'Price on asking'}
+                  {line.price !== null ? formatPrice(line.price, null, line.currency) : copy.basket.priceOnAsking}
                   {line.unit ? ` · per ${line.unit}` : ''}
                 </p>
                 {gone ? (
                   <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800">
                     <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
-                    {status === 'GONE' ? 'Removed from Mudaala. Take it off your list.' : 'No longer available. The seller may have sold out.'}
+                    {status === 'GONE' ? copy.basket.goneRemoved : copy.basket.goneUnavailable}
                   </p>
                 ) : null}
               </div>
@@ -278,7 +281,7 @@ function BasketShopSection({
                   className="press size-7"
                   disabled={line.qty <= 1}
                   onClick={() => setLineQty(shopId, listingId, line.qty - 1)}
-                  aria-label={`One less ${line.title}`}
+                  aria-label={copy.basket.oneLessAria(line.title)}
                 >
                   <Minus className="size-3.5" aria-hidden />
                 </Button>
@@ -289,7 +292,7 @@ function BasketShopSection({
                   size="icon"
                   className="press size-7"
                   onClick={() => setLineQty(shopId, listingId, line.qty + 1)}
-                  aria-label={`One more ${line.title}`}
+                  aria-label={copy.basket.oneMoreAria(line.title)}
                 >
                   <Plus className="size-3.5" aria-hidden />
                 </Button>
@@ -306,15 +309,15 @@ function BasketShopSection({
           <p className="flex items-start gap-1.5 text-xs text-amber-800">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             {sendable.length === 0
-              ? 'Nothing on this list is available right now. Remove the items or check the shop later.'
-              : `${stale.length} of ${entries.length} items will NOT be included. They are no longer available.`}
+              ? copy.basket.staleNoneNote
+              : copy.basket.staleSomeNote(stale.length, entries.length)}
           </p>
         ) : null}
 
         {subtotal ? (
           <p className="text-sm tabular-nums">
             <span ref={subtotalRef} className="inline-block font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
-            <span className="text-xs text-muted-foreground">estimate. The seller confirms the final total.</span>
+            <span className="text-xs text-muted-foreground">{copy.basket.estimateNote}</span>
           </p>
         ) : null}
 
@@ -325,25 +328,25 @@ function BasketShopSection({
                 href={orderWhatsAppHref(shop, sendableLines)}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Send your list of ${sendable.length} items to ${shop.name} on WhatsApp`}
+                aria-label={copy.basket.sendListAria(sendable.length, shop.name)}
               >
-                <WhatsAppIcon className="size-4" aria-hidden /> Send list on WhatsApp
+                <WhatsAppIcon className="size-4" aria-hidden /> {copy.basket.sendList}
               </a>
             </Button>
           ) : null}
           {sendable.length === 0 ? (
             <Button className="h-10 flex-1" disabled>
-              <WhatsAppIcon className="size-4" aria-hidden /> Nothing to send
+              <WhatsAppIcon className="size-4" aria-hidden /> {copy.basket.nothingToSend}
             </Button>
           ) : null}
           {!shop.whatsapp && sendable.length > 0 ? (
             <p className="flex-1 self-center text-xs text-muted-foreground">
-              This shop has no WhatsApp on the listing. Call with your list instead.
+              {copy.basket.noWhatsappNote}
             </p>
           ) : null}
           <Button asChild variant="outline" className="press h-10 flex-1" disabled={sendable.length === 0}>
-            <a href={telLink(shop.phone)} aria-label={`Call ${shop.name} about your list`}>
-              <Phone className="size-4" aria-hidden /> Call with list
+            <a href={telLink(shop.phone)} aria-label={copy.basket.callWithListAria(shop.name)}>
+              <Phone className="size-4" aria-hidden /> {copy.basket.callWithList}
             </a>
           </Button>
         </div>
@@ -355,7 +358,7 @@ function BasketShopSection({
           className="press h-8 gap-1.5 text-muted-foreground hover:text-destructive"
           onClick={() => removeShop(shopId)}
         >
-          <Trash2 className="size-3.5" aria-hidden /> Clear this list
+          <Trash2 className="size-3.5" aria-hidden /> {copy.basket.clearList}
         </Button>
       </div>
     </section>

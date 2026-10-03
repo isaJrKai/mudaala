@@ -358,6 +358,41 @@ export const copy = {
     iconAria: (n: number) => `Basket, ${n} ${n === 1 ? 'item' : 'items'}`,
     topBarHint: 'Basket is in the top bar. Send the whole list to the shop when you are ready.',
     listCapHint: 'A shop list holds at most 20 items. Open the basket and remove something first.',
+    viewSubOne: 'Your list lives on this phone. Send it and the seller confirms what is available.',
+    viewSubMany: 'Your list lives on this phone. One message per shop. Sellers only see their own list.',
+    itemsOnList: (n: number) => `${n} ${n === 1 ? 'item' : 'items'} on your list`,
+    shopListAria: (name: string) => `Basket for ${name}`,
+    openShopAria: (name: string) => `Open shop: ${name}`,
+    openLineAria: (title: string) => `Open listing: ${title}`,
+    oneLessAria: (title: string) => `One less ${title}`,
+    oneMoreAria: (title: string) => `One more ${title}`,
+    priceOnAsking: 'Price on asking',
+    goneRemoved: 'Removed from Mudaala. Take it off your list.',
+    goneUnavailable: 'No longer available. The seller may have sold out.',
+    staleNoneNote: 'Nothing on this list is available right now. Remove the items or check the shop later.',
+    staleSomeNote: (n: number, total: number) =>
+      `${n} of ${total} items will NOT be included. They are no longer available.`,
+    estimateNote: 'estimate. The seller confirms the final total.',
+    sendList: 'Send list on WhatsApp',
+    sendListAria: (n: number, shop: string) => `Send your list of ${n} items to ${shop} on WhatsApp`,
+    nothingToSend: 'Nothing to send',
+    noWhatsappNote: 'This shop has no WhatsApp on the listing. Call with your list instead.',
+    callWithList: 'Call with list',
+    callWithListAria: (shop: string) => `Call ${shop} about your list`,
+    clearList: 'Clear this list',
+    openBasket: 'Open basket',
+    railAria: 'Your basket',
+  },
+
+  // The sidebar shop-code card: a buyer types the code from a shop's poster
+  // (or their WhatsApp status) and lands straight in that shop.
+  codeCard: {
+    title: 'Have a shop code?',
+    hint: 'Type it like a till number and land in the shop.',
+    placeholder: 'MD-2623',
+    go: 'Find the shop',
+    inputAria: 'Shop code',
+    badFormat: 'A shop code looks like MD-2623. You will find it on the shop poster or in their WhatsApp status.',
   },
 
   mySales: {

@@ -3,10 +3,12 @@
 
 import Link from 'next/link'
 import { ShieldX } from 'lucide-react'
+import { SiteFooter } from '@/components/commerce/site-footer'
 
 export default function Forbidden() {
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center px-4 text-center">
+    <>
+      <main className="flex min-h-svh flex-col items-center justify-center px-4 text-center">
       <ShieldX className="size-10 text-muted-foreground" aria-hidden />
       <h1 className="mt-4 text-lg font-semibold">This area is for the Mudaala team</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
@@ -26,6 +28,9 @@ export default function Forbidden() {
           Browse the market
         </Link>
       </div>
-    </main>
+      </main>
+
+      <SiteFooter />
+    </>
   )
 }

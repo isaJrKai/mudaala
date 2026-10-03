@@ -16,6 +16,8 @@ import { db } from '@/lib/db'
 import { expireOverdueListings } from '@/lib/listings'
 import { normalizeShopCode } from '@/lib/format'
 import { siteUrl } from '@/lib/site'
+import { copy } from '@/lib/copy'
+import { SiteFooter } from '@/components/commerce/site-footer'
 import { photosOf, absolutePhoto, placeOf, priceLabelOf } from '@/lib/ad-page'
 import { categoryLabel } from '@/lib/constants'
 
@@ -222,12 +224,14 @@ export default async function ShopPage({ params }: Params) {
 
       <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
         <p>
-          Mudaala: buy and sell near you.{' '}
+          {copy.app.name}: {copy.app.footerLine}.{' '}
           <a href="/#/browse" className="font-medium text-primary underline-offset-2 hover:underline">
             Browse the market
           </a>
         </p>
       </footer>
+
+      <SiteFooter />
     </div>
   )
 }

@@ -1,37 +1,30 @@
 'use client'
 
-import { Store } from 'lucide-react'
 import { Providers, CurrentView, HashSync } from '@/components/commerce/providers'
 import { AppHeader } from '@/components/commerce/app-header'
 import { AppSidebar } from '@/components/commerce/app-sidebar'
 import { BottomNav } from '@/components/commerce/bottom-nav'
 import { AuthDialog } from '@/components/commerce/auth-dialog'
 import { ShopSetupDialog } from '@/components/commerce/shop-setup-dialog'
-import { copy } from '@/lib/copy'
+import { SiteFooter } from '@/components/commerce/site-footer'
+import { RailShell } from '@/components/commerce/basket-rail'
 
 export default function Home() {
   return (
     <Providers>
       <HashSync />
       {/* Desktop (lg+) gets the workspace rail; the content column shifts
-          right of it. Mobile is untouched: full-width column + bottom nav. */}
+          right of it. On xl+ the buying views also get the basket rail on
+          the right (RailShell reserves its width); seller views stay
+          full-width. Mobile is untouched: full-width column + bottom nav. */}
       <AppSidebar />
-      <div className="flex min-h-dvh flex-col lg:ml-60">
+      <RailShell>
         <AppHeader />
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-4 lg:pb-10">
           <CurrentView />
         </main>
-
-        <footer className="mt-auto border-t bg-card pb-16 lg:pb-0">
-          <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:text-left">
-            <p className="flex items-center gap-1.5">
-              <Store className="size-3.5" aria-hidden />
-              {copy.app.name}: {copy.app.footerLine}
-            </p>
-            <p>{copy.app.footerNote}</p>
-          </div>
-        </footer>
-      </div>
+        <SiteFooter padded />
+      </RailShell>
 
       <BottomNav />
       <AuthDialog />

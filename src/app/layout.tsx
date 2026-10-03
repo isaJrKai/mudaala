@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { SiteFooter } from "@/components/commerce/site-footer";
 import { siteUrl } from "@/lib/site";
 import { copy } from "@/lib/copy";
 
@@ -42,7 +41,6 @@ export default function RootLayout({
       <body className={`${fraunces.variable} antialiased bg-background text-foreground`}>
         {children}
         <Toaster />
-        <SiteFooter />
       </body>
     </html>
   );

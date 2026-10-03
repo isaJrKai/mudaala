@@ -18,13 +18,17 @@ import {
   Store,
   Settings,
   Leaf,
+  ScanLine,
 } from 'lucide-react'
+import { useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { useAppStore, type ViewName } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { useBellShake } from '@/hooks/use-bell-shake'
 import { apiGet } from '@/lib/client'
-import { useQuery } from '@tanstack/react-query'
+import type { ShopLookupResponse } from '@/lib/client'
+import { normalizeShopCode } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
@@ -136,6 +140,8 @@ export function AppSidebar() {
           {copy.nav.postAd}
         </Button>
 
+        <ShopCodeCard />
+
         {SUPPORT_WHATSAPP ? (
           // Plain wa.me link - leaves the app, opens WhatsApp. No in-app
           // messaging is offered, by design.
@@ -154,5 +160,80 @@ export function AppSidebar() {
         ) : null}
       </div>
     </aside>
+  )
+}
+
+// The shop-code punch: a buyer types the code printed on a shop's poster
+// (or shown in the shop's account view) and lands straight in that shop,
+// like dialling a till number. Same lookup the Browse search uses; a code
+// either exists or it doesn't, so the first honest answer is final.
+function ShopCodeCard() {
+  const { navigate } = useAppStore()
+  const [raw, setRaw] = useState('')
+  const [formatError, setFormatError] = useState(false)
+
+  const lookup = useMutation({
+    mutationFn: (code: string) =>
+      apiGet<ShopLookupResponse>(`/api/shops/lookup?code=${encodeURIComponent(code)}`),
+    // Event-driven success, not an effect: a hit navigates and clears the
+    // card for the next customer (the sidebar itself never unmounts).
+    onSuccess: (data) => {
+      if (data.shop) {
+        navigate({ name: 'shop', id: data.shop.id })
+        setRaw('')
+        setFormatError(false)
+      }
+    },
+  })
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const normalized = normalizeShopCode(raw)
+    if (!normalized) {
+      setFormatError(true)
+      return
+    }
+    setFormatError(false)
+    lookup.mutate(normalized)
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="rounded-md border bg-background px-3 py-2.5"
+      aria-label={copy.codeCard.title}
+    >
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <ScanLine className="size-4 shrink-0 text-primary" aria-hidden />
+        {copy.codeCard.title}
+      </p>
+      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{copy.codeCard.hint}</p>
+      <div className="mt-2 flex gap-1.5">
+        <input
+          value={raw}
+          onChange={(e) => {
+            setRaw(e.target.value)
+            setFormatError(false)
+          }}
+          placeholder={copy.codeCard.placeholder}
+          aria-label={copy.codeCard.inputAria}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          className="h-9 min-w-0 flex-1 rounded-md border bg-card px-2.5 text-sm font-semibold uppercase tracking-widest placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <Button type="submit" size="sm" className="press h-9 shrink-0 text-[13px]" disabled={lookup.isPending}>
+          {lookup.isPending ? copy.common.loading : copy.codeCard.go}
+        </Button>
+      </div>
+      {formatError ? (
+        <p className="mt-1.5 text-xs leading-relaxed text-destructive">{copy.codeCard.badFormat}</p>
+      ) : null}
+      {lookup.isError ? (
+        <p className="mt-1.5 text-xs leading-relaxed text-destructive">
+          {lookup.error instanceof Error ? lookup.error.message : copy.browse.codeError}
+        </p>
+      ) : null}
+    </form>
   )
 }

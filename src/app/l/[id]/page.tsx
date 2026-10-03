@@ -36,6 +36,7 @@ import {
 } from '@/lib/ad-page'
 import { siteUrl } from '@/lib/site'
 import { copy } from '@/lib/copy'
+import { SiteFooter } from '@/components/commerce/site-footer'
 import {
   formatPhonePretty,
   formatPrice,
@@ -424,6 +425,8 @@ export default async function AdPage({ params }: Params) {
           </a>
         </p>
       </footer>
+
+      <SiteFooter />
 
       {jsonLd ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} /> : null}
     </div>
