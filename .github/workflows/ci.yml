@@ -1,11 +1,20 @@
 # Mudaala CI — types, lint, and the API behavior suite on every push.
 #
 # The test suite (scripts/test-api.ts) talks to a RUNNING dev server over
-# HTTP, so the job boots one against a fresh SQLite database, seeds the
-# development fixtures, and runs the suite against it. The env block mirrors
-# .env.example: AUTH_BEARER_FALLBACK=1 stands in for the preview/sandbox
-# environment the Bearer channel exists for; ADMIN_PHONES picks a seeded
-# fixture phone as the deployment admin.
+# HTTP, so the job boots one against a fresh PostgreSQL database — the same
+# engine the app runs on since Task 5 (schema.prisma: provider = "postgresql").
+# A postgres:16 service container IS that database; DATABASE_URL points at it.
+# (This workflow spent months in the SQLite era — every run since the Task-5
+# move died in seconds at the database step with P1012, because Prisma rightly
+# refused a file: URL against a postgresql schema.)
+#
+# The env block mirrors .env.example: AUTH_BEARER_FALLBACK=1 stands in for the
+# preview/sandbox environment the Bearer channel exists for; ADMIN_PHONES
+# picks a seeded fixture phone as the deployment admin.
+#
+# The runner is PINNED to ubuntu-22.04: GitHub's ubuntu-latest label moved to
+# 24.04 in October — a mid-sprint OS bump must never change the floor under
+# the suite. Revisit the pin deliberately, never by surprise.
 name: CI
 
 on:
@@ -15,14 +24,30 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mudaala
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mudaala"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
-      DATABASE_URL: file:./db/custom.db
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mudaala
       AUTH_BEARER_FALLBACK: "1"
       CRON_SECRET: ci-cron-secret
       SETTINGS_ENC_KEY: ci-settings-enc-key
       ADMIN_PHONES: "+256712000001"
       CSRF_TRUSTED_HOSTS: ".preview-platform.example"
+
     steps:
       - uses: actions/checkout@v4
 
