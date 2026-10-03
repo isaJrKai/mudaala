@@ -30,14 +30,38 @@ function hostOf(originHeader: string | null): string | null {
   }
 }
 
+// Deployment hosts the Origin check accepts beyond the Host actually seen on
+// the request. Needed because the sandbox preview's edge rewrites Host to an
+// internal address and sends no x-forwarded-host, so a genuinely
+// same-deployment login arrives looking foreign (the seller's browser really
+// is talking to https://preview-…, the app just never sees that name).
+// Entries are comma-separated; an entry starting with a dot matches the
+// whole suffix (cookie-Domain semantics: ".space-z.ai" trusts that suffix
+// and its subdomains). Leaving this unset changes nothing for deployments
+// whose proxy preserves Host — the foreign-Origin block stays exactly as
+// strict as before.
+function trustedHostEntries(): string[] {
+  return (process.env.CSRF_TRUSTED_HOSTS ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+function originOwnsDeployment(originHost: string, seenHost: string | null): boolean {
+  if (seenHost && originHost === seenHost.toLowerCase()) return true
+  return trustedHostEntries().some((entry) =>
+    entry.startsWith('.') ? originHost.endsWith(entry) || originHost === entry.slice(1) : originHost === entry,
+  )
+}
+
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (pathname.startsWith('/api/') && !SAFE_METHODS.has(request.method)) {
     const originHost = hostOf(request.headers.get('origin'))
     if (originHost) {
-      const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
-      if (!host || originHost !== host) {
+      const seenHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
+      if (!originOwnsDeployment(originHost, seenHost)) {
         return NextResponse.json(
           { error: 'This request was blocked for your protection — it did not come from Mudaala' },
           { status: 403 },

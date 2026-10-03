@@ -22,6 +22,7 @@ jobs:
       CRON_SECRET: ci-cron-secret
       SETTINGS_ENC_KEY: ci-settings-enc-key
       ADMIN_PHONES: "+256712000001"
+      CSRF_TRUSTED_HOSTS: ".preview-platform.example"
     steps:
       - uses: actions/checkout@v4
 
