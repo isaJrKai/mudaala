@@ -74,6 +74,11 @@ class ConsoleProvider implements SmsProvider {
 }
 
 export function chooseSmsProvider(): SmsProvider {
+  // Explicit override first: a staging/self-test/preview deployment runs with
+  // NODE_ENV=production but without real SMS credentials - its reset codes
+  // must land in the inspectable console inbox, not die inside a provider
+  // that was never configured. Dev and production defaults stay untouched.
+  if (process.env.SMS_PROVIDER === 'console') return new ConsoleProvider()
   if (process.env.NODE_ENV === 'production') return new AfricasTalkingProvider()
   return new ConsoleProvider()
 }

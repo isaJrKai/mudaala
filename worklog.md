@@ -1520,3 +1520,24 @@ Work Log:
 Stage Summary:
 - First green CI run since Oct 1 - the robot now checks what the app actually runs on.
 - Still owed from Isaac: the domain answer and the VM answer (Step 0 of docs/deploy-cloudflare.md).
+
+---
+Task ID: csp-dev-only-eval
+Agent: main (Super Z)
+Task: make unsafe-eval dev-only in the CSP script-src, then prove it with tsc, eslint, the full behavior suite and the production build
+
+Work Log:
+- next.config.ts: script-src is 'self' 'unsafe-inline' plus 'unsafe-eval' only when NODE_ENV is not production; 'unsafe-inline' kept for the Next inline bootstrap scripts; nonce-based CSP remains the future hardening step
+- Confirmed next.config.ts is the only CSP definition (no copies under src/)
+- tsc PASS; eslint PASS after ignoring .pgtool in eslint.config.mjs (sandbox embedded-postgres helper, gitignored, never in CI)
+- Suite debugging notes worth remembering:
+  - the platform shell exports a sqlite DATABASE_URL; direct-db scripts must re-export the postgres URL or Prisma refuses the protocol
+  - the dev (Turbopack) server was OOM-killed at 3.3GB RSS mid-suite (dmesg proof; same class as hardening-round-2) and the sandbox reaps background processes between tool calls
+  - moved the suite to a production-mode server: next start with repo-root cwd so uploads land in public/uploads and the sms console inbox lands in dev.log
+  - found a real production gap: forgot-password under NODE_ENV=production with no SMS creds answered 200 but the send failed silently; added SMS_PROVIDER=console override in src/lib/sms.ts, documented in .env.example
+  - the suite style gate caught an em dash in my own next.config.ts comment; fixed
+- RESULT: 461 passed, 0 failed against a production-mode server; cleanup-test-data --yes confirms only seed data remains
+- Production checks: next build PASS; standalone boot healthy earlier (health 200, listings 200, headers correct); next start serving / 200 with the right title, /l/id 200; prod header script-src without unsafe-eval; dev header keeps it for HMR
+
+Stage Summary:
+- unsafe-eval is now dev-only in the CSP; suite green against the prod build; ops knobs added (SMS_PROVIDER override, .pgtool lint ignore); verification tooling persisted under scripts/

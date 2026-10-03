@@ -45,8 +45,10 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
   },
 }, {
   // guide-lib.js / generate-deployment-guide.js are local-only (gitignored)
-  // one-off generators: never committed, never linted.
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/generate-deployment-guide.js", "scripts/guide-lib.js"]
+  // one-off generators: never committed, never linted. .pgtool is the
+  // sandbox's embedded-postgres runtime (installed by .zscripts/dev.sh,
+  // gitignored, never exists in CI) - its helper is CommonJS on purpose.
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", ".pgtool/**", "scripts/generate-deployment-guide.js", "scripts/guide-lib.js"]
 }];
 
 export default eslintConfig;
