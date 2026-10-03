@@ -24,8 +24,11 @@
 //     estimate, and the panel says so.
 //   - The subtotal is labelled an estimate. The seller confirms.
 //
-// Like the full basket view, the panel collects and pays - no WhatsApp, no
-// call buttons. Comms live on the shop and listing pages.
+// Like the full basket view, the panel only COLLECTS - no WhatsApp, no
+// call, and no pay buttons either: while the buyer shops, the basket keeps
+// its hands out of the money. Payment happens at the basket view, reached
+// from the basket icon in the header, so the one payment door stays the
+// one door. Comms live on the shop and listing pages.
 //
 // RailShell also owns the shell column: on the buying views it reserves the
 // strip's width (xl:pr-16) so the resting dock never covers content, and on
@@ -33,11 +36,8 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingBasket, Smartphone, Trash2 } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingBasket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PaySheet } from '@/components/commerce/pay-sheet'
-import { apiGet, type ShopPage } from '@/lib/client'
 import { formatPrice } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
 import {
@@ -256,22 +256,9 @@ function RailShop({
   const basket = useBasket()
   const done = isShopDone(basket, shopId)
   const removeLine = useRemoveLine()
-  const [payOpen, setPayOpen] = useState(false)
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
-
-  // Same fresh-shop rule as the full basket view: the pay sheet opens on
-  // the shop's data as it is NOW, never the basket's snapshot. Same query
-  // key the shop page uses, so one fetch warms every surface. If the fetch
-  // fails, the sheet still opens on the P2P path with the phone the basket
-  // already holds - the number cannot go stale, it is the shop's own line.
-  const payQuery = useQuery({
-    queryKey: ['shop', shopId],
-    queryFn: () => apiGet<ShopPage>(`/api/shops/${shopId}`),
-    enabled: payOpen,
-    staleTime: 60_000,
-  })
 
   const fresh = entries.filter(([id]) => !statuses.data || statuses.data[id] === 'ACTIVE')
   const stale = entries.filter(([id]) => statuses.data && statuses.data[id] !== 'ACTIVE')
@@ -388,36 +375,6 @@ function RailShop({
             <span className="font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
             <span className="text-[11px] text-muted-foreground">{copy.basket.estimateNote}</span>
           </p>
-        ) : null}
-
-        {sendable.length > 0 ? (
-          <Button
-            type="button"
-            size="sm"
-            className="press h-8 w-full text-[13px]"
-            onClick={() => setPayOpen(true)}
-            aria-label={copy.pay.openAria(shop.name)}
-          >
-            <Smartphone className="size-3.5" aria-hidden /> {copy.pay.open}
-          </Button>
-        ) : null}
-        {sendable.length === 0 && !statuses.isLoading ? (
-          <Button size="sm" className="h-8 w-full text-[13px]" disabled>
-            <Smartphone className="size-3.5" aria-hidden /> {copy.basket.nothingReadyToPay}
-          </Button>
-        ) : null}
-
-        {payOpen && !payQuery.isLoading ? (
-          <PaySheet
-            open={payOpen}
-            onOpenChange={setPayOpen}
-            shopName={shop.name}
-            phone={payQuery.data?.shop.phone ?? shop.phone}
-            merchantCode={payQuery.data?.shop.momoMerchantCode ?? null}
-            network={payQuery.data?.shop.momoNetwork ?? null}
-            merchantName={payQuery.data?.shop.momoMerchantName ?? null}
-            estimate={subtotal}
-          />
         ) : null}
 
         <button

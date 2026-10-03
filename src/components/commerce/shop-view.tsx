@@ -10,11 +10,10 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, Check, Clock, Copy, Eye, Leaf, MapPin, Pencil, Phone, Printer, QrCode, Share2, Smartphone, Store, X } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Check, Clock, Copy, Eye, Leaf, MapPin, Pencil, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
-import { PaySheet } from '@/components/commerce/pay-sheet'
 import { apiGet } from '@/lib/client'
 import type { ShopPage as ShopPageT, ListingShopOwner } from '@/lib/client'
 import { telLink, whatsappLink, formatPhonePretty } from '@/lib/format'
@@ -34,7 +33,6 @@ export function ShopView({ id }: { id: string }) {
   const { user, isLoading: sessionLoading } = useSession()
   const addToBasket = useAddToBasket()
   const [posterOpen, setPosterOpen] = useState(false)
-  const [payOpen, setPayOpen] = useState(false)
   // Copy-the-code feedback: the button itself becomes the receipt - it swaps
   // to a check + "Copied" for a beat, the same swap pattern as Add to basket.
   const [copied, setCopied] = useState(false)
@@ -287,32 +285,9 @@ export function ShopView({ id }: { id: string }) {
                 </a>
               </Button>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              className="press h-11 flex-1 text-[15px]"
-              onClick={() => setPayOpen(true)}
-              aria-label={copy.pay.openAria(shop.name)}
-            >
-              <Smartphone className="size-4" aria-hidden /> {copy.pay.open}
-            </Button>
           </div>
         </div>
       </section>
-
-      {/* The pay sheet, shop-page edition: no estimate is passed because the
-          shop page has no basket context - the sheet says to agree the
-          amount first instead of inventing a number. */}
-      <PaySheet
-        open={payOpen}
-        onOpenChange={setPayOpen}
-        shopName={shop.name}
-        phone={shop.phone}
-        merchantCode={shop.momoMerchantCode}
-        network={shop.momoNetwork}
-        merchantName={shop.momoMerchantName}
-        estimate={null}
-      />
 
       {/* The bridge for buyers: the code IS the address. Someone who landed
           here from a shared link can carry the shop away - copy the till-style
