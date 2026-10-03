@@ -263,8 +263,77 @@ export function markShopDone(shopId: string, done: boolean): void {
 // The WhatsApp text for ONE seller's list: what they sell, how many, at the
 // price the buyer saw, ending on the availability question a market seller
 // expects. Only FRESH lines ride in (the caller filters), so the message
-// never asks for something the shop no longer has.
+// never asks for something the shop no longer holds.
+//
+// A list of two or more lines rides as a TABLE: WhatsApp renders triple-
+// backtick blocks in fixed-width type, so columns padded to the widest
+// cell line up on the seller's phone like an order book - item, quantity,
+// estimate. One line still rides as a plain bullet (a table for one thing
+// is ceremony). A shop whose priced lines ever mixed currencies falls back
+// to the bullet list too, so no row ever shows a bare number without its
+// money attached.
 function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
+  if (lines.length < 2) return bulletMessage(shopName, lines)
+  const priced = lines.filter((l) => l.price !== null)
+  const sharedCurrency =
+    priced.length === 0 || priced.every((l) => l.currency === priced[0].currency)
+  return sharedCurrency ? tableMessage(shopName, lines) : bulletMessage(shopName, lines)
+}
+
+// Longest titles get clipped, not wrapped - a row that wraps breaks the
+// column alignment that makes the table worth sending. Twenty characters
+// keep the widest row inside a narrow phone's monospace block.
+function clip(value: string, width: number): string {
+  return value.length > width ? `${value.slice(0, width - 1)}…` : value
+}
+
+// "USh 20,000" -> "20,000": the currency is named once in the line under
+// the table, not repeated in every cell.
+function moneyCell(price: number, currency: string): string {
+  const parts = formatPrice(price, null, currency).split(' ')
+  return parts[parts.length - 1] ?? parts[0]
+}
+
+function tableMessage(shopName: string, lines: BasketLineInfo[]): string {
+  const rows = lines.map((line) => ({
+    item: clip(line.title, 20),
+    qty: formatQuantity(line.qty, line.unit) ?? `${line.qty}`,
+    est: line.price === null ? 'ask' : moneyCell(line.price, line.currency),
+  }))
+  const itemWidth = Math.max(4, ...rows.map((r) => r.item.length))
+  const qtyWidth = Math.max(3, ...rows.map((r) => r.qty.length))
+  const estWidth = Math.max(3, ...rows.map((r) => r.est.length))
+  const rule = '-'.repeat(itemWidth + 1 + qtyWidth + 1 + estWidth)
+
+  const header = `ITEM ${' '.repeat(itemWidth - 4)} ${'QTY'.padStart(qtyWidth)} ${'EST'.padStart(estWidth)}`
+  const bodyRows = rows.map(
+    (r) => `${r.item.padEnd(itemWidth)} ${r.qty.padStart(qtyWidth)} ${r.est.padStart(estWidth)}`,
+  )
+
+  const total = basketSubtotal(lines)
+  const askCount = lines.length - lines.filter((l) => l.price !== null).length
+  // A TOTAL row only when every line is priced - a sum that silently
+  // skips "ask" rows would read as the whole order.
+  const totalRow =
+    total && askCount === 0
+      ? `${'TOTAL'.padEnd(itemWidth + 1 + qtyWidth)} ${moneyCell(total.amount, total.currency).padStart(estWidth)}`
+      : null
+
+  const table = [header, rule, ...bodyRows, ...(totalRow ? [rule, totalRow] : [])].join('\n')
+
+  let prose: string
+  if (total && askCount === 0) {
+    prose = `Estimate: ${formatPrice(total.amount, null, total.currency)} - you confirm the final total.`
+  } else if (total) {
+    prose = `Estimate so far: ${formatPrice(total.amount, null, total.currency)} - items marked ask are priced on asking.`
+  } else {
+    prose = 'Prices on asking.'
+  }
+
+  return `Hi ${shopName}! I'd like to order from your Mudaala shop:\n\n\`\`\`\n${table}\n\`\`\`\n${prose}\nIs everything available?`
+}
+
+function bulletMessage(shopName: string, lines: BasketLineInfo[]): string {
   const rows = lines.map((line) => {
     const qty = formatQuantity(line.qty, line.unit) ?? `${line.qty}`
     const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'

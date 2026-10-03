@@ -41,6 +41,13 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
 // deliverable address.
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? 'support@mudaala.app'
 
+// The photo slot in the Browse hero belongs to the Mudaala team, not to
+// any one shop: drop the file into /public and put its path here (e.g.
+// '/hero-banner.jpg'). Empty string keeps the neutral placeholder tile -
+// no stock photo, no seed image, nothing makes a claim until WE do. If
+// the path is set but the file is missing, the tile stands back in.
+export const HERO_IMAGE_PATH = ''
+
 // ---- Prohibited items (publish-time filter) ----
 //
 // The list lives here and is meant to be edited: every rule is one small
