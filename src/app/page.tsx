@@ -14,9 +14,10 @@ export default function Home() {
     <Providers>
       <HashSync />
       {/* Desktop (lg+) gets the workspace rail; the content column shifts
-          right of it. On xl+ the buying views also get the basket rail on
-          the right (RailShell reserves its width); seller views stay
-          full-width. Mobile is untouched: full-width column + bottom nav. */}
+          right of it. On xl+ the buying views also get the basket dock on
+          the right (RailShell reserves the resting strip's width; the open
+          panel overlays). Seller views stay full-width. Mobile is untouched:
+          full-width column + bottom nav. */}
       <AppSidebar />
       <RailShell>
         <AppHeader />

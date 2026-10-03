@@ -382,6 +382,7 @@ export const copy = {
     clearList: 'Clear this list',
     openBasket: 'Open basket',
     railAria: 'Your basket',
+    hideRail: 'Hide the basket',
   },
 
   // The sidebar shop-code card: a buyer types the code from a shop's poster

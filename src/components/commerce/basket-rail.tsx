@@ -1,30 +1,45 @@
 'use client'
 
-// The desktop basket rail (xl+) - the always-visible summary of what the
-// buyer is collecting. The basket view is the full checkout with per-line
-// availability checks; the rail is the glance: lines, steppers, the
-// estimated total and the one send action, on screen while the buyer
-// scrolls listings. Same basket state, same honesty rules:
+// The desktop basket dock (xl+) - the always-visible summary of what the
+// buyer is collecting, without taking the listing grid hostage.
+//
+// Two states, one truth:
+//
+//   - THE STRIP (resting): a 64px sliver docked to the right edge under the
+//     header, its top border continuing the header's bottom line. The basket
+//     glyph fills as units land, the badge counts lines, the running total
+//     sits stacked. The motivation stays on screen; the shell only reserves
+//     64px, so the listings keep their width.
+//   - THE PANEL (invited): tapping the strip slides a w-80 sheet in from the
+//     edge. It floats (a hand's width off the bottom, rounded corner,
+//     shadow) and overlays the grid instead of squeezing it - the buyer
+//     invited it in, so the listings never reflow. Esc, the close button or
+//     navigating to the full basket view send it back.
+//
+// Same basket state, same honesty rules as the full basket view:
 //
 //   - Lines are re-checked against the public API before anything can be
 //     sent (the SAME query the basket view runs, so one fetch serves both).
 //   - A gone or unavailable line can ride in the list but never in the
-//     message, and the rail says so.
+//     message, and the panel says so.
 //   - The subtotal is labelled an estimate. The seller confirms.
 //
 // RailShell also owns the shell column: on the buying views it reserves the
-// rail's width (xl:pr-80) so the centred content never slides under it, and
-// on the seller workspace views (publish, settings, my listings) the rail is
+// strip's width (xl:pr-16) so the resting dock never covers content, and on
+// the seller workspace views (publish, settings, my listings) the dock is
 // simply not mounted and nothing changes.
 
-import { Phone, ShoppingBasket } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Phone, ShoppingBasket } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { formatPrice, telLink } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
 import {
   basketCount,
+  basketFillLevel,
   basketSubtotal,
+  basketUnits,
   orderWhatsAppHref,
   setLineQty,
   useBasket,
@@ -32,10 +47,11 @@ import {
   type BasketLineInfo,
 } from '@/lib/basket'
 import { useLineStatuses } from '@/components/commerce/basket-view'
+import { BasketGlyph } from './basket-icon'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
 
-// The views where a buyer is shopping and the rail earns its place. The
+// The views where a buyer is shopping and the dock earns its place. The
 // basket view is its own full checkout and does not need a mini basket
 // beside it; seller views need the width.
 const RAIL_VIEWS: ViewName[] = ['home', 'browse', 'listing', 'shop']
@@ -44,64 +60,179 @@ export function RailShell({ children }: { children: React.ReactNode }) {
   const { view } = useAppStore()
   const rail = RAIL_VIEWS.includes(view.name)
   return (
-    <div className={cn('flex min-h-dvh flex-col lg:ml-60', rail && 'xl:pr-80')}>
+    <div className={cn('flex min-h-dvh flex-col lg:ml-60', rail && 'xl:pr-16')}>
       {children}
-      {rail ? <BasketRail /> : null}
+      {rail ? <BasketDock /> : null}
     </div>
   )
 }
 
-function BasketRail() {
+function BasketDock() {
   const { navigate } = useAppStore()
   const basket = useBasket()
   const shopIds = Object.keys(basket.lines)
   const count = basketCount(basket)
+  const units = basketUnits(basket)
+  const [open, setOpen] = useState(false)
+
+  const stripRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
+
+  // Esc sends the panel back behind the strip.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  // Focus follows the invitation: into the panel when it opens, back to the
+  // strip when it closes. Skipped on first mount - a page load must not
+  // steal focus. visibility flips at the START of the transition for the
+  // element becoming visible, so both targets are focusable in time.
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
+    if (open) {
+      panelRef.current?.focus()
+    } else {
+      stripRef.current?.focus()
+    }
+  }, [open])
+
+  // The strip answers an add the same way the top-bar basket does: a WAAPI
+  // one-shot pop, only when the units grow during this visit (a reload with
+  // a saved basket must not look like an add), skipped under reduced motion.
+  const unitsRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (unitsRef.current === null) {
+      unitsRef.current = units
+      return
+    }
+    const prev = unitsRef.current
+    unitsRef.current = units
+    if (units <= prev) return
+    if (
+      typeof window !== 'undefined' &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      stripRef.current?.animate(
+        [
+          { transform: 'scale(1)' },
+          { transform: 'scale(1.07)', offset: 0.4 },
+          { transform: 'scale(1)' },
+        ],
+        { duration: 220, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+      )
+    }
+  }, [units])
+
+  // Glance total across every line in the basket. Mixed currencies (rare)
+  // or nothing priced simply hide the block; the per-shop estimate, the
+  // staleness check and the send decision live in the panel below.
+  const allLines = Object.values(basket.lines).flatMap((shopLines) => Object.values(shopLines))
+  const total = basketSubtotal(allLines)
+  const totalParts = total ? formatPrice(total.amount, null, total.currency).split(' ') : []
+  const totalSymbol = totalParts[0]
+  const totalAmount = totalParts[1]
 
   return (
-    <aside
-      aria-label={copy.basket.railAria}
-      className="fixed bottom-0 right-0 top-14 z-30 hidden w-80 flex-col border-l bg-card xl:flex"
-    >
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <p className="flex items-center gap-2 text-sm font-semibold">
-          <ShoppingBasket className="size-4 text-primary" aria-hidden />
-          {copy.basket.title}
-          {count > 0 ? (
-            <span className="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular-nums">
-              {count > 9 ? '9+' : count}
-            </span>
-          ) : null}
-        </p>
-        {shopIds.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => navigate({ name: 'basket' })}
-            className="press text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
-          >
-            {copy.basket.openBasket}
-          </button>
+    <>
+      <button
+        ref={stripRef}
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-expanded={open}
+        aria-controls="basket-rail-panel"
+        aria-label={copy.basket.iconAria(count)}
+        className={cn(
+          'press fixed right-0 top-14 z-30 hidden w-16 flex-col items-center gap-1.5 rounded-l-xl border bg-card py-3 shadow-sm transition-all duration-200 motion-reduce:transition-none xl:flex',
+          open ? 'invisible translate-x-full' : 'visible translate-x-0',
+        )}
+      >
+        <BasketGlyph fill={basketFillLevel(units)} className="size-6" />
+        {count > 0 ? (
+          <span className="flex h-4 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground tabular-nums">
+            {count > 9 ? '9+' : count}
+          </span>
         ) : null}
-      </div>
+        {total && totalAmount ? (
+          <span className="flex max-w-full flex-col items-center leading-tight">
+            <span className="text-[9px] text-muted-foreground">{totalSymbol}</span>
+            <span className="text-[10px] font-semibold leading-tight tracking-tight tabular-nums whitespace-nowrap">{totalAmount}</span>
+          </span>
+        ) : null}
+        <ChevronLeft className="size-3.5 text-muted-foreground" aria-hidden />
+      </button>
 
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        {shopIds.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <ShoppingBasket className="size-8 text-muted-foreground/50" aria-hidden />
-            <p className="text-sm font-medium">{copy.basket.emptyTitle}</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">{copy.basket.emptySub}</p>
-            <Button size="sm" variant="outline" className="press mt-1" onClick={() => navigate({ name: 'browse' })}>
-              {copy.basket.browse}
+      <aside
+        ref={panelRef}
+        id="basket-rail-panel"
+        tabIndex={-1}
+        aria-label={copy.basket.railAria}
+        className={cn(
+          'fixed bottom-4 right-0 top-14 z-30 hidden w-80 flex-col overflow-hidden rounded-l-xl border bg-card shadow-xl outline-none transition-all duration-200 motion-reduce:transition-none xl:flex',
+          open ? 'visible translate-x-0' : 'invisible translate-x-full',
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <ShoppingBasket className="size-4 text-primary" aria-hidden />
+            {copy.basket.title}
+            {count > 0 ? (
+              <span className="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular-nums">
+                {count > 9 ? '9+' : count}
+              </span>
+            ) : null}
+          </p>
+          <div className="flex items-center gap-1">
+            {shopIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate({ name: 'basket' })}
+                className="press rounded px-1 py-0.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+              >
+                {copy.basket.openBasket}
+              </button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="press size-7"
+              onClick={() => setOpen(false)}
+              aria-label={copy.basket.hideRail}
+            >
+              <ChevronRight className="size-4" aria-hidden />
             </Button>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {shopIds.map((shopId) => (
-              <RailShop key={shopId} shopId={shopId} shop={basket.shops[shopId]} lines={basket.lines[shopId]} />
-            ))}
-          </div>
-        )}
-      </div>
-    </aside>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          {shopIds.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+              <ShoppingBasket className="size-8 text-muted-foreground/50" aria-hidden />
+              <p className="text-sm font-medium">{copy.basket.emptyTitle}</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">{copy.basket.emptySub}</p>
+              <Button size="sm" variant="outline" className="press mt-1" onClick={() => navigate({ name: 'browse' })}>
+                {copy.basket.browse}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {shopIds.map((shopId) => (
+                <RailShop key={shopId} shopId={shopId} shop={basket.shops[shopId]} lines={basket.lines[shopId]} />
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
+    </>
   )
 }
 

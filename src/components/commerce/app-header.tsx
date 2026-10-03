@@ -15,18 +15,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import { basketCount, basketUnits, useBasket } from '@/lib/basket'
+import { basketCount, basketUnits, basketFillLevel, useBasket } from '@/lib/basket'
 import { copy } from '@/lib/copy'
 import { BasketGlyph } from './basket-icon'
-
-// How full the basket icon looks, as a fraction of the basket body. A sqrt
-// curve so the FIRST item is already clearly visible (~27% of the body) and
-// each later add still nudges it; capped at 0.85 - the basket never quite
-// reaches the brim, per the brief. 14 units = "as full as it gets".
-function basketFillLevel(units: number): number {
-  if (units <= 0) return 0
-  return Math.min(0.85, Math.sqrt(units / 14))
-}
 
 export function AppHeader() {
   const { view, navigate, setAuthOpen } = useAppStore()

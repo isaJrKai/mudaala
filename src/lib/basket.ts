@@ -104,6 +104,15 @@ export function basketUnits(basket: StoredBasket): number {
   )
 }
 
+// How full the basket glyph looks, as a fraction of the basket body. A sqrt
+// curve so the FIRST item is already clearly visible (~27% of the body) and
+// each later add still nudges it; capped at 0.85 - the basket never quite
+// reaches the brim, per the brief. 14 units = "as full as it gets".
+export function basketFillLevel(units: number): number {
+  if (units <= 0) return 0
+  return Math.min(0.85, Math.sqrt(units / 14))
+}
+
 // The minimum the caller must hand over. Feed blocks carry Listing & { user },
 // detail pages carry ListingDetail - both satisfy this shape.
 export interface BasketAddListing {
