@@ -1,11 +1,11 @@
 /**
- * Mudaala — development seed.
+ * Mudaala - development seed.
  *
  * These are DEVELOPMENT FIXTURES for reviewing the product, clearly labeled as
  * such in the repository. Fixture users have demo passwords and 0000xxx phone
  * numbers. Production must never run this seed.
  *
- * PLACEHOLDER RULE: the seed ships NO photos — not listings, not shop covers.
+ * PLACEHOLDER RULE: the seed ships NO photos - not listings, not shop covers.
  * Every surface falls back to the neutral grey tile (category name / shop
  * name + camera icon). No stock, no AI images, nothing to migrate: seed rows
  * are flagged isSeed and removed in one step pre-launch (remove-seed-data.ts).
@@ -36,7 +36,7 @@ interface SeedListing {
   description: string
   category: string
   price: number | null
-  compareAtPrice?: number | null // optional "was" price — renders as a discount
+  compareAtPrice?: number | null // optional "was" price - renders as a discount
   currency?: string
   priceNegotiable?: boolean
   unit: string | null
@@ -51,7 +51,7 @@ interface SeedListing {
 }
 
 const users = [
-  // Uganda — the one market Mudaala serves. All fixtures are Ugandan shops
+  // Uganda - the one market Mudaala serves. All fixtures are Ugandan shops
   // with Ugandan phone numbers and real district placement. No shop photos:
   // the grey tile stands in until a real seller uploads a real photo.
   { name: 'Nakato Fresh Produce', phone: '+256772123456', country: 'UG', profile: { businessName: 'Nakato Fresh Produce', photoUrl: null, category: 'farm-produce', county: 'Kampala', area: 'Nakasero', description: 'Fresh matooke and vegetables from farms around Mpigi. Wholesale and retail. Call or WhatsApp 0772 123 456.', hours: 'Daily, 6am-6pm', lat: 0.334, lng: 32.585 } },
@@ -73,7 +73,7 @@ const listings: SeedListing[] = [
   { ownerIdx: 2, type: 'OFFER', title: 'Cement 42.5N, 50kg bags', description: 'Tororo cement 42.5N in 50kg bags, stored dry in our Kimaka godown.\nUSh 32,000 per bag, was 36,000. Discount above 100 bags.\nCall 0758 123 456. Delivery around Jinja town.', category: 'hardware-building', price: 32000, compareAtPrice: 36000, currency: 'UGX', priceNegotiable: true, unit: 'bag', quantity: 900, county: 'Jinja', country: 'UG', area: 'Kimaka', refreshedHoursAgo: 30, views: 33 },
   { ownerIdx: 2, type: 'OFFER', title: 'Iron sheets 30 gauge, 3m', description: 'Pre-painted 30 gauge iron sheets, box profile. Colours in stock: red, green, grey.\nUSh 38,000 per piece for 3 metre lengths.\nCall 0758 123 456. Delivery Jinja and Iganga.', category: 'hardware-building', price: 38000, currency: 'UGX', unit: 'piece', quantity: 320, county: 'Jinja', country: 'UG', area: null, refreshedHoursAgo: 96, views: 19 },
   { ownerIdx: 0, type: 'REQUEST', title: 'Red onions wanted, weekly supply', description: 'Looking for a steady weekly supplier of red onions for our Nakasero stall.\nAt least 300kg per week. Payment on delivery.\nCall 0772 123 456.', category: 'farm-produce', price: 5200, currency: 'UGX', unit: 'kg', quantity: 300, county: 'Kampala', country: 'UG', area: null, refreshedHoursAgo: 50, views: 9 },
-  // Uganda (UGX) — upcountry fixtures.
+  // Uganda (UGX) - upcountry fixtures.
   { ownerIdx: 3, type: 'OFFER', title: 'Sunflower cooking oil, 20L jerrycans', description: 'Pure sunflower cooking oil in 20L jerrycans, packed at our Gulu store.\nUSh 130,000 per jerrycan, was 145,000.\nCall 0712 000 001. Delivery around Gulu town for vendors and institutions.', category: 'food-groceries', price: 130000, compareAtPrice: 145000, currency: 'UGX', unit: 'piece', quantity: 120, county: 'Gulu', country: 'UG', area: 'Pece', refreshedHoursAgo: 8, views: 22 },
   { ownerIdx: 3, type: 'OFFER', title: 'Dry maize grade 1', description: 'Grade 1 dry maize, moisture 13%, this season harvest around Agago.\nUSh 1,100 per kg, or per tonne with weighing at our Pece store.\nCall 0712 000 001.', category: 'farm-produce', price: 1100, currency: 'UGX', unit: 'kg', quantity: 15000, county: 'Gulu', country: 'UG', area: null, refreshedHoursAgo: 60, views: 47 },
   { ownerIdx: 4, type: 'OFFER', title: 'Wheat flour premium, 50kg bags', description: 'Baking-grade wheat flour, milled this week at our Wanale mill.\nUSh 185,000 per 50kg bag, negotiable.\nFree delivery in Mbale town above 20 bags. Call 0702 234 567.', category: 'food-groceries', price: 185000, currency: 'UGX', priceNegotiable: true, unit: 'bag', quantity: 120, county: 'Mbale', country: 'UG', area: 'Wanale', refreshedHoursAgo: 24, views: 21 },
@@ -102,12 +102,12 @@ async function main() {
   const createdUsers: { id: string; phone: string }[] = []
   for (const u of users) {
     const user = await db.user.create({
-      // PLACEHOLDER RULE — every row the seed creates is flagged isSeed so
+      // PLACEHOLDER RULE - every row the seed creates is flagged isSeed so
       // scripts/remove-seed-data.ts can delete it in one step pre-launch.
       data: { name: u.name, phone: u.phone, country: u.country, passwordHash: hashPassword('demo1234'), isSeed: true },
     })
     // Same rule as src/lib/shop.ts: a unique MD-XXXX identity code, assigned
-    // once and never changed. (Local copy — scripts stay standalone.)
+    // once and never changed. (Local copy - scripts stay standalone.)
     let shopCode = ''
     for (let attempt = 0; attempt < 200; attempt++) {
       const candidate = `MD-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
@@ -143,7 +143,7 @@ async function main() {
         area: l.area,
         contactPhone: createdUsers[l.ownerIdx].phone,
         contactWhatsapp: createdUsers[l.ownerIdx].phone,
-        // PLACEHOLDER RULE — the seed ships no photos: every ad shows the
+        // PLACEHOLDER RULE - the seed ships no photos: every ad shows the
         // neutral grey tile until a real seller uploads a real photo.
         photos: JSON.stringify([]),
         isSeed: true,

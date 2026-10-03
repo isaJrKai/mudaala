@@ -109,7 +109,7 @@ export function AccountView() {
 
       <BusinessProfileSection user={user} />
 
-      {/* Legal — the same three doors the footer carries, reachable inside
+      {/* Legal - the same three doors the footer carries, reachable inside
           the app where the footer sits below the fold. */}
       <Separator />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -177,7 +177,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
   // Live same-name guard: while the seller types a shop name that another
   // shop already uses, say so gently and point at the fix (add your area).
   // Their own saved name never triggers it; the check skips while typing.
-  // Hooks stay above the early returns — they run on every render.
+  // Hooks stay above the early returns - they run on every render.
   const savedName = (data?.profile?.businessName ?? '').trim()
   const currentName = form.businessName.trim()
   const debouncedName = useDebounced(currentName, 450)
@@ -199,7 +199,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
   const clashPlace = [nameCheck?.matches?.[0]?.area, nameCheck?.matches?.[0]?.county].filter(Boolean).join(', ')
 
   // The shop's public web link: window origin + /s/{code}. Derived during
-  // render like the in-app ad share — the profile query only runs in the
+  // render like the in-app ad share - the profile query only runs in the
   // browser, so the origin is always real by the time a code exists.
   const shopCode = data?.profile?.shopCode ?? null
   const shopUrl = shopCode ? `${window.location.origin}/s/${shopCode}` : null
@@ -212,7 +212,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       if (codeTimer.current) clearTimeout(codeTimer.current)
       codeTimer.current = setTimeout(() => setCodeCopied(false), 1500)
     } catch {
-      // Clipboard denied — the full link sits in the row as text, one
+      // Clipboard denied - the full link sits in the row as text, one
       // long-press away from the manual path.
     }
   }
@@ -308,11 +308,11 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         ) : null}
       </div>
 
-      {/* Verify your shop — honest completeness. Each tick is something the
+      {/* Verify your shop - honest completeness. Each tick is something the
           seller actually filled in; no platform vetting is claimed. */}
       <ShopChecklist form={form} />
 
-      {/* Optional shop spot — captured at the shop with one tap, so buyers
+      {/* Optional shop spot - captured at the shop with one tap, so buyers
           nearby see the shop first. Stored blurred to ~100 m; removable. */}
       <ShopLocationBlock profile={data?.profile ?? null} />
 
@@ -382,7 +382,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="bp-hours">Opening hours</Label>
-          <Input id="bp-hours" value={form.hours} onChange={(e) => set('hours', e.target.value)} maxLength={120} placeholder="e.g. Mon–Sat, 7am–6pm" />
+          <Input id="bp-hours" value={form.hours} onChange={(e) => set('hours', e.target.value)} maxLength={120} placeholder="e.g. Mon-Sat, 7am-6pm" />
           {errors.hours ? <p role="alert" className="text-sm text-destructive">{errors.hours}</p> : null}
         </div>
       </div>
@@ -413,7 +413,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
 }
 
 // The seller's shop spot. The browser's permission prompt only ever appears
-// because of an explicit tap — and the copy tells the seller to stand at the
+// because of an explicit tap - and the copy tells the seller to stand at the
 // shop first. Everything degrades softly: denial and removal both leave the
 // rest of the shop exactly as it was.
 function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
@@ -503,7 +503,7 @@ function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
 
 // The "verify my shop" moment, told honestly: a shop is complete when its
 // photo, story, place, hours and WhatsApp are all filled in. The checklist
-// updates live as the seller types — ticks appear before they even save.
+// updates live as the seller types - ticks appear before they even save.
 function ShopChecklist({ form }: { form: ProfileFormState }) {
   const items: { key: string; label: string; done: boolean }[] = [
     { key: 'photo', label: 'Shop photo', done: form.photoUrl.trim() !== '' },

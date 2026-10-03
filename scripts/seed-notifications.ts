@@ -8,7 +8,7 @@ const prisma = new PrismaClient()
 async function main() {
   const raw = process.argv[2] ?? '0772123456'
   // The same number can be stored local (07…), E.164 (+256…) or bare (256…)
-  // depending on which flow created the user — try all three shapes.
+  // depending on which flow created the user - try all three shapes.
   const digits = raw.replace(/\D/g, '') // e.g. 0772123456 or 256772123456
   const local = digits.startsWith('256') ? '0' + digits.slice(3) : digits
   const e164 = '+256' + local.slice(1)
@@ -32,10 +32,10 @@ async function main() {
       body: 'Your listing "Fresh matooke bunches" expires soon. Refresh it from My Listings to stay visible for 30 more days.',
     },
     {
-      // Unique per run — the E2E uses this one to prove the bell shakes on a
+      // Unique per run - the E2E uses this one to prove the bell shakes on a
       // NEW alert arriving while the seller is mid-session.
       type: 'NEW_MATCH',
-      title: `New match at ${stamp} — "copper in Kampala"`,
+      title: `New match at ${stamp} - "copper in Kampala"`,
       body: 'A new OFFER matching "copper in Kampala" was posted. Open Alerts to see it.',
     },
   ]

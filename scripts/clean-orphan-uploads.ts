@@ -12,7 +12,7 @@ async function main() {
   const referenced = new Set<string>()
   for (const l of listings) {
     // l.photos is a JSON-encoded array of /uploads/... URLs (schema String),
-    // not an array — parse it; malformed rows simply contribute nothing.
+    // not an array - parse it; malformed rows simply contribute nothing.
     let photos: unknown
     try {
       photos = JSON.parse(l.photos)
@@ -30,7 +30,7 @@ async function main() {
   for (const f of fs.readdirSync(dir)) {
     const rel = path.join(dir, f)
     if (!fs.statSync(rel).isFile()) continue
-    // PLACEHOLDER RULE — the seed folder is removable wholesale by
+    // PLACEHOLDER RULE - the seed folder is removable wholesale by
     // scripts/remove-seed-data.ts; this cleaner must never touch it.
     if (rel.startsWith(path.join(dir, 'seed'))) continue
     if (referenced.has(f)) {

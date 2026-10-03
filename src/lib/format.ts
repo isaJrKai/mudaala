@@ -1,8 +1,8 @@
-// Mudaala — display formatting helpers (client-safe).
+// Mudaala - display formatting helpers (client-safe).
 
 import { currencyDef, LISTING_ACTIVE_DAYS } from './constants'
 
-// Price in the listing's currency. UGX is zero-decimal in everyday trade —
+// Price in the listing's currency. UGX is zero-decimal in everyday trade -
 // never render "USh 1,500.00"; the shape keeps decimals possible for any
 // future market that needs them.
 export function formatPrice(
@@ -67,12 +67,12 @@ export function expiryLabel(expiresAt: string | Date): string {
 
 export { LISTING_ACTIVE_DAYS }
 
-// WhatsApp deep link — digits only, international format, no "+".
+// WhatsApp deep link - digits only, international format, no "+".
 export function whatsappLink(phone: string, listingTitle: string, listingType: 'OFFER' | 'REQUEST'): string {
   const digits = phone.replace(/\D/g, '')
   const intro = listingType === 'OFFER'
     ? `Hi, I saw your listing "${listingTitle}" on Mudaala. Is it still available?`
-    : `Hi, about your request "${listingTitle}" on Mudaala — can we talk?`
+    : `Hi, about your request "${listingTitle}" on Mudaala. Can we talk?`
   return `https://wa.me/${digits}?text=${encodeURIComponent(intro)}`
 }
 
@@ -80,7 +80,7 @@ export function telLink(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
 }
 
-// Google Maps search for the listing's area — lets a buyer decide "can I pick
+// Google Maps search for the listing's area - lets a buyer decide "can I pick
 // this up myself?" No API key, no fabricated coordinates: we search by place
 // name (area → district → country), which is exactly what the seller typed.
 export function mapsSearchUrl(parts: { area?: string | null; county: string; country?: string | null }): string {
@@ -90,7 +90,7 @@ export function mapsSearchUrl(parts: { area?: string | null; county: string; cou
 
 // Shop-name comparison key shared by the server (check-name API) and the
 // client (collision suffix on browse cards). Two names "match" when they are
-// the same after case-folding and whitespace collapse — that is the pair a
+// the same after case-folding and whitespace collapse - that is the pair a
 // buyer could confuse.
 export function normalizeShopName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, ' ').trim()
@@ -98,7 +98,7 @@ export function normalizeShopName(name: string): string {
 
 // Shop-code canonicalizer, shared by the server (lookup API) and the client
 // (browse search detection). Buyers punch in a code like a mobile-money till
-// number — forgiving about case, spaces and dashes ("md 2623", "MD-2623",
+// number - forgiving about case, spaces and dashes ("md 2623", "MD-2623",
 // "md2623" all work), but the match against the stored code stays EXACT, so
 // a mistyped number never lands on a stranger's shop. Both prefixes are
 // accepted and canonicalize to MD-: the digits ARE the identity, so a code

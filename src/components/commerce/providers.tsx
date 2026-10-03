@@ -83,7 +83,7 @@ function HashSync() {
       const state = useAppStore.getState().view
       if (next.name !== state.name || next.id !== state.id) {
         // Deferred by one task so navigate()'s own hash write settles before
-        // we compare state again. setTimeout, NOT setImmediate — setImmediate
+        // we compare state again. setTimeout, NOT setImmediate - setImmediate
         // is Node-only and threw a ReferenceError on every external hash
         // change (opening a shared shop link while the app is already open,
         // browser back/forward), leaving the page stuck on the old view.

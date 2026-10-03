@@ -1,7 +1,7 @@
-// Settings → Advanced Settings — "Test connection". Runs a REAL TCP
+// Settings → Advanced Settings - "Test connection". Runs a REAL TCP
 // reachability check against the saved PostgreSQL target and reports the
 // outcome honestly: reachable is reachable, unreachable says why. It never
-// claims credentials work — a TCP handshake knows nothing about passwords.
+// claims credentials work - a TCP handshake knows nothing about passwords.
 //
 // The deployment config is global (one deployment, one database), so testing
 // it is admin-only (ADMIN_PHONES): it reveals host reachability. Nobody may
@@ -17,12 +17,12 @@ export async function POST() {
 
     const stored = await readPostgresConfig()
     if (!stored) {
-      throw new ApiError(400, 'No PostgreSQL config saved yet — save the connection details first, then test.')
+      throw new ApiError(400, 'No PostgreSQL config saved yet - save the connection details first, then test.')
     }
 
     const target = resolveTarget(stored)
     if (!target) {
-      throw new ApiError(400, 'The saved config has no usable host — set host and port, or a valid connection string.')
+      throw new ApiError(400, 'The saved config has no usable host - set host and port, or a valid connection string.')
     }
 
     const result = await testTcpConnection(target)

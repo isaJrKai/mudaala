@@ -13,7 +13,7 @@ import {
 } from '@/lib/listings'
 import { LISTING_ACTIVE_DAYS, countryDef, currencyDef, findProhibitedItem } from '@/lib/constants'
 
-// Public search — filter, sort and paginate in the database, not the browser.
+// Public search - filter, sort and paginate in the database, not the browser.
 export async function GET(request: NextRequest) {
   return route(async () => {
     // Real time-dependent behaviour: overdue listings are expired on read.
@@ -45,11 +45,11 @@ export async function POST(request: Request) {
   return route(async () => {
     const user = await requireUser('Sign in to publish a listing')
 
-    // 20 listings per user per day — a real shop restocking is welcome;
+    // 20 listings per user per day - a real shop restocking is welcome;
     // catalogue-spam is not.
     const verdict = hit(`publish:user:${user.id}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
     if (!verdict.ok) {
-      throw new ApiError(429, 'You have published a lot today — please continue tomorrow')
+      throw new ApiError(429, 'You have published a lot today - please continue tomorrow')
     }
 
     const data = await parseBody(request, listingCreateSchema)
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const banned = findProhibitedItem(data.title, data.description ?? '')
     if (banned) {
       throw new ApiError(400, banned.message, {
-        title: 'This listing cannot be published — ' + banned.label.toLowerCase(),
+        title: 'This listing cannot be published - ' + banned.label.toLowerCase(),
       })
     }
 

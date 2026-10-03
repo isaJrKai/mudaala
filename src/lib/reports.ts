@@ -1,10 +1,10 @@
-// Mudaala — reports and moderation.
+// Mudaala - reports and moderation.
 //
 // A buyer flags an ad or a shop; moderation reviews. The rules that keep
 // this honest and safe:
 //
 //   - Guests can report (identified by IP); signed-in reporters by user id.
-//   - One OPEN report per reporter per target — a second attempt gets a
+//   - One OPEN report per reporter per target - a second attempt gets a
 //     friendly "already reported" instead of piling up duplicates.
 //   - Ten accepted reports per reporter per day (rate-limit.ts), so one
 //     grudge cannot flood the queue.
@@ -37,7 +37,7 @@ export class DuplicateReportError extends Error {}
 export class TargetNotFoundError extends Error {}
 
 export async function createReport(input: CreateReportInput): Promise<Report> {
-  // The target must exist right now — reporting a ghost helps nobody.
+  // The target must exist right now - reporting a ghost helps nobody.
   if (input.targetType === 'LISTING') {
     const listing = await db.listing.findUnique({ where: { id: input.targetId }, select: { id: true } })
     if (!listing) throw new TargetNotFoundError('This ad no longer exists')
@@ -47,7 +47,7 @@ export async function createReport(input: CreateReportInput): Promise<Report> {
   }
 
   // One OPEN report per reporter per target. Duplicate attempts are answered
-  // (and stopped) BEFORE the daily cap is touched — hammering the same report
+  // (and stopped) BEFORE the daily cap is touched - hammering the same report
   // is a duplicate problem, not a volume problem.
   const existing = await db.report.findFirst({
     where: {
@@ -61,7 +61,7 @@ export async function createReport(input: CreateReportInput): Promise<Report> {
     select: { id: true },
   })
   if (existing) {
-    throw new DuplicateReportError('You have already reported this — our team is on it.')
+    throw new DuplicateReportError('You have already reported this. Our team is on it.')
   }
 
   const report = await db.report.create({
@@ -96,7 +96,7 @@ async function autoHideListingIfFlagged(listingId: string): Promise<void> {
     where: { id: listingId },
     select: { id: true, userId: true, title: true, status: true },
   })
-  // Gone, or already handled (HIDDEN / FULFILLED / ARCHIVED) — never resurrect
+  // Gone, or already handled (HIDDEN / FULFILLED / ARCHIVED) - never resurrect
   // a fulfilled sale by hiding it, and never hide twice.
   if (!listing || listing.status !== 'ACTIVE') return
 
@@ -125,7 +125,7 @@ async function autoHideListingIfFlagged(listingId: string): Promise<void> {
   ])
 }
 
-/** Admin manual hide — same owner notification, human actor in the log. */
+/** Admin manual hide - same owner notification, human actor in the log. */
 export async function hideListingByAdmin(listingId: string, adminId: string): Promise<void> {
   const listing = await db.listing.findUnique({
     where: { id: listingId },
@@ -154,7 +154,7 @@ export async function hideListingByAdmin(listingId: string, adminId: string): Pr
   })
 }
 
-/** Admin restore — back to ACTIVE, logged. */
+/** Admin restore - back to ACTIVE, logged. */
 export async function restoreListingByAdmin(listingId: string, adminId: string): Promise<void> {
   const listing = await db.listing.findUnique({
     where: { id: listingId },
@@ -170,7 +170,7 @@ export async function restoreListingByAdmin(listingId: string, adminId: string):
   })
 }
 
-/** Admin dismiss — the report is closed without action, logged. */
+/** Admin dismiss - the report is closed without action, logged. */
 export async function dismissReportByAdmin(reportId: string, adminId: string): Promise<void> {
   const report = await db.report.findUnique({ where: { id: reportId }, select: { id: true } })
   if (!report) throw new TargetNotFoundError('This report no longer exists')

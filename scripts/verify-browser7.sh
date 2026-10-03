@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — round 7: final golden path (register via account CTA → shop naming).
+# Duuka - round 7: final golden path (register via account CTA → shop naming).
 set -u
 cd /home/z/my-project
 
@@ -30,7 +30,7 @@ echo "regtab: $REGTAB"
 ab fill "#reg-name" "Okello Grains" >/dev/null 2>&1
 ab fill "#reg-phone" "0781234567" >/dev/null 2>&1
 sleep 1.2
-echo "hint: $(text 2600 | rg -o 'Uganda — your prices will show in USh' | head -1)"
+echo "hint: $(text 2600 | rg -o 'Uganda - your prices will show in USh' | head -1)"
 ab fill "#reg-password" "password123" >/dev/null 2>&1
 SNAP=$(ab snapshot -i)
 SUBREF=$(echo "$SNAP" | rg -o 'button "Create account" \[ref=([a-z0-9]+)\]' -r '$1' | tail -1)

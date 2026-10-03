@@ -1,7 +1,7 @@
 /**
  * Deep-clean recon: list every user/listing/profile with provenance signals
  * (seed flag, creation time, ownership) so the purge set can be chosen
- * precisely — never delete a real human's account by pattern-guessing.
+ * precisely - never delete a real human's account by pattern-guessing.
  */
 import { PrismaClient } from '@prisma/client'
 

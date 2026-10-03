@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — round 9: finish golden path (district combobox → publish → storefront).
+# Duuka - round 9: finish golden path (district combobox → publish → storefront).
 set -u
 cd /home/z/my-project
 

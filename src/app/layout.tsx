@@ -8,7 +8,7 @@ import { copy } from "@/lib/copy";
 
 // Body type is ONE sans: Inter where a device has it, system-ui otherwise
 // (see globals.css). The display serif is kept ONLY for the logo wordmark
-// and shop names — a market shop's name on a painted signboard is serif;
+// and shop names - a market shop's name on a painted signboard is serif;
 // nothing else in the app dresses up.
 const fraunces = Fraunces({
   variable: "--font-fraunces",

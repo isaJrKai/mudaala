@@ -1,5 +1,5 @@
 /**
- * Mudaala — API behavior & security tests.
+ * Mudaala - API behavior & security tests.
  *
  * Tests observable outcomes and permission boundaries against the running dev
  * server, not implementation details. Run: npx tsx scripts/test-api.ts
@@ -22,7 +22,7 @@ import path from 'node:path'
 import * as fs from 'node:fs'
 import { execSync } from 'node:child_process'
 import { SUPPORT_EMAIL, TERMS_VERSION } from '../src/lib/constants'
-// Pure-function units under test (no next/* imports — safe outside a request).
+// Pure-function units under test (no next/* imports - safe outside a request).
 import { bearerAuthEnabled } from '../src/lib/env-flags'
 import { validateEnv } from '../src/lib/env'
 import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
@@ -42,7 +42,7 @@ function loadDotEnv(file = '.env') {
       }
     }
   } catch {
-    /* no .env — CI provides env vars directly */
+    /* no .env - CI provides env vars directly */
   }
 }
 loadDotEnv()
@@ -67,8 +67,8 @@ function ok(name: string, condition: boolean, detail?: string) {
     console.log(`  ✓ ${name}`)
   } else {
     failed++
-    failures.push(name + (detail ? ` — ${detail}` : ''))
-    console.error(`  ✗ ${name}${detail ? ` — ${detail}` : ''}`)
+    failures.push(name + (detail ? ` - ${detail}` : ''))
+    console.error(`  ✗ ${name}${detail ? ` - ${detail}` : ''}`)
   }
 }
 
@@ -133,7 +133,7 @@ const uniquePhone = () => `+2567${String(Math.floor(10000000 + Math.random() * 8
 // collide with debris from earlier runs sitting in the same dev database.
 const RUN_TAG = Date.now().toString(36)
 // Every user id the suite creates (via register() and the direct flood-loop
-// POSTs). The final hermetic sweep deletes exactly these — so a suite run
+// POSTs). The final hermetic sweep deletes exactly these - so a suite run
 // leaves the shared dev/preview database exactly as it found it, and no
 // fixture users ever reach the preview feed again.
 const createdUserIds = new Set<string>()
@@ -234,13 +234,13 @@ async function main() {
     ok('5 wrong attempts each get the normal 401', saw401 === 5)
 
     const locked = await call('POST', '/api/auth/login', { phone: rlPhone, password: 'password321' })
-    ok('6th attempt locked out with 429 — even with the correct password', locked.status === 429)
+    ok('6th attempt locked out with 429 - even with the correct password', locked.status === 429)
     ok('lockout message is friendly and human', typeof locked.json?.error === 'string' && locked.json.error.includes('wait'))
 
     const alsoLocked = await call('POST', '/api/auth/login', { phone: `0${rlPhone.slice(4)}`, password: 'password321' })
     ok('local-format dialing of the same phone is locked too (normalization)', alsoLocked.status === 429)
 
-    // A DIFFERENT phone from the same IP is untouched — the lock is per phone.
+    // A DIFFERENT phone from the same IP is untouched - the lock is per phone.
     const other = await call('POST', '/api/auth/login', { phone: '0772123456', password: 'demo1234' })
     ok('other phones from the same IP still sign in (200)', other.status === 200)
 
@@ -629,7 +629,7 @@ async function main() {
     ok('sharing a spot creates a minimal shop with a code',
       nelaLoc.status === 200 && nelaLoc.json?.profile?.businessName === 'Nela Nearby' && /^MD-\d{4}$/.test(nelaLoc.json?.profile?.shopCode ?? ''))
 
-    // Nearest sort — two shops ~300 km apart; the buyer's side of the story
+    // Nearest sort - two shops ~300 km apart; the buyer's side of the story
     // must decide who comes first. Gulu buyer → Alice; Kampala buyer → Nela.
     const aliceListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe alpha' }, alice)
     const nelaListing = await call('POST', '/api/listings', { ...validListing, title: 'Nearest probe beta' }, nela)
@@ -661,7 +661,7 @@ async function main() {
 
   console.log('\n== 3f. Shop code lookup (the till-number path) ==')
   {
-    // The lookup is public — no jar, no cookie: buyers never sign in.
+    // The lookup is public - no jar, no cookie: buyers never sign in.
     const meProf = await call('GET', '/api/profile', undefined, alice)
     const realCode: string = meProf.json?.profile?.shopCode ?? ''
     ok('profile exposes the seller shop code for the lookup tests', /^MD-\d{4}$/.test(realCode))
@@ -670,7 +670,7 @@ async function main() {
     ok('exact code resolves the right shop, anonymously',
       hit.status === 200 && hit.json?.shop?.id === alice.user!.id && hit.json?.shop?.shopCode === realCode)
 
-    // Forgiving input: case, spaces and dashes never break a real code —
+    // Forgiving input: case, spaces and dashes never break a real code -
     // buyers copy codes off posters and out of voice calls.
     const sloppy = await call('GET', `/api/shops/lookup?code=${encodeURIComponent('dk ' + realCode.slice(3))}`)
     ok('sloppy variant ("dk 4821" style) finds the same shop',
@@ -811,7 +811,7 @@ async function main() {
     const bobMark = await call('POST', `/api/notifications/mark-read?ids=${carolNotif.id}`, undefined, bob)
     ok('mark-read on foreign notification is a no-op (200 but no effect)', bobMark.status === 200)
 
-    // Clear (delete) — the destructive sibling of mark-read: read keeps
+    // Clear (delete) - the destructive sibling of mark-read: read keeps
     // history, clear removes rows for good. UI confirms before calling.
     const anonClear = await call('DELETE', '/api/notifications?ids=all')
     ok('clear notifications without sign-in → 401', anonClear.status === 401)
@@ -1127,12 +1127,12 @@ async function main() {
       const nicoTrends = await call('GET', '/api/price-trends', undefined, nico)
       ok('no user gets more than 3 series (top-3 cap)', (nicoTrends.json?.series ?? []).length <= 3)
     } else {
-      console.log('  (CRON_SECRET not available — snapshot assertions skipped)')
+      console.log('  (CRON_SECRET not available - snapshot assertions skipped)')
     }
 
     // Hermetic cleanup: archive this run's trends fixtures too, so the next
     // run's sweep sample starts from zero (REQUESTs and other categories
-    // are untouched — the sweep only ever counts OFFERs).
+    // are untouched - the sweep only ever counts OFFERs).
     await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'electronics', unit: 'piece' }, data: { status: 'ARCHIVED' } })
     await db.listing.updateMany({ where: { status: 'ACTIVE', type: 'OFFER', category: 'food-groceries', unit: 'kg' }, data: { status: 'ARCHIVED' } })
   }
@@ -1183,11 +1183,11 @@ async function main() {
     }
     ok('suite finds an active OFFER (with photos) to test with', Boolean(offer?.id && offer?.title))
     if (!offer) {
-      console.log('  (FATAL: no active OFFER with photos could be created — skipping the rest of section 12)')
+      console.log('  (FATAL: no active OFFER with photos could be created - skipping the rest of section 12)')
       return
     }
 
-    // /l/{id} — the full ad-page surface.
+    // /l/{id} - the full ad-page surface.
     const page = await fetch(`${BASE}/l/${offer.id}`)
     const html = await page.text()
     const head = html.slice(0, html.indexOf('</head>'))
@@ -1211,7 +1211,7 @@ async function main() {
     ok('ad page carries the safety line', html.includes('Meet in a public place'))
     ok('ad page shows the honest tenure line', html.includes('Active since'))
 
-    // Old keyword-style URLs still resolve — permanently — to /l/{id}.
+    // Old keyword-style URLs still resolve - permanently - to /l/{id}.
     const prefixed = await fetch(`${BASE}/l/some-old-keywords-${offer.id}`, { redirect: 'manual' })
     ok('keyword-prefixed /l URL → 308 to /l/{id}',
       prefixed.status === 308 && (prefixed.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
@@ -1222,7 +1222,7 @@ async function main() {
     ok('legacy bare /listing/{id} → 308 to /l/{id}',
       legacyBare.status === 308 && (legacyBare.headers.get('location') ?? '').endsWith(`/l/${offer.id}`))
 
-    // REQUEST: honest markup — a wanted ad is not a Product.
+    // REQUEST: honest markup - a wanted ad is not a Product.
     const reqSearch = await call('GET', '/api/listings?type=REQUEST&sort=newest')
     const request = (reqSearch.json?.items ?? []).find((l: any) => l.status === 'ACTIVE')
     ok('suite finds an active REQUEST to test with', Boolean(request?.id))
@@ -1264,7 +1264,7 @@ async function main() {
     ok('unknown ad → 404', missing.status === 404)
     ok('unknown ad → friendly page, not a bare error', missingHtml.includes('no longer available'))
 
-    // Shop pages: /s/{code} — identity, live stock, share, forgiving input.
+    // Shop pages: /s/{code} - identity, live stock, share, forgiving input.
     let profileState = await call('GET', '/api/profile', undefined, alice)
     let aliceCode: string | undefined = profileState.json?.profile?.shopCode
     if (!aliceCode) {
@@ -1500,7 +1500,7 @@ async function main() {
   {
     // The dev "inbox": the console SMS provider prints each message to the
     // dev server console, which this run captures in dev.log. Codes are read
-    // out of it for the assertions — and NEVER printed: no test name or
+    // out of it for the assertions - and NEVER printed: no test name or
     // failure detail below carries a code, a token, or a full phone number.
     const DEV_LOG = path.resolve(process.cwd(), 'dev.log')
 
@@ -1512,7 +1512,7 @@ async function main() {
           const m = lines.length > 0 ? /reset code is (\d{6})/.exec(lines[lines.length - 1]!) : null
           if (m) return m[1]
         } catch {
-          /* dev.log may not be flushed yet — retry below */
+          /* dev.log may not be flushed yet - retry below */
         }
         await new Promise((r) => setTimeout(r, 300))
       }
@@ -1769,7 +1769,7 @@ async function main() {
     const evilOrigin = await call('POST', '/api/auth/logout', undefined, csrfJar, { origin: 'https://evil.example' })
     ok('15.24 cross-site logout with a stolen cookie → 403', evilOrigin.status === 403)
     const stillIn = await call('GET', '/api/auth/me', undefined, csrfJar)
-    ok('15.25 the blocked request did nothing — session intact', stillIn.json?.user?.name === 'CSRF Target')
+    ok('15.25 the blocked request did nothing - session intact', stillIn.json?.user?.name === 'CSRF Target')
     const ownOrigin = await call('POST', '/api/auth/logout', undefined, csrfJar, { origin: BASE })
     ok('15.26 same-origin state change passes the Origin check', ownOrigin.status === 200)
     const noOrigin = await call('POST', '/api/auth/logout', undefined, { cookie: '' })
@@ -1809,7 +1809,7 @@ async function main() {
     ok('15.31 HSTS is set', (hdrs.get('strict-transport-security') ?? '').includes('max-age'))
     // 15.32 mirrors next.config.ts: XFO is SAMEORIGIN for bare 'self', DENY
     // for 'none', and deliberately ABSENT when frame-ancestors names custom
-    // origins (XFO cannot express a list — the sandbox preview allowlist).
+    // origins (XFO cannot express a list - the sandbox preview allowlist).
     const fa = (process.env.FRAME_ANCESTORS ?? "'self'").trim()
     const customAncestors = fa !== '' && fa !== "'self'" && fa !== "'none'"
     const wantXfo = customAncestors ? null : fa === "'none'" ? 'DENY' : 'SAMEORIGIN'
@@ -1846,7 +1846,7 @@ async function main() {
     )
     const storedExifBytes = await fs.promises.readFile(storedExifPath)
     ok(
-      '15.35 EXIF/GPS is gone — no Artist tag, no EXIF block survives',
+      '15.35 EXIF/GPS is gone - no Artist tag, no EXIF block survives',
       storedExif.exif === undefined && !storedExifBytes.includes(Buffer.from('mudaala-exif-test')),
     )
 
@@ -1978,7 +1978,7 @@ async function main() {
   }
 
   // ===============================================================
-  // == 17. PLACEHOLDER RULE — seed flag, sitemap/OG exclusions,   ==
+  // == 17. PLACEHOLDER RULE - seed flag, sitemap/OG exclusions,   ==
   // ==    neutral tile, one-step seed-removal dry-run             ==
   // ===============================================================
   console.log('\n== 17. Placeholder rule: seed flag, sitemap/OG exclusions, neutral tile ==')
@@ -2004,7 +2004,7 @@ async function main() {
     ok('17.3 an ad page never ships a seed photo path anywhere in its HTML', !seedHtml.includes('/uploads/seed/'))
     ok('17.4 a seed-only-photo ad shows the neutral placeholder tile', seedHtml.includes('Photo coming from the seller'))
 
-    // No photos at all — the honest empty state — shows the same tile.
+    // No photos at all - the honest empty state - shows the same tile.
     await db.listing.update({ where: { id: ph17Id }, data: { photos: '[]' } })
     const bareAd = await (await fetch(`${BASE}/l/${ph17Id}`)).text()
     ok('17.5 a no-photo ad shows the neutral placeholder tile', bareAd.includes('Photo coming from the seller'))
@@ -2025,7 +2025,7 @@ async function main() {
     const stillThere = await db.user.count({ where: { isSeed: true } })
     ok('17.10 the dry-run left every seed row in place', stillThere === 8)
 
-    // OG share image: an ad without a real photo must still preview well —
+    // OG share image: an ad without a real photo must still preview well -
     // the neutral Mudaala card (cream, wordmark, category name) is its
     // og:image. Never a seed photo, never an empty preview, never a broken
     // share card, whatever junk arrives on the card endpoint's query.
@@ -2069,7 +2069,7 @@ async function main() {
     // refuses to run at all, so a half-configured deploy can never silently
     // half-copy the photo set (seed or real) somewhere unrecoverable. The
     // seed exclusion inside the script is enforced in code (seed folder never
-    // uploaded, seed paths never rewritten) — exercised by review, not by a
+    // uploaded, seed paths never rewritten) - exercised by review, not by a
     // live bucket here; what the suite CAN pin is that the gate stays shut.
     let migrationRefusal = ''
     try {
@@ -2094,7 +2094,55 @@ async function main() {
     await db.user.delete({ where: { id: ph17.user?.id ?? '' } }).catch(() => undefined)
   }
 
-  console.log(`\n== 19. Hermetic sweep — this run leaves no fixtures behind ==`)
+  // == 18. COPY RULE: no AI-tell dashes, no banned template words ==
+  // The long em dash is the signature of machine-written copy, in the UI and
+  // in the codebase itself. The repo simply contains none: the scan below
+  // fails the suite the moment one lands, so the discipline is enforced, not
+  // remembered.
+  console.log(`\n== 18. Copy discipline: no em/en dashes, no template words ==`)
+  {
+    // The suite always runs from the repo root (bugprobe.sh), the same
+    // convention every other section uses for path resolution.
+    const root = process.cwd()
+    const roots = [path.join(root, 'src'), path.join(root, 'content')]
+    const readmePath = path.join(root, 'README.md')
+    const schemaPath = path.join(root, 'prisma', 'schema.prisma')
+
+    const dashFiles: string[] = []
+    const seen = new Set<string>()
+    function scanDir(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          scanDir(full)
+          continue
+        }
+        if (!/\.(ts|tsx|css|md)$/.test(entry.name) || seen.has(full)) continue
+        seen.add(full)
+        const text = fs.readFileSync(full, 'utf8')
+        // U+2014 (em dash) and U+2013 (en dash): the AI-tell long dashes.
+        if (/[\u2014\u2013]/.test(text)) dashFiles.push(path.relative(process.cwd(), full))
+      }
+    }
+    for (const root of roots) {
+      if (fs.existsSync(root)) scanDir(root)
+    }
+    for (const extra of [readmePath, schemaPath]) {
+      if (fs.existsSync(extra)) {
+        seen.add(extra)
+        if (/[\u2014\u2013]/.test(fs.readFileSync(extra, 'utf8'))) dashFiles.push(path.relative(process.cwd(), extra))
+      }
+    }
+    ok('18.1 no em or en dashes anywhere in src, content, README or schema', dashFiles.length === 0, dashFiles.slice(0, 5).join(', '))
+
+    // The UI voice lives in copy.ts; template-speak is banned there.
+    const copyText = fs.readFileSync(path.join(root, 'src', 'lib', 'copy.ts'), 'utf8')
+    const bannedWords = /seamless|empower|discover|unlock/i
+    const bannedHits = copyText.split('\n').filter((l) => bannedWords.test(l) && l.trim().startsWith('//') === false)
+    ok('18.2 copy.ts carries no banned template words (seamless, empower, discover, unlock)', bannedHits.length === 0, bannedHits.slice(0, 3).join(' | '))
+  }
+
+  console.log(`\n== 19. Hermetic sweep - this run leaves no fixtures behind ==`)
   {
     const ids = [...createdUserIds]
     // Targets the fixtures own or were reported about: listings + shop
@@ -2107,7 +2155,7 @@ async function main() {
       ? await db.businessProfile.findMany({ where: { userId: { in: ids } }, select: { id: true } })
       : []
     const targetIds = [...ownedListings, ...ownedShops].map((r) => r.id)
-    // Sections with their own hermetic cleanup already removed some users —
+    // Sections with their own hermetic cleanup already removed some users -
     // the sweep must remove every fixture STILL ALIVE at this point.
     const aliveBefore = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
     const delReports = await db.report.deleteMany({

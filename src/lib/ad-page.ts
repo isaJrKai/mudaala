@@ -57,7 +57,7 @@ export function metaDescription(listing: { description: string; area: string | n
 
 // One loader per request (React.cache dedupes the generateMetadata + page +
 // not-found trio). Resolves the bare id first, then the dash-tail of older
-// keyword-style URLs. Never throws or redirects — callers decide between
+// keyword-style URLs. Never throws or redirects - callers decide between
 // 308, 404 and render, so the not-found boundary can reuse it safely.
 export const loadAdRow = cache(async (param: string) => {
   await expireOverdueListings()
@@ -81,7 +81,7 @@ export const loadAdRow = cache(async (param: string) => {
 export type AdRow = NonNullable<Awaited<ReturnType<typeof loadAdRow>>>
 
 // Live ads a gone page can offer instead: same category, real stock, the
-// freshest first. At most four — a 404 is a doorway, not a marketplace.
+// freshest first. At most four - a 404 is a doorway, not a marketplace.
 export async function similarListings(category: string, excludeId: string) {
   return db.listing.findMany({
     where: { status: 'ACTIVE', category, id: { not: excludeId } },

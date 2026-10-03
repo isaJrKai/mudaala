@@ -1,4 +1,4 @@
-// The 404 for /l/* — no dead ends. When the URL still points at a real
+// The 404 for /l/* - no dead ends. When the URL still points at a real
 // listing (expired, fulfilled or archived), the page says so honestly and
 // offers similar live ads from the same category. The contact phone is
 // never rendered here: a gone ad's seller did not stop existing, but their

@@ -1,7 +1,7 @@
 'use client'
 
 // The moderation queue: open reports with their target ad or shop, the
-// reason in plain words, the reporter's note — and the three decisions an
+// reason in plain words, the reporter's note - and the three decisions an
 // admin can make: HIDE, RESTORE, DISMISS. Every action refreshes the list
 // from the server, so the queue is always the truth, never local optimism.
 
@@ -40,7 +40,7 @@ export function ReportsDashboard() {
       }
       setReports(json?.reports ?? [])
     } catch {
-      setError('No connection — please refresh.')
+      setError('No connection - please refresh.')
     }
   }, [])
 
@@ -59,10 +59,10 @@ export function ReportsDashboard() {
       })
       if (!res.ok) {
         const json = await res.json().catch(() => null)
-        setError(json?.error ?? 'The action did not go through — please try again.')
+        setError(json?.error ?? 'The action did not go through - please try again.')
       }
     } catch {
-      setError('No connection — the action did not go through.')
+      setError('No connection - the action did not go through.')
     } finally {
       setBusyId(null)
       void load(status)
@@ -100,7 +100,7 @@ export function ReportsDashboard() {
         </p>
       ) : reports.length === 0 ? (
         <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <ShieldQuestion className="size-4" aria-hidden /> Nothing here — a quiet queue is a good queue.
+          <ShieldQuestion className="size-4" aria-hidden /> Nothing here - a quiet queue is a good queue.
         </p>
       ) : (
         <ul className="mt-3 space-y-3">
@@ -124,7 +124,7 @@ export function ReportsDashboard() {
                     {r.listing.title}
                   </a>{' '}
                   <span className="text-[12.5px] font-normal text-muted-foreground">
-                    — {r.listing.ownerName} · status: {r.listing.status}
+                    - {r.listing.ownerName} · status: {r.listing.status}
                   </span>
                 </p>
               ) : r.shop ? (

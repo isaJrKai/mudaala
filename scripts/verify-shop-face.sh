@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — shop-face verification: storefront hero (cover + logo), Account
+# Duuka - shop-face verification: storefront hero (cover + logo), Account
 # shop-photo pickers, local greeting. Single-call: server + browser flow,
 # because this harness reaps background processes between tool calls.
 set -u
@@ -24,7 +24,7 @@ TOKEN_UG=$(curl -s -X POST http://127.0.0.1:3000/api/auth/login -H 'Content-Type
   -d '{"phone":"+256772000001","password":"demo1234"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["sessionToken"])')
 echo "UG token: ${TOKEN_UG:0:12}…"
 
-echo "=== 3. Storefront of Nakato (has cover + logo) — mobile 375 ==="
+echo "=== 3. Storefront of Nakato (has cover + logo) - mobile 375 ==="
 ab set viewport 375 720 >/dev/null 2>&1
 ab open "http://localhost:3000/#/seller" >/dev/null
 sleep 2
@@ -41,7 +41,7 @@ ab eval "({covers: document.querySelectorAll('img[alt=\"Nakato Fresh Produce cov
 cat /tmp/f1-imgs.txt
 ab screenshot /home/z/my-project/scripts/verify-shop-face-mobile.png >/dev/null
 
-echo "=== 4. Account → My shop — Shop photo pickers ==="
+echo "=== 4. Account → My shop - Shop photo pickers ==="
 ab open "http://localhost:3000/#/account" >/dev/null
 sleep 3
 ab snapshot -i -c > /tmp/f2-account.txt
@@ -56,7 +56,7 @@ ab screenshot /home/z/my-project/scripts/verify-shop-face-desktop.png >/dev/null
 ab eval "({h: document.querySelector('img[alt=\"Nakato Fresh Produce cover photo\"]')?.clientHeight, horizOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth})" > /tmp/f3-desktop.txt
 cat /tmp/f3-desktop.txt
 
-echo "=== 6. Tanzania storefront (Neema, Karibu greeting) — sanity ==="
+echo "=== 6. Tanzania storefront (Neema, Karibu greeting) - sanity ==="
 TOKEN_TZ=$(curl -s -X POST http://127.0.0.1:3000/api/auth/login -H 'Content-Type: application/json' \
   -d '{"phone":"+255754000001","password":"demo1234"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["sessionToken"])')
 ab set viewport 375 720 >/dev/null 2>&1

@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 import { useState } from 'react'
 import { copy } from '@/lib/copy'
 
-// Notifications — real events only: new matches for saved searches,
+// Notifications - real events only: new matches for saved searches,
 // expiry warnings and expiry confirmations for the user's own listings.
 export function NotificationsView() {
   const { user, isLoading: sessionLoading } = useSession()
@@ -47,7 +47,7 @@ export function NotificationsView() {
   })
 
   // Clear = delete, not read. The server removes the rows; the confirm
-  // dialog is what makes that honest — the button alone could be a mis-tap
+  // dialog is what makes that honest - the button alone could be a mis-tap
   // that silently deletes a seller's expiry history.
   const clearAll = useMutation({
     mutationFn: () => apiDelete<{ ok: boolean }>('/api/notifications?ids=all'),

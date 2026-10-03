@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — browser verification round 2 (server + flow in one call).
+# Duuka - browser verification round 2 (server + flow in one call).
 set -u
 cd /home/z/my-project
 

@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     // Moderation: a HIDDEN listing is invisible to everyone except its owner
     // (checking their appeal) and an admin (reviewing reports). The response
-    // is the same 404 as a missing ad — moderation state is never leaked.
+    // is the same 404 as a missing ad - moderation state is never leaked.
     if (listing.status === 'HIDDEN') {
       const viewer = await getSessionUser()
       const privileged = viewer && (viewer.id === listing.userId || isAdminUser(viewer))
@@ -35,14 +35,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
 }
 
 // Edit (owner only). Status can only change through an explicitly allowed
-// transition — a fulfilled listing never silently becomes active again.
+// transition - a fulfilled listing never silently becomes active again.
 export async function PATCH(request: NextRequest, { params }: Params) {
   return route(async () => {
     const user = await requireUser()
     const { id } = await params
     const listing = await getOwnedListingOr404(id, user.id)
 
-    // Read the body exactly once — a Request stream cannot be consumed twice.
+    // Read the body exactly once - a Request stream cannot be consumed twice.
     const body = await request.json().catch(() => {
       throw new ApiError(400, 'Request body must be valid JSON')
     })
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     const data = parsed.data
 
-    // Field edits on a non-active listing would risk contradictory state —
+    // Field edits on a non-active listing would risk contradictory state -
     // the UI asks the owner to reactivate first.
     if (listing.status !== 'ACTIVE') {
       throw new ApiError(409, `This listing is ${listing.status.toLowerCase()}. Reactivate it before editing.`)
@@ -104,7 +104,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     )
     if (banned) {
       throw new ApiError(400, banned.message, {
-        title: 'This listing cannot be published — ' + banned.label.toLowerCase(),
+        title: 'This listing cannot be published - ' + banned.label.toLowerCase(),
       })
     }
     const rawContactPhone = data.contactPhone ?? listing.contactPhone
@@ -148,8 +148,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     // Discount rules against the merged record (partials cannot be judged alone).
     if (merged.compareAtPrice !== null && merged.price === null) {
-      throw new ApiError(400, 'Add the current price first — the old price only shows as a discount next to it', {
-        compareAtPrice: 'Add the current price first — the old price only shows as a discount next to it',
+      throw new ApiError(400, 'Add the current price first - the old price only shows as a discount next to it', {
+        compareAtPrice: 'Add the current price first - the old price only shows as a discount next to it',
       })
     }
     if (merged.compareAtPrice !== null && merged.price !== null && merged.compareAtPrice <= merged.price) {

@@ -20,7 +20,7 @@ export function TypeBadge({ type, className }: { type: ListingType; className?: 
 }
 
 export function StatusBadge({ status, className }: { status: ListingStatus; className?: string }) {
-  if (status === 'ACTIVE') return null // Active needs no badge — it is the normal case.
+  if (status === 'ACTIVE') return null // Active needs no badge - it is the normal case.
   const ui = STATUS_UI[status]
   return (
     <span

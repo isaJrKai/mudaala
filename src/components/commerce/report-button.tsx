@@ -42,7 +42,7 @@ export function ReportButton({ targetType, targetId, noun = 'ad' }: ReportButton
         setPhase('sent')
         return
       }
-      // The API's messages are written for buyers — show them as they are.
+      // The API's messages are written for buyers - show them as they are.
       setError(json?.error ?? 'Something went wrong. Please try again in a moment.')
       setPhase('open')
     } catch {

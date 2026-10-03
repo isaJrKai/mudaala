@@ -1,6 +1,6 @@
 // One-off: WCAG contrast of white text on the new warm destructive token,
 // light + dark. oklch -> oklab -> linear sRGB -> relative luminance.
-// (Locally-prefixed names — this file shares the tsc program with
+// (Locally-prefixed names - this file shares the tsc program with
 // palette-contrast.ts, which already declares lum/contrast globals.)
 function ocToRgb(L: number, C: number, hDeg: number): [number, number, number] {
   const h = (hDeg * Math.PI) / 180

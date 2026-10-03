@@ -4,7 +4,7 @@ import { getShopPage } from '@/lib/shop'
 
 type Params = { params: Promise<{ id: string }> }
 
-// Public shop page — the seller's own space: identity, trust checklist and
+// Public shop page - the seller's own space: identity, trust checklist and
 // their full ACTIVE catalogue. No sign-in for buyers, ever.
 export async function GET(_request: NextRequest, { params }: Params) {
   return route(async () => {

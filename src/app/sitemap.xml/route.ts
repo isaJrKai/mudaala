@@ -1,5 +1,5 @@
 // The sitemap: the catalog search engines crawl. Every ACTIVE ad (/l/{id})
-// plus every live shop (/s/{code} — a shop with at least one ACTIVE ad).
+// plus every live shop (/s/{code} - a shop with at least one ACTIVE ad).
 // Expired, fulfilled and archived listings are deliberately excluded.
 //
 // Paged: entries beyond PAGE_SIZE roll onto /sitemap.xml?page=N. While
@@ -39,7 +39,7 @@ function urlEntry(loc: string, lastmod: Date | undefined, priority: string): str
 export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get('page')
 
-  // PLACEHOLDER RULE — seed listings are development fixtures, never real
+  // PLACEHOLDER RULE - seed listings are development fixtures, never real
   // content: search engines never crawl them from the sitemap.
   const activeListing = { status: 'ACTIVE', expiresAt: { gt: new Date() }, isSeed: false }
   const [listingCount, shopCount] = await Promise.all([

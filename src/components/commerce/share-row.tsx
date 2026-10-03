@@ -3,7 +3,7 @@
 // Share a live ad. Two actions only, because this is how trade actually
 // spreads in Uganda: forward it on WhatsApp, or copy the link for anywhere
 // else. The full URL sits under the buttons so a buyer can see exactly what
-// they are about to send — and still has a manual path if the clipboard
+// they are about to send - and still has a manual path if the clipboard
 // refuses. The caller resolves the absolute URL (the server-rendered ad page
 // passes its canonical origin; the in-app detail resolves window.origin),
 // so this row stays dumb and portable.
@@ -40,7 +40,7 @@ export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad', no
       timer.current = setTimeout(() => setCopied(false), 1500)
     } catch {
       // Clipboard denied (older browser, embedded webview). The URL is
-      // rendered as text right below — the manual path is one long-press away.
+      // rendered as text right below - the manual path is one long-press away.
     }
   }
 
@@ -52,7 +52,7 @@ export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad', no
       try {
         await navigator.share({ title, text: shareText, url })
       } catch {
-        // User dismissed the sheet — not an error.
+        // User dismissed the sheet - not an error.
       }
     } else {
       void copyLink()

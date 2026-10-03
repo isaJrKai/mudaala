@@ -37,7 +37,7 @@ export function MyListings() {
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   // Which row is running which action, so one seller's Refresh never greys
   // out the buttons on every OTHER listing (the old shared isPending did
-  // exactly that). Same-row buttons pause together — one listing shouldn't
+  // exactly that). Same-row buttons pause together - one listing shouldn't
   // race two status changes against itself.
   const [activeAction, setActiveAction] = useState<{ id: string; key: string } | null>(null)
   // The expiry label of the just-refreshed listing flashes green (remounted
@@ -165,7 +165,7 @@ export function MyListings() {
                     key={expiryFlash?.id === listing.id ? `flash-${expiryFlash.tick}` : 'static'}
                     className={cn('mr-auto text-xs text-muted-foreground', expiryFlash?.id === listing.id && 'flash-good')}
                   >
-                    {listing.status === 'ACTIVE' ? expiryLabel(listing.expiresAt) : '—'}
+                    {listing.status === 'ACTIVE' ? expiryLabel(listing.expiresAt) : copy.mySales.notActive}
                   </span>
 
                   {listing.status === 'ACTIVE' ? (

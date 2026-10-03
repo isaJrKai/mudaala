@@ -1,6 +1,6 @@
 'use client'
 
-// Listing detail — everything needed to act: what it looks like (photos),
+// Listing detail - everything needed to act: what it looks like (photos),
 // who is selling (the named shop), how much, where (with directions for
 // pickup), and direct contact. No login needed for any of it.
 
@@ -41,13 +41,13 @@ import { Camera } from 'lucide-react'
 
 function PhotoGallery({ listing }: { listing: ListingDetailT }) {
   if (listing.photos.length === 0) {
-    // PLACEHOLDER RULE — no photo yet: the neutral tile (flat grey, category
+    // PLACEHOLDER RULE - no photo yet: the neutral tile (flat grey, category
     // name, small camera icon), never a stock or illustrated stand-in.
     return (
       <div className="h-56 w-full sm:h-72">
         <PlaceholderTile
           category={listing.category}
-          note="No photo — ask the seller for details"
+          note={copy.listing.noPhotoNote}
           iconClassName="size-8"
         />
       </div>
@@ -91,7 +91,7 @@ export function ListingDetail({ id }: { id: string }) {
   })
 
   // The canonical ad-page URL: window origin + /l/{id}. Derived during
-  // render, not synced through state — the origin is stable for the life of
+  // render, not synced through state - the origin is stable for the life of
   // the page, and only the browser ever has a listing to share (the query
   // only runs client-side), so no SSR guard is needed in practice.
   const listing = data?.listing
@@ -153,7 +153,7 @@ export function ListingDetail({ id }: { id: string }) {
               {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
             </p>
             {/* A real discount: the struck-through "was" price says exactly what
-                it is — no fake crossed-out prices can render here, because the
+                it is - no fake crossed-out prices can render here, because the
                 API rejects old prices that are not higher than the current one. */}
             {listing.price !== null && listing.compareAtPrice !== null && listing.compareAtPrice > listing.price ? (
               <>
@@ -168,7 +168,7 @@ export function ListingDetail({ id }: { id: string }) {
             {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">{copy.common.negotiable}</span> : null}
             {/* The heart lives with the price: "come back to this one" sits
                 right next to "this is what it costs". OFFERs only, like the
-                basket — a shortlist of things you can actually take. */}
+                basket - a shortlist of things you can actually take. */}
             {listing.type === 'OFFER' ? (
               <HeartButton
                 listingId={listing.id}
@@ -180,7 +180,7 @@ export function ListingDetail({ id }: { id: string }) {
 
           {/* The buy action, next to the price where buy intent lives.
               OFFERs only: a REQUEST is someone offering to sell to YOU.
-              The flash only plays when the basket really took the item —
+              The flash only plays when the basket really took the item -
               addToBasket reports back. */}
           {listing.type === 'OFFER' ? (
             <Button
@@ -205,7 +205,7 @@ export function ListingDetail({ id }: { id: string }) {
             </Button>
           ) : null}
 
-          {/* Who you would be buying from — the seller's own shop name, said
+          {/* Who you would be buying from - the seller's own shop name, said
               back to the buyer in plain words. */}
           <div className="mt-3 flex items-center gap-2.5 rounded-md border bg-secondary/40 px-3 py-2.5">
             {shopPhoto ? (
@@ -287,7 +287,7 @@ export function ListingDetail({ id }: { id: string }) {
           </dl>
         </div>
 
-        {/* Contact — only real, owner-provided contact details. The safety
+        {/* Contact - only real, owner-provided contact details. The safety
             card comes FIRST: read before contact happens. Plus directions
             for the "can I pick it up myself?" decision. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
@@ -331,7 +331,7 @@ export function ListingDetail({ id }: { id: string }) {
         </div>
       </article>
 
-      {/* Share — every ad carries its own shareable ad-page URL, so what a
+      {/* Share - every ad carries its own shareable ad-page URL, so what a
           seller forwards on WhatsApp opens as a real web page with photos,
           price and the shop, not a dead app fragment. */}
       {shareUrl ? (
@@ -340,7 +340,7 @@ export function ListingDetail({ id }: { id: string }) {
         </section>
       ) : null}
 
-      {/* Seller — real account info; no verification claims are made. */}
+      {/* Seller - real account info; no verification claims are made. */}
       <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">
         <h2 className="text-sm font-semibold">{copy.listing.aboutSeller}</h2>
         <div className="mt-2 flex items-center gap-3">
@@ -352,7 +352,7 @@ export function ListingDetail({ id }: { id: string }) {
             </span>
           )}
           <div className="min-w-0">
-            {/* The shop name the seller chose — this is their space, named by them.
+            {/* The shop name the seller chose - this is their space, named by them.
                 Serif is reserved for exactly this: the shop's name. */}
             <p className="flex items-center gap-1.5 truncate font-display text-[17px] font-semibold">
               {shopDisplayName}

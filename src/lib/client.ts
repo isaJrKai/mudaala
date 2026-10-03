@@ -1,4 +1,4 @@
-// Mudaala — client-side API types (mirror of server responses).
+// Mudaala - client-side API types (mirror of server responses).
 
 import type { ListingType, ListingStatus } from './constants'
 
@@ -35,7 +35,7 @@ export function clearSessionToken(): void {
 export async function apiFetch<T>(input: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   // FormData (photo uploads) must keep the browser-generated multipart
-  // boundary — never stamp a JSON content-type over it.
+  // boundary - never stamp a JSON content-type over it.
   const isMultipart = typeof FormData !== 'undefined' && init?.body instanceof FormData
   if (!headers.has('Content-Type') && init?.body && !isMultipart) headers.set('Content-Type', 'application/json')
   const token = getStoredSessionToken()
@@ -47,13 +47,13 @@ export async function apiFetch<T>(input: string, init?: RequestInit): Promise<T>
   try {
     body = await res.json()
   } catch {
-    // Non-JSON response (proxy error, empty body) — treat as failure.
+    // Non-JSON response (proxy error, empty body) - treat as failure.
   }
 
   // Self-heal: a 401 from an authenticated endpoint means the stored token is
   // dead (server-side revoked/expired). Drop it so the UI shows signed-out
   // truthfully instead of sending a stale token forever. Login/register are
-  // exempt — a 401 there is just "wrong password".
+  // exempt - a 401 there is just "wrong password".
   if (res.status === 401 && !String(input).startsWith('/api/auth/login') && !String(input).startsWith('/api/auth/register')) {
     clearSessionToken()
   }
@@ -110,7 +110,7 @@ export interface BusinessProfileT {
   whatsapp: string | null
   hours: string | null
   verified: boolean
-  /** Public identity code ("MD-4821") — assigned once, never changes. */
+  /** Public identity code ("MD-4821") - assigned once, never changes. */
   shopCode: string | null
   /** Shop spot, pre-rounded to ~100 m server-side. Null when not shared. */
   lat: number | null
@@ -125,7 +125,7 @@ interface ListingOwner {
   profile: BusinessProfileT | null
 }
 
-// Shop identity attached to search/browse results — who is selling this?
+// Shop identity attached to search/browse results - who is selling this?
 // profile.area/county let the browse feed disambiguate same-name shops;
 // profile.lat/lng (blurred to ~100 m) power "Near me" distance chips.
 export interface ListingShopOwner {
@@ -212,7 +212,7 @@ interface ShopInfo {
   whatsapp: string | null
   /** True only when the displayed phone IS the seller's login line. */
   phoneConfirmed: boolean
-  /** Public identity code ("MD-4821") — stable for the life of the shop. */
+  /** Public identity code ("MD-4821") - stable for the life of the shop. */
   shopCode: string | null
   memberSince: string
   activeCount: number
@@ -225,7 +225,7 @@ export interface ShopPage {
   listings: Listing[]
 }
 
-/** Result of punching a MD-XXXX code into /api/shops/lookup — card-slim on
+/** Result of punching a MD-XXXX code into /api/shops/lookup - card-slim on
  * purpose: no phone/contact details, the shop page has those after a tap. */
 export interface ShopLookupResult {
   id: string
@@ -281,7 +281,7 @@ interface ApiErrorShape {
   fields?: Record<string, string>
 }
 
-// Typed fetch helpers — a failed request NEVER resolves as success.
+// Typed fetch helpers - a failed request NEVER resolves as success.
 export const apiGet = apiFetch
 export function apiPost<T>(url: string, data?: unknown): Promise<T> {
   return apiFetch<T>(url, { method: 'POST', body: data === undefined ? undefined : JSON.stringify(data) })

@@ -6,7 +6,7 @@ import { listingQuerySchema } from '@/lib/validation'
 
 type Params = { params: Promise<{ id: string }> }
 
-// Recompute the match count against the database — honest numbers only.
+// Recompute the match count against the database - honest numbers only.
 export async function POST(_request: NextRequest, { params }: Params) {
   return route(async () => {
     const user = await requireUser()

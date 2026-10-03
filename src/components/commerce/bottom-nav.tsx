@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
 
-// Mobile bottom navigation — the primary nav on affordable Android phones.
+// Mobile bottom navigation - the primary nav on affordable Android phones.
 export function BottomNav() {
   const { view, navigate } = useAppStore()
   const { user } = useSession()
@@ -22,7 +22,7 @@ export function BottomNav() {
     refetchIntervalInBackground: false,
   })
   const unread = user ? (notificationsQuery.data?.unreadCount ?? 0) : 0
-  // Mobile bell swings exactly like the desktop one — the bottom nav is the
+  // Mobile bell swings exactly like the desktop one - the bottom nav is the
   // primary nav on the phones this app is built for.
   const bellRef = useBellShake(unread)
 

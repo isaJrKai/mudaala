@@ -1,17 +1,17 @@
-// Mudaala — authentication & session management.
-// scrypt (node:crypto) for password hashing — no extra dependencies.
+// Mudaala - authentication & session management.
+// scrypt (node:crypto) for password hashing - no extra dependencies.
 // Sessions are opaque random tokens stored server-side.
 //
 // DUAL TRANSPORT (why two ways to send the same token):
 // The preview/sandbox UI can run inside a cross-origin iframe. Browsers drop
-// SameSite=Lax cookies there, and SameSite=None cookies require HTTPS+Secure —
+// SameSite=Lax cookies there, and SameSite=None cookies require HTTPS+Secure -
 // which plain-http sandboxes cannot use either. So the token can ALSO travel
 // in the Authorization: Bearer header.
 //
 // BUT the Bearer channel is an opt-in compatibility feature, not a right:
 // ALLOW_BEARER_AUTH=true (or the legacy AUTH_BEARER_FALLBACK=1) turns it on
 // (dev, preview, sandbox). Production sets nothing and gets the httpOnly
-// cookie ONLY — a stolen-URL token cannot ride an Authorization header there,
+// cookie ONLY - a stolen-URL token cannot ride an Authorization header there,
 // and logout revokes exactly the cookie session.
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
@@ -76,7 +76,7 @@ export async function clearSessionCookie(): Promise<void> {
 }
 
 // Bearer fallback is explicitly opt-in per environment. Nothing set (and
-// anything other than "1") means cookie-only — the production posture.
+// anything other than "1") means cookie-only - the production posture.
 
 function extractBearerToken(header: string | null): string | null {
   if (!header) return null
@@ -107,7 +107,7 @@ export async function getSessionUser(): Promise<User | null> {
   return session.user
 }
 
-// Public shape — never leaks passwordHash.
+// Public shape - never leaks passwordHash.
 interface PublicUser {
   id: string
   name: string

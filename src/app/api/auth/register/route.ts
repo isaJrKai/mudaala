@@ -44,15 +44,15 @@ export async function POST(request: Request) {
     }
 
     // The full rulebook (common-password and not-your-phone checks) needs the
-    // normalized phone, so it runs here — register and reset share one set of
+    // normalized phone, so it runs here - register and reset share one set of
     // password rules.
     const pwProblem = passwordProblem(data.password, phone)
     if (pwProblem) {
       return jsonError(400, pwProblem, { password: pwProblem })
     }
 
-    // Task 4 — record WHICH version of the legal documents was accepted, and
-    // when — so a future terms change knows exactly who needs to re-confirm.
+    // Task 4 - record WHICH version of the legal documents was accepted, and
+    // when - so a future terms change knows exactly who needs to re-confirm.
     const user = await db.user.create({
       data: {
         name: data.name,

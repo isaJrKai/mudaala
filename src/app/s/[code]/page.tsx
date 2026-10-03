@@ -1,9 +1,9 @@
-// Shop pages — every shop code gets a real web page: /s/MD-4821. The code
+// Shop pages - every shop code gets a real web page: /s/MD-4821. The code
 // is printed on posters and typed like a mobile-money till number, so the
 // URL forgives case, spaces and dashes (normalizeShopCode) while the
 // canonical tag always states the stored form. The page shows identity and
 // live stock; contact happens per listing, so no phone number is rendered
-// here at all — not in the body, not in the metadata.
+// here at all - not in the body, not in the metadata.
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -57,9 +57,9 @@ function shopPlace(shop: ShopRow): string {
   return [shop.area, shop.county].filter(Boolean).join(', ')
 }
 
-// The preview image: the newest live ad's first photo — a shop IS its stock
-// — falling back to the shop photo the seller uploaded.
-// PLACEHOLDER RULE — seed photos (/uploads/seed/) are development fixtures:
+// The preview image: the newest live ad's first photo - a shop IS its stock
+// - falling back to the shop photo the seller uploaded.
+// PLACEHOLDER RULE - seed photos (/uploads/seed/) are development fixtures:
 // they never ship as the shop's OG/Twitter preview.
 function shopImage(shop: ShopRow): string | undefined {
   const photo =
@@ -129,7 +129,7 @@ export default async function ShopPage({ params }: Params) {
       </header>
 
       <main className="space-y-4 px-4 py-4">
-        {/* Identity — real account facts only, same honesty rules as the
+        {/* Identity - real account facts only, same honesty rules as the
             ad pages: name, real code, real start date, what the seller
             actually filled in. No badges, no ratings. */}
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About this shop">
@@ -164,7 +164,7 @@ export default async function ShopPage({ params }: Params) {
           ) : null}
         </section>
 
-        {/* Live stock — the catalogue a buyer came for, each card opening
+        {/* Live stock - the catalogue a buyer came for, each card opening
             the ad's own web page. */}
         <section aria-label="Live ads" className="space-y-2">
           <h2 className="text-sm font-semibold">Live ads ({listings.length})</h2>
@@ -181,7 +181,7 @@ export default async function ShopPage({ params }: Params) {
                     {photo ? (
                       <img src={photo} alt="" className="h-28 w-full object-cover" loading="lazy" />
                     ) : (
-                      // PLACEHOLDER RULE — neutral tile, not a stand-in image.
+                      // PLACEHOLDER RULE - neutral tile, not a stand-in image.
                       <div
                         role="img"
                         aria-label="Photo coming from the seller"

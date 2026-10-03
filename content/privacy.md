@@ -6,10 +6,10 @@ _Last updated: October 2026. Questions? Reach the team through the app or the su
 
 ## What we collect
 
-- **Your account:** name, phone number and country. The phone number is your identity on Mudaala — it is how you sign in and how buyers reach you.
-- **Your listings:** what you publish — titles, descriptions, prices, photos, location and the contact number you attach to each ad.
+- **Your account:** name, phone number and country. The phone number is your identity on Mudaala. It is how you sign in and how buyers reach you.
+- **Your listings:** what you publish: titles, descriptions, prices, photos, location and the contact number you attach to each ad.
 - **Your shop:** the business name, photo, description, area and opening hours you enter.
-- **Technical records:** when you sign in we keep a session token so the app remembers you. We keep coarse network records (such as an IP address) only to rate-limit abuse and to deduplicate reports — never to profile you.
+- **Technical records:** when you sign in we keep a session token so the app remembers you. We keep coarse network records (such as an IP address) only to rate-limit abuse and to deduplicate reports, never to profile you.
 - **Messages you send us:** reports you file and appeals you send.
 
 ## What we never do

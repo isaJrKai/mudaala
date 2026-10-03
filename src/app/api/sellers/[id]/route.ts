@@ -5,7 +5,7 @@ import { expireOverdueListings, serializeListing } from '@/lib/listings'
 
 type Params = { params: Promise<{ id: string }> }
 
-// Public seller storefront — the seller's named shop.
+// Public seller storefront - the seller's named shop.
 // One account, one sign-in: the "shop" is the business profile attached to the
 // same account, not a separate login. Shows only genuinely ACTIVE listings.
 export async function GET(_request: NextRequest, { params }: Params) {

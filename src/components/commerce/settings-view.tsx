@@ -44,7 +44,7 @@ interface TestResult {
 
 // Settings → Advanced Settings.
 // Holds the PostgreSQL deployment connection: everything that needs a Postgres
-// link lives here — stored server-side, never returned unmasked.
+// link lives here - stored server-side, never returned unmasked.
 export function SettingsView() {
   const { navigate } = useAppStore()
   const { user, isLoading } = useSession()

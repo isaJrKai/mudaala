@@ -1,7 +1,7 @@
 'use client'
 
-// Photo picker — built for market vendors on low-end phones:
-//   • "Take photo" opens the camera directly (capture="environment") — for a
+// Photo picker - built for market vendors on low-end phones:
+//   • "Take photo" opens the camera directly (capture="environment") - for a
 //     trader standing in front of their stock, the camera IS the flow.
 //   • "Choose photo" opens the gallery for already-taken pictures.
 //   • Each selected file uploads immediately; thumbnails show honest progress

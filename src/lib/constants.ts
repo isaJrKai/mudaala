@@ -1,4 +1,4 @@
-// Mudaala — shared domain constants.
+// Mudaala - shared domain constants.
 // Single source of truth for both server validation and UI rendering.
 
 export const LISTING_TYPES = ['OFFER', 'REQUEST'] as const
@@ -6,12 +6,12 @@ export type ListingType = (typeof LISTING_TYPES)[number]
 
 // HIDDEN is the moderation state: admins (or the auto-hide rule) park a
 // listing here while reports are reviewed. Hidden ads vanish from browse,
-// search, the sitemap and direct links — to everyone, including search
-// engines — and only an admin RESTORE brings them back.
+// search, the sitemap and direct links - to everyone, including search
+// engines - and only an admin RESTORE brings them back.
 const LISTING_STATUSES = ['ACTIVE', 'FULFILLED', 'EXPIRED', 'ARCHIVED', 'HIDDEN'] as const
 export type ListingStatus = (typeof LISTING_STATUSES)[number]
 
-// Deliberate status transitions. Anything not listed here is forbidden —
+// Deliberate status transitions. Anything not listed here is forbidden -
 // a fulfilled listing must never silently become active through an unrelated edit.
 // HIDDEN has no owner transitions at all: only the admin API restores it,
 // so moderation can never be undone from the seller dashboard.
@@ -23,7 +23,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<ListingStatus, ListingStatus[]> 
   HIDDEN: [],
 }
 
-// Report reasons — the vocabulary buyers use at the market, mapped to what
+// Report reasons - the vocabulary buyers use at the market, mapped to what
 // moderation needs. LABELS is the buyer-facing wording on the report form.
 export const REPORT_REASONS = ['SCAM', 'STOLEN_GOODS', 'PROHIBITED_ITEM', 'WRONG_INFO', 'OTHER'] as const
 export type ReportReason = (typeof REPORT_REASONS)[number]
@@ -37,7 +37,7 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
 }
 
 // Where buyers and hidden sellers should write for appeals. Set a real
-// inbox in the environment before launch — the placeholder below is NOT a
+// inbox in the environment before launch - the placeholder below is NOT a
 // deliverable address.
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? 'support@mudaala.app'
 
@@ -46,7 +46,7 @@ export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL ?? 'support@mudaala.app'
 // The list lives here and is meant to be edited: every rule is one small
 // object with the words to watch for and the sentence a seller sees when a
 // listing is rejected. Patterns run against the listing title + description,
-// case-insensitively. Keep the messages friendly and specific — a seller
+// case-insensitively. Keep the messages friendly and specific - a seller
 // whose ad was rejected should always learn WHY, and what not to do next.
 
 export interface ProhibitedRule {
@@ -67,7 +67,7 @@ export const PROHIBITED_ITEMS: ProhibitedRule[] = [
       /\btshopu\b/i, // local slang for a gun
     ],
     message:
-      'Weapons and ammunition cannot be sold on Mudaala. This includes guns, rifles and bullets — even as a joke or a collectible. Please remove them from your listing.',
+      'Weapons and ammunition cannot be sold on Mudaala. This includes guns, rifles and bullets, even as a joke or a collectible. Please remove them from your listing.',
   },
   {
     id: 'drugs',
@@ -78,7 +78,7 @@ export const PROHIBITED_ITEMS: ProhibitedRule[] = [
       /\bshisha\b/i,
     ],
     message:
-      'Drugs cannot be sold on Mudaala — including cannabis, shisha and other controlled substances. Please remove them from your listing.',
+      'Drugs cannot be sold on Mudaala. This includes cannabis, shisha and other controlled substances. Please remove them from your listing.',
   },
   {
     id: 'stolen-goods',
@@ -91,7 +91,7 @@ export const PROHIBITED_ITEMS: ProhibitedRule[] = [
       /\bburgled\b/i,
     ],
     message:
-      'Listings cannot suggest goods are stolen or untraceable ("no papers", "stolen" and similar wording). Mudaala only allows honestly owned goods — please rewrite your listing.',
+      'Listings cannot suggest goods are stolen or untraceable ("no papers", "stolen" and similar wording). Mudaala only allows honestly owned goods. Please rewrite your listing.',
   },
   {
     id: 'government-property',
@@ -116,7 +116,7 @@ export const PROHIBITED_ITEMS: ProhibitedRule[] = [
       /\brail (metal|scrap)\b/i,
     ],
     message:
-      'Public infrastructure — electric cables, transformer parts, manhole covers, railway metal — cannot be sold on Mudaala. Removing and selling these is a crime that puts lives at risk.',
+      'Public infrastructure (electric cables, transformer parts, manhole covers, railway metal) cannot be sold on Mudaala. Removing and selling these is a crime that puts lives at risk.',
   },
   {
     id: 'counterfeit',
@@ -126,7 +126,7 @@ export const PROHIBITED_ITEMS: ProhibitedRule[] = [
       /\b(fake|replica|clone)\b/i,
     ],
     message:
-      'Counterfeit or replica goods cannot be sold on Mudaala. Only genuine items may be listed — please remove brand fakes from your listing.',
+      'Counterfeit or replica goods cannot be sold on Mudaala. Only genuine items may be listed. Please remove brand fakes from your listing.',
   },
 ]
 
@@ -196,7 +196,7 @@ export function unitLabel(key: string): string {
   return UNITS.find((u) => u.key === key)?.label ?? key
 }
 
-// Countries — Mudaala launches in Uganda and stays focused on it. The shape
+// Countries - Mudaala launches in Uganda and stays focused on it. The shape
 // (array, not a single constant) is kept so new markets can be added later
 // without touching call sites.
 export interface CountryDef {
@@ -228,10 +228,10 @@ export function countryDef(key: string): CountryDef {
   return COUNTRIES.find((c) => c.key === key) ?? COUNTRIES[0]
 }
 
-// Union of all locations — used for validating existing rows and saved searches.
+// Union of all locations - used for validating existing rows and saved searches.
 export const COUNTIES = COUNTRIES.flatMap((c) => [...c.locations]) as unknown as readonly string[]
 
-// Currencies — UGX is zero-decimal in everyday trade, so amounts are
+// Currencies - UGX is zero-decimal in everyday trade, so amounts are
 // whole numbers.
 interface CurrencyDef {
   key: 'UGX'
@@ -275,6 +275,6 @@ export const STATUS_UI: Record<ListingStatus, { label: string; badge: string }> 
 
 // Version stamp recorded on every account at the moment its owner accepts the
 // Terms and Privacy Policy. Bump this value whenever the legal text changes
-// meaningfully — users who accepted an older version can then be asked to
+// meaningfully - users who accepted an older version can then be asked to
 // re-confirm. Date-based so the version reads naturally in the database.
 export const TERMS_VERSION = '2026-10-02'

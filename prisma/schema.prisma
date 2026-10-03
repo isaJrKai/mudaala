@@ -1,4 +1,4 @@
-// Commerce OS — data model
+// Commerce OS - data model
 // The database is the single source of truth for listings, ownership and status.
 // PostgreSQL is the runtime store (Task 5): local dev and production both
 // point DATABASE_URL at a real Postgres server.
@@ -23,12 +23,12 @@ model User {
 
   lastHomeVisitAt DateTime? // marker for the Home dashboard's "new matches since last visit" stat
 
-  // PLACEHOLDER RULE — seed marker. Rows the seed script created are
+  // PLACEHOLDER RULE - seed marker. Rows the seed script created are
   // development fixtures, not real shops; scripts/remove-seed-data.ts
   // deletes everything flagged true in one step before launch.
   isSeed Boolean @default(false)
 
-  // Task 4 — legal acceptance: when the user confirmed "18+ and accept the
+  // Task 4 - legal acceptance: when the user confirmed "18+ and accept the
   // Terms and Privacy Policy" and WHICH version they saw. NULL for accounts
   // created before versioned terms existed.
   termsAcceptedAt DateTime?
@@ -58,7 +58,7 @@ model BusinessProfile {
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessName String
   photoUrl     String? // shop photo shown on listings and the About-the-seller card
-  // PLACEHOLDER RULE — see User.isSeed: seed shops and their photos are
+  // PLACEHOLDER RULE - see User.isSeed: seed shops and their photos are
   // removable-in-one-step development fixtures.
   isSeed       Boolean @default(false)
   category     String?
@@ -72,12 +72,12 @@ model BusinessProfile {
   // badge is rendered anywhere until a real verification process exists.
   verified     Boolean @default(false)
   // Public shop identity code (e.g. "MD-4821"). Auto-assigned once, then
-  // NEVER changed — buyers and printed QR posters rely on its stability.
+  // NEVER changed - buyers and printed QR posters rely on its stability.
   shopCode     String? @unique
   // Optional shop spot. The seller taps "Add my shop location" while standing
   // AT the shop; the API rounds to 3 decimals (~100 m) BEFORE storing, so a
   // precise home/private position can never exist server-side. Buyers only
-  // ever receive this blurred pair — enough to order "nearest" results.
+  // ever receive this blurred pair - enough to order "nearest" results.
   lat          Float?
   lng          Float?
   createdAt    DateTime @default(now())
@@ -93,7 +93,7 @@ model Listing {
   description      String
   category         String
   price            Float? // in the listing's currency, null = "ask seller" / not disclosed
-  compareAtPrice   Float? // optional "was" price — shown struck-through as a discount when higher than price
+  compareAtPrice   Float? // optional "was" price - shown struck-through as a discount when higher than price
   currency         String    @default("UGX") // UGX
   priceNegotiable  Boolean   @default(false)
   unit             String? // per kg, per bag, ... (null when price is null)
@@ -104,7 +104,7 @@ model Listing {
   contactPhone     String // normalized E.164
   contactWhatsapp  String?
   photos           String    @default("[]") // JSON array of image URLs (SQLite has no array type)
-  // PLACEHOLDER RULE — seed listings (and their /uploads/seed/ photos) are
+  // PLACEHOLDER RULE - seed listings (and their /uploads/seed/ photos) are
   // development fixtures; flagged so scripts/remove-seed-data.ts can wipe
   // them in one step, and so sitemaps/OG never ship them as real content.
   isSeed           Boolean   @default(false)
@@ -159,7 +159,7 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 }
 
-// One SMS password-reset code. The 6-digit code itself is NEVER stored —
+// One SMS password-reset code. The 6-digit code itself is NEVER stored -
 // only its sha256 hash. A code lives 10 minutes, dies after 5 wrong
 // submissions (attempts, killed by setting usedAt), and is consumed by a
 // successful reset (usedAt). Only the newest unused code per user is valid:
@@ -179,7 +179,7 @@ model PasswordReset {
 
 // A buyer's flag on an ad or a shop. Guests can report (identified by IP);
 // signed-in reporters are identified by user id. One OPEN report per
-// reporter per target — duplicates are answered with a friendly 409.
+// reporter per target - duplicates are answered with a friendly 409.
 // status: OPEN (awaiting review) | ACTIONED (admin acted on it) | DISMISSED
 model Report {
   id          String   @id @default(cuid())
@@ -199,7 +199,7 @@ model Report {
 }
 
 // Every moderation action leaves a row: who did it, what, on what. The
-// auto-hide (3 distinct reporters) logs with a null actorId — the system
+// auto-hide (3 distinct reporters) logs with a null actorId - the system
 // itself acted. Admin hides, restores and dismisses log the admin's id.
 model AuditLog {
   id         String   @id @default(cuid())
@@ -214,7 +214,7 @@ model AuditLog {
 }
 
 // Daily median asking price per category+unit, recorded by the cron sweep
-// from ACTIVE listings (only combos with sampleSize >= 5 — thinner samples
+// from ACTIVE listings (only combos with sampleSize >= 5 - thinner samples
 // would trade honesty for a fuller chart). currency is part of the key on
 // purpose: a median across two currencies would be a fabricated number,
 // and the whole product refuses those.
@@ -228,7 +228,7 @@ model PriceSnapshot {
   sampleSize  Int
   createdAt   DateTime @default(now())
 
-  @@unique([date, category, unit, currency]) // upsert target — sweeps are idempotent
+  @@unique([date, category, unit, currency]) // upsert target - sweeps are idempotent
   @@index([date])
   @@index([category, unit, currency])
 }

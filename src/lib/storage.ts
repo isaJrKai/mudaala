@@ -1,8 +1,8 @@
-// Mudaala — photo storage behind one interface.
+// Mudaala - photo storage behind one interface.
 //
 // Development writes photos to the local disk (public/uploads, served
-// statically by Next). Production points at any S3-compatible bucket —
-// Cloudflare R2, Supabase Storage, MinIO — using the STORAGE_* environment
+// statically by Next). Production points at any S3-compatible bucket -
+// Cloudflare R2, Supabase Storage, MinIO - using the STORAGE_* environment
 // variables. Call sites (today: the upload route; the URL-migration script)
 // never know which one is behind the interface, and the choice is made per
 // process from the environment, so flipping a deployment from disk to bucket
@@ -59,7 +59,7 @@ function hmac(key: Buffer | string, data: string): Buffer {
   return createHmac('sha256', key).update(data).digest()
 }
 
-/** AWS SigV4 canonical signature for one PUT — exported for unit tests. */
+/** AWS SigV4 canonical signature for one PUT - exported for unit tests. */
 export function signS3Put(
   env: S3Env,
   objectKey: string,
@@ -121,7 +121,7 @@ export class S3Storage implements PhotoStorage {
       body: new Uint8Array(data),
     })
     if (!res.ok) {
-      // Gateway bodies may contain account specifics — never echo them.
+      // Gateway bodies may contain account specifics - never echo them.
       throw new Error(`S3 put failed with HTTP ${res.status}`)
     }
   }
@@ -140,7 +140,7 @@ export class S3Storage implements PhotoStorage {
 }
 
 // ---------------------------------------------------------------------------
-// Provider choice — pure function so the suite can pin it
+// Provider choice - pure function so the suite can pin it
 // ---------------------------------------------------------------------------
 
 export function readStorageEnv(env: Record<string, string | undefined> = process.env): S3Env | null {

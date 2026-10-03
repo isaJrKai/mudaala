@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — round 11: one-pass golden path with tolerant ref patterns.
+# Duuka - round 11: one-pass golden path with tolerant ref patterns.
 set -u
 cd /home/z/my-project
 

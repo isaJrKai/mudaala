@@ -1,9 +1,9 @@
 // Shared server component for the legal pages (/privacy, /terms, /safety).
-// Each page renders its markdown file from /content — the text lives in
+// Each page renders its markdown file from /content - the text lives in
 // content/<name>.md so it can be updated by editing the file, with no code
 // change and no redeploy of the app logic. A missing file renders an honest
 // "coming soon" body instead of crashing the page.
-// (The site footer comes from the root layout — every route gets it once.)
+// (The site footer comes from the root layout - every route gets it once.)
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'

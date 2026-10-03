@@ -1,4 +1,4 @@
-// Ad pages — the crawlable, shareable face of every listing.
+// Ad pages - the crawlable, shareable face of every listing.
 //
 // This is the page a WhatsApp link opens, the page Google indexes, the page
 // a buyer forwards to a cousin in another district. The in-app detail view
@@ -8,7 +8,7 @@
 // seller identity, and the market-check chip no other Ugandan marketplace
 // has.
 //
-// URL shape: /l/{id}. The id IS the address — no slug to rot, and the
+// URL shape: /l/{id}. The id IS the address - no slug to rot, and the
 // metadata title carries the keywords ("Red onions · USh 5,200 / kg ·
 // Mudaala"). Older keyword-style URLs resolve through the dash-tail and
 // permanently redirect here, so nothing that was ever shared breaks.
@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const listing = await loadAdRow(id)
 
   // Gone ads never render their page, so this branch mostly matters for the
-  // split second before notFound() — keep it honest and unindexable.
+  // split second before notFound() - keep it honest and unindexable.
   if (!listing || listing.status !== 'ACTIVE') {
     return {
       title: 'No longer available · Mudaala',
@@ -79,7 +79,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 
   const photos = photosOf(listing.photos)
-  // PLACEHOLDER RULE — seed photos are development fixtures, never real
+  // PLACEHOLDER RULE - seed photos are development fixtures, never real
   // content: they never ship as the OG/Twitter preview. Filter by path so
   // even an unflagged row that still points at /uploads/seed/ stays out.
   const publicPhotos = photos.filter((p) => !p.includes('/uploads/seed/'))
@@ -102,7 +102,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       url: `/l/${listing.id}`,
       siteName: 'Mudaala',
       type: 'website',
-      // The first real photo is the preview — WhatsApp picks it up for link
+      // The first real photo is the preview - WhatsApp picks it up for link
       // chats. Without one, the neutral card renders instead.
       images: [shareImage],
     },
@@ -117,7 +117,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 // The market-check chip: the cron sweep records a daily median asking price
 // per (category, unit, currency) whenever at least MIN_SAMPLE real listings
-// back it. When this ad's exact market has data, the page shows it — the
+// back it. When this ad's exact market has data, the page shows it - the
 // buyer walks into the WhatsApp chat knowing what the market says, not just
 // what this seller asks. No data means no chip: absence stays honest.
 const MARKET_WINDOW_DAYS = 7
@@ -135,7 +135,7 @@ async function marketContext(listing: { type: string; price: number | null; unit
 }
 
 // Tiny axis-less trend line for the market chip. Pure SVG, no JS, scales to
-// the series' own min/max — the shape is the message, not the grid.
+// the series' own min/max - the shape is the message, not the grid.
 function Sparkline({ values, className }: { values: number[]; className?: string }) {
   if (values.length < 2) return null
   const min = Math.min(...values)
@@ -157,7 +157,7 @@ export default async function AdPage({ params }: Params) {
   const canonicalUrl = `${siteUrl}/l/${listing.id}`
 
   const { passwordHash: _unused, ...owner } = listing.user
-  // PLACEHOLDER RULE — seed photos are development fixtures, never real
+  // PLACEHOLDER RULE - seed photos are development fixtures, never real
   // content: they do not render on the ad page, and they never reach the
   // Product JSON-LD. A photo-less ad shows the neutral tile instead.
   const photos = photosOf(listing.photos).filter((p) => !p.includes('/uploads/seed/'))
@@ -175,7 +175,7 @@ export default async function AdPage({ params }: Params) {
   db.listing.update({ where: { id: listing.id }, data: { viewCount: { increment: 1 } } }).catch(() => undefined)
 
   // Structured data: OFFERs get full Product + Offer markup so Google can
-  // surface price and availability. REQUESTs get none — a "wanted" ad is
+  // surface price and availability. REQUESTs get none - a "wanted" ad is
   // not a product for sale, and pretending otherwise would be dishonest
   // markup. Verification claims, ratings, fake reviews and the contact
   // phone are omitted on purpose: none of them belong in metadata.
@@ -214,7 +214,7 @@ export default async function AdPage({ params }: Params) {
       </header>
 
       <main className="space-y-4 px-4 py-4">
-        {/* Photos — scroll-snap gallery, server-rendered, no JS needed */}
+        {/* Photos - scroll-snap gallery, server-rendered, no JS needed */}
         {photos.length > 0 ? (
           <div className="relative">
             <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto scrollbar-slim p-1" aria-label={`Photos of ${listing.title}`}>
@@ -222,7 +222,7 @@ export default async function AdPage({ params }: Params) {
                 <div key={photo} className="relative h-56 w-[88%] shrink-0 snap-center overflow-hidden rounded-md border sm:h-80">
                   <img
                     src={photo}
-                    alt={`${listing.title} — photo ${i + 1} of ${photos.length}`}
+                    alt={`${listing.title} - photo ${i + 1} of ${photos.length}`}
                     loading={i === 0 ? 'eager' : 'lazy'}
                     className="size-full object-cover"
                   />
@@ -236,7 +236,7 @@ export default async function AdPage({ params }: Params) {
             ) : null}
           </div>
         ) : (
-          // PLACEHOLDER RULE — neutral tile: flat grey, category name, a
+          // PLACEHOLDER RULE - neutral tile: flat grey, category name, a
           // small camera icon. Inline markup keeps the page JS-free.
           <div
             role="img"
@@ -278,7 +278,7 @@ export default async function AdPage({ params }: Params) {
           {market ? (
             <div
               className="mt-3 flex items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2"
-              title={`Median asking price across active Mudaala offers in ${categoryLabel(listing.category)} per ${unitLabel(market.unit)} — every number is backed by at least 5 real listings. No estimates, no guesses.`}
+              title={`Median asking price across active Mudaala offers in ${categoryLabel(listing.category)} per ${unitLabel(market.unit)} - every number is backed by at least 5 real listings. No estimates, no guesses.`}
             >
               <Sparkline values={market.points.map((p) => p.medianPrice)} className="h-5 w-[72px] shrink-0 text-emerald-700" />
               <p className="text-[13px] leading-snug text-emerald-900">
@@ -328,7 +328,7 @@ export default async function AdPage({ params }: Params) {
           <p className="mt-1.5 whitespace-pre-line text-[15px] leading-relaxed text-foreground/90">{listing.description}</p>
         </article>
 
-        {/* The seller — real account facts only: named shop, real code, real
+        {/* The seller - real account facts only: named shop, real code, real
             start date. No badges, no ratings, nothing Mudaala cannot prove. */}
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">
           <h2 className="text-sm font-semibold">{listing.type === 'OFFER' ? 'About the seller' : 'Who is buying'}</h2>
@@ -359,7 +359,7 @@ export default async function AdPage({ params }: Params) {
               <span className="rounded border bg-secondary px-1.5 py-0.5 font-mono text-[13px] font-semibold text-foreground">
                 {owner.profile.shopCode}
               </span>{' '}
-              — type it into Mudaala search to find this shop again.
+              - type it into Mudaala search to find this shop again.
             </p>
           ) : null}
           {owner.profile?.description ? <p className="mt-2 text-sm text-muted-foreground">{owner.profile.description}</p> : null}
@@ -371,7 +371,7 @@ export default async function AdPage({ params }: Params) {
           </Button>
         </section>
 
-        {/* Contact — owner-provided details only, same as everywhere in the
+        {/* Contact - owner-provided details only, same as everywhere in the
             app. The safety card comes FIRST: read before contact happens. */}
         <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="Contact">
           <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
@@ -400,7 +400,7 @@ export default async function AdPage({ params }: Params) {
           <Button asChild variant="outline" className="press mt-2 h-11 w-full gap-1.5 text-[15px]">
             <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label={`Get directions to ${placeOf(listing)}`}>
               <Navigation className="size-4" aria-hidden /> Get directions
-              <span className="text-xs font-normal text-muted-foreground">(Google Maps — for pickup)</span>
+              <span className="text-xs font-normal text-muted-foreground">(Google Maps - for pickup)</span>
             </a>
           </Button>
           <div className="mt-3">
@@ -415,7 +415,7 @@ export default async function AdPage({ params }: Params) {
 
       <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
         <p>
-          Mudaala — trade locally, discover more.{' '}
+          Mudaala - trade locally, discover more.{' '}
           <a href="/#/browse" className="font-medium text-primary underline-offset-2 hover:underline">
             Browse the market
           </a>

@@ -1,7 +1,7 @@
 // Legacy ad URLs live on only as permanent redirects to the canonical
 // /l/{id} page. Whatever was already shared on WhatsApp, printed on a
-// poster or indexed by Google — /listing/{keywords}-{id} and bare
-// /listing/{id} both — lands on the same ad, one hop later. Links never rot.
+// poster or indexed by Google - /listing/{keywords}-{id} and bare
+// /listing/{id} both - lands on the same ad, one hop later. Links never rot.
 
 import { notFound, permanentRedirect } from 'next/navigation'
 

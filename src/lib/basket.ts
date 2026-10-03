@@ -1,19 +1,19 @@
-// Mudaala — the buyer's basket: per-shop lists that end as ONE WhatsApp
+// Mudaala - the buyer's basket: per-shop lists that end as ONE WhatsApp
 // message per seller. Not a supermarket cart: there is no checkout, no
-// payment, no delivery — the message IS the order request, exactly like
+// payment, no delivery - the message IS the order request, exactly like
 // texting a market seller your list.
 //
 //   • Baskets are keyed BY SHOP (one seller fulfills one list; mixing shops
 //     in one "order" would promise things no single seller can honor).
 //   • Everything lives in localStorage on the buyer's phone. Buyers never
-//     sign in (rule 1), so there is no server-side basket and no sync —
+//     sign in (rule 1), so there is no server-side basket and no sync -
 //     the UI says so honestly.
 //   • Lines snapshot what the buyer saw (title, unit price). The basket view
 //     re-checks each listing against the public API and flags what is gone,
 //     expired or fulfilled before the buyer sends anything.
 //
 // Store shape is hand-rolled localStorage + useSyncExternalStore with an
-// empty server snapshot — hydration-safe by construction (SSR renders the
+// empty server snapshot - hydration-safe by construction (SSR renders the
 // empty basket, React re-renders with the real one right after hydration,
 // no mismatch warning, no hydration flash logic needed).
 
@@ -47,7 +47,7 @@ interface StoredBasket {
 const EMPTY: StoredBasket = { shops: {}, lines: {} }
 
 // Parse-once: used ONLY at module init. The live snapshot is the cached
-// `state` below — getSnapshot must return a stable reference or React will
+// `state` below - getSnapshot must return a stable reference or React will
 // loop ("The result of getSnapshot should be cached").
 function parseStored(): StoredBasket {
   try {
@@ -69,7 +69,7 @@ function commit(next: StoredBasket) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
-    // Storage full or blocked — the in-memory basket still works for this
+    // Storage full or blocked - the in-memory basket still works for this
     // visit; persistence resumes when the browser allows it again.
   }
   listeners.forEach((l) => l())
@@ -82,18 +82,18 @@ function subscribe(listener: () => void): () => void {
 
 // React binding. The server snapshot is the EMPTY basket, so SSR and the
 // hydration pass always agree; the real basket appears immediately after.
-// readStored returns the cached module state — stable across calls.
+// readStored returns the cached module state - stable across calls.
 export function useBasket(): StoredBasket {
   return useSyncExternalStore(subscribe, () => state, () => EMPTY)
 }
 
-// Total item count across all shops — the header badge. Hydration-gated the
+// Total item count across all shops - the header badge. Hydration-gated the
 // same way through useBasket, so callers need no extra guard.
 export function basketCount(basket: StoredBasket): number {
   return Object.values(basket.lines).reduce((total, shop) => total + Object.keys(shop).length, 0)
 }
 
-// Total UNITS (quantities summed) — what the header basket's liquid fill
+// Total UNITS (quantities summed) - what the header basket's liquid fill
 // responds to. Deliberately different from the badge: the badge says how
 // many DIFFERENT things are waiting; the fill says how much stuff there is,
 // so tapping add twice visibly fills the basket twice.
@@ -105,7 +105,7 @@ export function basketUnits(basket: StoredBasket): number {
 }
 
 // The minimum the caller must hand over. Feed blocks carry Listing & { user },
-// detail pages carry ListingDetail — both satisfy this shape.
+// detail pages carry ListingDetail - both satisfy this shape.
 export interface BasketAddListing {
   id: string
   title: string
@@ -118,7 +118,7 @@ export interface BasketAddListing {
   user?: { id: string; name: string; profile: { businessName: string; photoUrl?: string | null } | null } | null
 }
 
-/** Add one unit. REQUESTs are not buyable — the caller hides the button, the
+/** Add one unit. REQUESTs are not buyable - the caller hides the button, the
  *  store refuses them anyway. Returns false when nothing was added. */
 export function addToBasket(listing: BasketAddListing): boolean {
   if (listing.type !== 'OFFER' || !listing.user) return false
@@ -185,7 +185,7 @@ function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
   const rows = lines.map((line) => {
     const qty = formatQuantity(line.qty, line.unit) ?? `${line.qty}`
     const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'
-    return `• ${line.title} — ${qty} @ ${price}`
+    return `• ${line.title}: ${qty} @ ${price}`
   })
   return `Hi ${shopName}! I'd like to order from your Mudaala shop:\n${rows.join('\n')}\nIs everything available?`
 }
@@ -195,7 +195,7 @@ export function orderWhatsAppHref(shop: BasketShopInfo, lines: BasketLineInfo[])
   return `https://wa.me/${digits}?text=${encodeURIComponent(orderMessage(shop.name, lines))}`
 }
 
-// Estimated subtotal — only when every priced line shares one currency (the
+// Estimated subtotal - only when every priced line shares one currency (the
 // normal case inside one shop). Unpriced lines just don't count toward it;
 // the UI labels the number an estimate the seller confirms.
 export function basketSubtotal(lines: BasketLineInfo[]): { amount: number; currency: string } | null {

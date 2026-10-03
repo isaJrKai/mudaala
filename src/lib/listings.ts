@@ -1,4 +1,4 @@
-// Mudaala — listing domain service.
+// Mudaala - listing domain service.
 // Search, expiry, refresh rules, saved-search matching.
 // All time-dependent logic reads persisted timestamps; nothing is faked in the UI.
 
@@ -15,7 +15,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 
-// Lazy expiry sweep — idempotent, runs on reads that matter.
+// Lazy expiry sweep - idempotent, runs on reads that matter.
 // Persisted timestamps decide; expired listings are marked EXPIRED and owners notified.
 export async function expireOverdueListings(): Promise<number> {
   const now = new Date()
@@ -41,7 +41,7 @@ export async function expireOverdueListings(): Promise<number> {
   return overdue.length
 }
 
-// "Expiring soon" warnings — sent once per listing via expiringNotifiedAt.
+// "Expiring soon" warnings - sent once per listing via expiringNotifiedAt.
 export async function notifyExpiringSoon(): Promise<number> {
   const soon = addDays(new Date(), EXPIRING_SOON_DAYS)
   const candidates = await db.listing.findMany({
@@ -81,7 +81,7 @@ export const SHOP_OWNER_INCLUDE = {
       id: true,
       name: true,
       // profile.lat/lng arrive PRE-ROUNDED to ~100 m (see profile/location
-      // route) — enough to order and label distances, never a precise spot.
+      // route) - enough to order and label distances, never a precise spot.
       profile: { select: { businessName: true, photoUrl: true, area: true, county: true, lat: true, lng: true } },
     },
   },
@@ -145,7 +145,7 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
   if (query.q) {
     // Postgres-friendly case-insensitive match across the fields a buyer
     // scans (Prisma's `mode: 'insensitive'` compiles to ILIKE). The old
-    // precomputed search column is gone — the database does the searching.
+    // precomputed search column is gone - the database does the searching.
     where.OR = [
       { title: { contains: query.q, mode: 'insensitive' } },
       { description: { contains: query.q, mode: 'insensitive' } },
@@ -170,10 +170,10 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
 
   // "Photos sell": within the same recency band (ads refreshed on the same
   // day), ads WITH a photo rank slightly higher than ads without. Recency
-  // stays the primary order — a 2-day-old ad never jumps a 5-hour-old one;
+  // stays the primary order - a 2-day-old ad never jumps a 5-hour-old one;
   // the boost only decides inside the band. Implemented like the 'nearest'
   // sort: fetch a capped window in freshness order, re-rank in memory, slice
-  // the page — so pagination stays honest (nearest-shop-on-page-1 logic,
+  // the page - so pagination stays honest (nearest-shop-on-page-1 logic,
   // same trade-off, same cap).
   if (query.sort === 'newest' || query.sort === undefined) {
     const PHOTO_BOOST_SCAN_CAP = 500
@@ -348,7 +348,7 @@ export async function refreshListing(listing: Listing): Promise<Listing> {
   })
 }
 
-// Ownership is enforced here — callers pass the authenticated user's id.
+// Ownership is enforced here - callers pass the authenticated user's id.
 export async function getOwnedListingOr404(id: string, userId: string): Promise<Listing> {
   const listing = await db.listing.findUnique({ where: { id } })
   if (!listing) throw new ApiError(404, 'Listing not found')

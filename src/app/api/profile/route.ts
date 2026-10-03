@@ -8,14 +8,14 @@ export async function GET() {
     const user = await requireUser()
     const profile = await db.businessProfile.findUnique({ where: { userId: user.id } })
     // The honest "verify your shop" state: what the seller has actually filled
-    // in. No platform vetting is claimed — completeness is the whole story.
+    // in. No platform vetting is claimed - completeness is the whole story.
     const checklist = shopChecklistFor(profile)
     return jsonOk({ profile, checklist, complete: shopChecklistComplete(checklist) })
   })
 }
 
 // Upsert own business profile. The businessName here is the seller's SHOP
-// NAME — the name buyers see on every listing. No verification claims are
+// NAME - the name buyers see on every listing. No verification claims are
 // made anywhere: the verified flag stays false until a real process exists.
 export async function PUT(request: Request) {
   return route(async () => {

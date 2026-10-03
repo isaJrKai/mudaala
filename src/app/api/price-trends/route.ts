@@ -1,6 +1,6 @@
 // Price trends for the signed-in Home dashboard: a 7-day median-price line
 // per top category (the categories the user posts or saves most). All data
-// comes from PriceSnapshot rows the cron sweep derived from ACTIVE listings —
+// comes from PriceSnapshot rows the cron sweep derived from ACTIVE listings -
 // nothing is computed ad-hoc here, so what the chart shows is exactly what
 // the daily process recorded. Categories without enough market data come back
 // with empty points and the UI shows the honest "not enough listings" state.

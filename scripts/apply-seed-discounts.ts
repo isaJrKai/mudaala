@@ -1,5 +1,5 @@
 // One-off: add "was" prices (compareAtPrice) to three seeded OFFER listings.
-// UPDATE-only — no data is wiped, user ids and sessions stay intact.
+// UPDATE-only - no data is wiped, user ids and sessions stay intact.
 import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()

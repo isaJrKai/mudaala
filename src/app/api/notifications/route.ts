@@ -19,7 +19,7 @@ export async function GET() {
   })
 }
 
-// Clear (delete) notifications. Accepts ?ids=a,b or ?ids=all — the remove
+// Clear (delete) notifications. Accepts ?ids=a,b or ?ids=all - the remove
 // counterpart of mark-read: read keeps history, clear is gone for good, so
 // the UI confirms before calling this. userId filter scopes every delete to
 // the caller; a user can never clear another user's alerts.

@@ -1,11 +1,11 @@
 /**
  * Backfill: shop codes for Mudaala. Two jobs:
  *
- *  1. MIGRATE — every existing DK-XXXX code becomes MD-XXXX with the SAME
+ *  1. MIGRATE - every existing DK-XXXX code becomes MD-XXXX with the SAME
  *     digits. The digits are the shop's identity (printed posters, word of
  *     mouth, saved notes), so only the prefix moves; the lookup API accepts
  *     both prefixes for the same reason.
- *  2. ASSIGN — every business profile without a code gets a fresh MD-XXXX.
+ *  2. ASSIGN - every business profile without a code gets a fresh MD-XXXX.
  *
  * Safe to re-run: MD- codes are left untouched, digits never change.
  *
@@ -15,14 +15,14 @@ import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
 
-// Same rules as src/lib/shop.ts — duplicated here so the script stays a
+// Same rules as src/lib/shop.ts - duplicated here so the script stays a
 // standalone artifact that does not import server code.
 function newCandidate(): string {
   return `MD-${String(Math.floor(Math.random() * 10_000)).padStart(4, '0')}`
 }
 
 async function main() {
-  // 1. MIGRATE legacy DK- codes — prefix-only rewrite, digits preserved.
+  // 1. MIGRATE legacy DK- codes - prefix-only rewrite, digits preserved.
   const legacy = await db.businessProfile.findMany({
     where: { shopCode: { startsWith: 'DK-' } },
     select: { id: true, businessName: true, shopCode: true },
@@ -31,13 +31,13 @@ async function main() {
   for (const profile of legacy) {
     const next = profile.shopCode!.replace(/^DK-/, 'MD-')
     // Digits are untouched, so an MD- clash can only exist if a previous
-    // partial run handed the same digits out twice — re-check to be safe.
+    // partial run handed the same digits out twice - re-check to be safe.
     const clash = await db.businessProfile.findFirst({
       where: { shopCode: next, id: { not: profile.id } },
       select: { id: true },
     })
     if (clash) {
-      console.error(`  ✗ ${profile.businessName}: ${next} already taken — skipping`)
+      console.error(`  ✗ ${profile.businessName}: ${next} already taken - skipping`)
       continue
     }
     await db.businessProfile.update({ where: { id: profile.id }, data: { shopCode: next } })

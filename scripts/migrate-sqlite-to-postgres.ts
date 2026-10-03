@@ -1,5 +1,5 @@
 /**
- * Mudaala — one-off migration: copy the SQLite-era data into PostgreSQL.
+ * Mudaala - one-off migration: copy the SQLite-era data into PostgreSQL.
  *
  * Run ONCE, after `prisma migrate deploy` has created the PostgreSQL schema:
  *
@@ -7,12 +7,12 @@
  *   # or point at the old file explicitly:
  *   SQLITE_FILE=./db/custom.db npx tsx scripts/migrate-sqlite-to-postgres.ts
  *
- * Reads the old SQLite file directly (node:sqlite — no Prisma provider
+ * Reads the old SQLite file directly (node:sqlite - no Prisma provider
  * juggling) and upserts every table into PostgreSQL through the current
  * Prisma client, preserving ids, timestamps and relations. Password hashes,
  * shop codes, report state, audit entries and app settings all survive the
  * move; the old precomputed search column (a SQLite workaround) is
- * deliberately dropped — PostgreSQL searches the real columns with ILIKE.
+ * deliberately dropped - PostgreSQL searches the real columns with ILIKE.
  *
  * Idempotent by construction: rows are upserted by their key, so a re-run
  * fixes nothing and breaks nothing.
@@ -45,7 +45,7 @@ function rows(table: string): Record<string, any>[] {
     }
     return raw
   } catch {
-    console.warn(`  (table ${table} not present in the SQLite file — skipping)`)
+    console.warn(`  (table ${table} not present in the SQLite file - skipping)`)
     return []
   }
 }
@@ -56,10 +56,10 @@ async function main() {
     counts[table] = { sqlite: sqliteCount, postgres: postgresCount }
   }
 
-  // 1. Users — everything else hangs off these.
+  // 1. Users - everything else hangs off these.
   const users = rows('User')
   for (const u of users) {
-    delete u.searchText // SQLite-era search workaround — dropped on purpose
+    delete u.searchText // SQLite-era search workaround - dropped on purpose
     await pg.user.upsert({
       where: { id: u.id },
       create: { ...u, createdAt: asDate(u.createdAt) ?? new Date(), updatedAt: asDate(u.updatedAt) ?? new Date() } as any,
@@ -108,7 +108,7 @@ async function main() {
   // 4. Listings.
   const listings = rows('Listing')
   for (const l of listings) {
-    delete l.searchText // SQLite-era search workaround — dropped on purpose
+    delete l.searchText // SQLite-era search workaround - dropped on purpose
     await pg.listing.upsert({
       where: { id: l.id },
       create: { ...l, createdAt: asDate(l.createdAt) ?? new Date() } as any,
@@ -187,7 +187,7 @@ async function main() {
     console.log(`  ${ok ? '✓' : '✗'} ${table}: ${c.sqlite} → ${c.postgres}`)
   }
   if (mismatch) {
-    console.error('Row counts do not match — investigate before switching traffic.')
+    console.error('Row counts do not match - investigate before switching traffic.')
     process.exitCode = 1
   } else {
     console.log('All tables copied cleanly.')

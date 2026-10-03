@@ -11,7 +11,7 @@
  *
  * Safety: seed rows are identified by the demo phones parsed straight out of
  * scripts/seed.ts source (never executed, can never drift) plus isSeed=true.
- * Everything else is treated as test data — so run this ONLY while every real
+ * Everything else is treated as test data - so run this ONLY while every real
  * account still lives outside the shared dev database. The dry-run report
  * prints exactly who is about to be removed; verify no human is in it.
  */
@@ -49,14 +49,14 @@ async function main() {
   console.log(`test listings owned:   ${testListings}`)
 
   if (!YES) {
-    console.log('\nDRY-RUN — nothing was deleted. Re-run with --yes to remove everything above.')
+    console.log('\nDRY-RUN - nothing was deleted. Re-run with --yes to remove everything above.')
     await db.$disconnect()
     return
   }
 
   if (ids.length > 0) {
     // Report/audit rows by or about test users and their listings/shops must
-    // go first (their FKs do not all cascade), then the users — cascades take
+    // go first (their FKs do not all cascade), then the users - cascades take
     // listings, shops, sessions, saved searches, notifications, resets.
     const ownedListings = await db.listing.findMany({ where: { userId: { in: ids } }, select: { id: true } })
     const ownedShops = await db.businessProfile.findMany({ where: { userId: { in: ids } }, select: { id: true } })
@@ -84,7 +84,7 @@ async function main() {
   }
 
   // Notifications left pointing at deleted test listings (e.g. NEW_MATCH
-  // alerts the suite fired at real users) are pollution too — the Home
+  // alerts the suite fired at real users) are pollution too - the Home
   // dashboard counts them. Only records whose listing is really gone go.
   const liveListings = await db.listing.findMany({ select: { id: true } })
   const liveIds = liveListings.map((l) => l.id)
@@ -94,7 +94,7 @@ async function main() {
   console.log(`Removed ${delDangling.count} notifications pointing at deleted listings.`)
 
   // Price snapshots are pure derived data (rebuilt from ACTIVE listings by
-  // the cron sweep) — after test listings vanish, today's medians would be
+  // the cron sweep) - after test listings vanish, today's medians would be
   // stale, so clear them all and let the sweep rebuild honestly.
   const delSnapshots = await db.priceSnapshot.deleteMany({})
   console.log(`Removed ${delSnapshots.count} price snapshots (derived data; the sweep rebuilds them).`)
@@ -105,7 +105,7 @@ async function main() {
     nonSeedListings: await db.listing.count({ where: { isSeed: false } }),
   }
   if (Object.values(leftovers).some((n) => n !== 0)) {
-    console.error('VERIFICATION FAILED — test traces remain:', leftovers)
+    console.error('VERIFICATION FAILED - test traces remain:', leftovers)
     process.exit(1)
   }
   console.log('\nVerified: only seed users and seed listings remain.')

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 
-// The bell swing: a pendulum that decays — it hangs from its crown, so
+// The bell swing: a pendulum that decays - it hangs from its crown, so
 // transform-origin sits near the top of the glyph and every swing loses
 // amplitude until it settles. WAAPI one-shot on a DOM ref, the same pattern
 // as the basket pop: an external-system change (the unread count) mutating
@@ -18,9 +18,9 @@ const SWING_KEYFRAMES: Keyframe[] = [
 ]
 
 // When the bell answers: the user's brief was "if a notification comes OR if
-// you got notifications, you can see that little bell shake" — so it swings
+// you got notifications, you can see that little bell shake" - so it swings
 // when unread alerts first become visible in this visit (a reload with unread
-// counts too — that is exactly "you got notifications") and whenever the
+// counts too - that is exactly "you got notifications") and whenever the
 // count grows (a new alert arrived while polling). Reading alerts (count
 // falling) is quiet: the bell never scolds you for catching up.
 export function useBellShake(unread: number) {

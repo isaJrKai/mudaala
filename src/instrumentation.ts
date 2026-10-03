@@ -1,4 +1,4 @@
-// Next.js instrumentation hook — runs once per server process at startup,
+// Next.js instrumentation hook - runs once per server process at startup,
 // before any request is served. This is where the environment gets checked:
 // production boots only with its secrets present (fail fast); development
 // logs the same problems as warnings so nothing silently degrades.
@@ -15,7 +15,7 @@ export async function register() {
       console.error(`[env] ${error}`)
     }
     if (process.env.NODE_ENV === 'production') {
-      throw new Error(`Refusing to start — fix the environment first:\n- ${report.errors.join('\n- ')}`)
+      throw new Error(`Refusing to start. Fix the environment first:\n- ${report.errors.join('\n- ')}`)
     }
   }
 }

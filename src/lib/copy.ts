@@ -1,4 +1,4 @@
-// Mudaala — all UI copy in one place.
+// Mudaala - all UI copy in one place.
 //
 // The voice: plain, direct English as spoken in Kampala. Short sentences.
 // No slogans, no small-caps eyebrow labels, no em dashes, and none of the
@@ -199,6 +199,7 @@ export const copy = {
       `Price lines appear once ${min}+ active listings share a category and unit. The market builds them up a little every day.`,
     trendsMoreData: (n: number) => ` · ${n} of your categories need more data before a line can be drawn.`,
     updated: (t: string) => `Updated ${t}`,
+    statNotYet: 'Not yet',
   },
 
   listing: {
@@ -348,6 +349,9 @@ export const copy = {
     browse: 'Browse offers',
     removed: (title: string) => `${title} removed`,
     undo: 'Undo',
+    iconAria: (n: number) => `Basket, ${n} ${n === 1 ? 'item' : 'items'}`,
+    topBarHint: 'Basket is in the top bar. Send the whole list to the shop when you are ready.',
+    listCapHint: 'A shop list holds at most 20 items. Open the basket and remove something first.',
   },
 
   mySales: {
@@ -382,6 +386,7 @@ export const copy = {
     couldNotUpdate: 'Could not update the ad',
     deletedToast: 'Ad deleted',
     couldNotDelete: 'Could not delete',
+    notActive: 'Not active',
   },
 
   empty: {

@@ -1,11 +1,11 @@
-// Mudaala — SMS delivery behind a swappable provider.
+// Mudaala - SMS delivery behind a swappable provider.
 //
 // Password-reset codes travel by SMS. Which provider actually carries them is
 // an environment decision, not a code decision:
 //
 //   production      → Africa's Talking (AT_API_KEY + AT_USERNAME, sender ID
 //                     from AT_SENDER_ID). A FAILED send is logged ONCE, with
-//                     NO phone number and NO code — a log line must never
+//                     NO phone number and NO code - a log line must never
 //                     become a side channel for secrets. Never silent.
 //   development     → the console provider "delivers" the message to the dev
 //                     server console. That printout IS the developer's inbox
@@ -14,7 +14,7 @@
 //                     for dev-only accounts.
 //
 // Adding a provider (Twilio, MTN Uganda, …) means adding one class here and
-// one branch in chooseSmsProvider() — call sites do not change.
+// one branch in chooseSmsProvider() - call sites do not change.
 
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 
@@ -24,7 +24,7 @@ export interface SmsProvider {
 }
 
 // Africa's Talking REST API (no SDK dependency). Their error bodies echo the
-// recipient, so on failure we throw a status-only error — the body never
+// recipient, so on failure we throw a status-only error - the body never
 // reaches a log or a response.
 class AfricasTalkingProvider implements SmsProvider {
   readonly name = 'africas-talking'
@@ -63,7 +63,7 @@ class AfricasTalkingProvider implements SmsProvider {
 }
 
 // Dev-only "delivery": the server console is the inbox. Development uses this
-// even when AT_* variables exist — a stray real SMS during testing is worse
+// even when AT_* variables exist - a stray real SMS during testing is worse
 // than a console line.
 class ConsoleProvider implements SmsProvider {
   readonly name = 'console'
@@ -80,7 +80,7 @@ export function chooseSmsProvider(): SmsProvider {
 
 // ---- Reset codes: generation, hashing and comparison ----
 // A 6-digit code is small, so its security comes from the server-side 5-wrong-
-// tries kill switch and the 10-minute expiry — NOT from the hash. sha256 is
+// tries kill switch and the 10-minute expiry - NOT from the hash. sha256 is
 // enough to keep a database leak from handing over live codes.
 
 export function generateResetCode(): string {

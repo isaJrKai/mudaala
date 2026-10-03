@@ -4,7 +4,7 @@ A local-commerce discovery platform: people post **OFFER** and **REQUEST** listi
 find each other by category and location, compare price/quantity/freshness, and
 contact each other directly on WhatsApp or by phone.
 
-Built to the Mudaala product contract — a discovery platform, not an ERP:
+Built to the Mudaala product contract - a discovery platform, not an ERP:
 no payments, wallets, escrow, delivery dispatch, in-app chat, or transaction
 ratings in V1.
 
@@ -16,17 +16,17 @@ Mudaala is focused on **Uganda**:
   login and all contact fields
 - District list is Uganda's towns and regions; the currency is UGX, rendered
   with zero decimals
-- **One account does everything** — being a buyer and a seller needs no second
+- **One account does everything** - being a buyer and a seller needs no second
   sign-in. Account → "My Shop" is where a seller names their space; that name
   appears on every listing they publish.
 
 ## Product scope (V1 contract)
 
-- OFFER and REQUEST listings — one shared listing engine
+- OFFER and REQUEST listings - one shared listing engine
 - Search, category/location/price/unit/type filters, sorting, real pagination
 - Price, quantity, unit, freshness (persisted timestamps), expiry status
 - WhatsApp (`wa.me` deep link with prefilled text) and phone (`tel:`) contact
-- Optional business profiles (no verification claims — no badges anywhere)
+- Optional business profiles (no verification claims - no badges anywhere)
 - Saved searches with honest, recomputed match counts
 - Notifications generated only by real events (new matches, expiring, expired)
 - My Listings: refresh (24h cooldown), edit, mark fulfilled, repost, archive, delete
@@ -34,12 +34,12 @@ Mudaala is focused on **Uganda**:
 
 ## Stack
 
-- **Next.js 16 (App Router) + TypeScript** — the whole app ships as the `/` route with client-side views synced to the URL hash
-- **Prisma + SQLite** — sandbox runtime store. The production target is PostgreSQL; the connection is captured in Settings → Advanced Settings
-- **Tailwind CSS 4 + shadcn/ui** — warm neutral palette, dark green primary, restrained radii/shadows
-- **TanStack Query** — server state; **Zustand** — view/filter state
-- **zod** — shared validation schemas used by BOTH forms and API routes
-- **node:crypto scrypt** — password hashing (no extra dependencies)
+- **Next.js 16 (App Router) + TypeScript** - the whole app ships as the `/` route with client-side views synced to the URL hash
+- **Prisma + SQLite** - sandbox runtime store. The production target is PostgreSQL; the connection is captured in Settings → Advanced Settings
+- **Tailwind CSS 4 + shadcn/ui** - warm neutral palette, dark green primary, restrained radii/shadows
+- **TanStack Query** - server state; **Zustand** - view/filter state
+- **zod** - shared validation schemas used by BOTH forms and API routes
+- **node:crypto scrypt** - password hashing (no extra dependencies)
 
 ## Architecture decisions
 
@@ -58,7 +58,7 @@ Mudaala is focused on **Uganda**:
   In production, point a scheduler at `/api/cron/sweep`.
 - **Search filters and paginates in the database** (indexed columns, lowercase
   `searchText` for SQLite case-insensitivity). When you move to PostgreSQL,
-  swap `searchText LIKE` for a `tsvector`/GIN index — the query shape stays.
+  swap `searchText LIKE` for a `tsvector`/GIN index - the query shape stays.
 - **Errors are explicit.** Expected failures return typed JSON with field
   errors; unexpected ones are logged server-side and return a generic 500.
   Failed operations never resolve as success on the client.
@@ -90,10 +90,10 @@ bun run db:seed       # development fixtures
 bun run dev           # development server on :3000
 ```
 
-Local development runs against a real PostgreSQL server — the same engine as
+Local development runs against a real PostgreSQL server - the same engine as
 production, so search behaviour and migrations never drift between the two.
 
-### Development seed (fixtures — never run in production)
+### Development seed (fixtures - never run in production)
 
 ```bash
 bun scripts/seed.ts
@@ -105,7 +105,16 @@ demonstrates itself) and 2 saved searches with honestly computed counts.
 Fixture passwords are `demo1234`; fixture phones are +256 77x/70x demo
 numbers (see scripts/seed.ts).
 
-**PLACEHOLDER RULE** — this repo ships NO placeholder images at all: the seed
+**COPY RULE** - every user-facing string lives in `src/lib/copy.ts` (backend
+messages live beside the route that owns them). The voice is plain, direct
+English as spoken in Kampala: short sentences, no slogans, no small-caps
+eyebrow labels, none of the template words (seamless, empower, discover,
+unlock). No em dashes and no en dashes anywhere in the repo (UI copy, backend
+messages, comments); plain periods, commas, colons and hyphens carry the
+meaning. Test 18 fails the suite if an AI-tell dash or a template word lands
+in the codebase.
+
+**PLACEHOLDER RULE** - this repo ships NO placeholder images at all: the seed
 creates listings and shops with no photos, and every surface falls back to the
 neutral grey tile (category name / shop name + camera icon). No stock photos,
 no AI images, no hero photos. Seed rows are flagged `isSeed = true`; before
@@ -116,14 +125,14 @@ npx tsx scripts/remove-seed-data.ts          # dry-run: see what would go
 npx tsx scripts/remove-seed-data.ts --yes    # delete seed rows (and any seed photo files left from older checkouts)
 ```
 
-Run that BEFORE any production data copy or cloud migration — the copy
+Run that BEFORE any production data copy or cloud migration - the copy
 should carry only real accounts and real listings, never fixtures. The
 cloud photo migration (`scripts/migrate-uploads-to-s3.ts`) is seed-safe on
 its own: it uploads only real user photos (the seed folder is excluded)
 and never rewrites a seed photo path to a bucket URL.
 
 Wherever a photo is missing, the app shows the neutral placeholder tile
-(flat grey, category name, small camera icon) — no stock, AI-generated or
+(flat grey, category name, small camera icon) - no stock, AI-generated or
 illustrated images ship in production. Seed photos never reach sitemaps,
 Open Graph previews or cloud storage.
 
@@ -150,12 +159,12 @@ a PostgreSQL database, with photos in any S3-compatible bucket.
 ### 1. Environment variables
 
 Copy `.env.example` to `.env` and fill real values. Required in production
-(the app refuses to boot without them — see `src/lib/env.ts`):
+(the app refuses to boot without them - see `src/lib/env.ts`):
 
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string (`postgresql://user:pass@host:5432/mudaala`) |
-| `NEXT_PUBLIC_APP_URL` | Canonical public origin — ad pages, OG tags, sitemap anchor to it |
+| `NEXT_PUBLIC_APP_URL` | Canonical public origin - ad pages, OG tags, sitemap anchor to it |
 | `CRON_SECRET` | Shared secret the scheduler presents to `POST /api/cron/sweep` |
 | `SETTINGS_ENCRYPTION_KEY` | AES-256-GCM key material for secrets stored at rest |
 | `ADMIN_PHONES` | Comma-separated admin phone numbers (E.164, Uganda +256) |
@@ -166,18 +175,18 @@ Optional / recommended:
 | --- | --- |
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_KEY`, `STORAGE_SECRET`, `STORAGE_PUBLIC_URL` | S3-compatible photo storage (Cloudflare R2, Supabase Storage, MinIO). Unset = local disk in development. |
 | `AT_API_KEY`, `AT_USERNAME`, `AT_SENDER_ID` | Africa's Talking credentials for password-reset SMS. Unset (non-production) = console provider. |
-| `FRAME_ANCESTORS` | CSP `frame-ancestors` value — set `'none'` in production unless you embed the app somewhere. |
+| `FRAME_ANCESTORS` | CSP `frame-ancestors` value - set `'none'` in production unless you embed the app somewhere. |
 | `ALLOW_BEARER_AUTH` | Leave UNSET in production (httpOnly cookie only). |
 
 ### 2. Run migrations
 
 ```bash
 bun install
-bun run db:deploy     # prisma migrate deploy — applies pending migrations
+bun run db:deploy     # prisma migrate deploy - applies pending migrations
 bun run db:generate   # (re)generate the Prisma client if needed
 ```
 
-Migrations live in `prisma/migrations/` and are plain SQL — a fresh database
+Migrations live in `prisma/migrations/` and are plain SQL - a fresh database
 becomes fully current with `prisma migrate deploy`. (The pre-PostgreSQL SQLite
 migration history is archived in `prisma/migrations-sqlite/` for reference.)
 Optional performance step: `CREATE EXTENSION IF NOT EXISTS pg_trgm;` enables
@@ -208,7 +217,7 @@ comparison), and fails closed if `CRON_SECRET` is not configured.
 
 `GET /api/health` returns `{"ok":true,"app":"up","database":"up"}` (200) when
 both the process and the database are healthy, and 503 when the database is
-unreachable — point your load balancer or uptime monitor at it.
+unreachable - point your load balancer or uptime monitor at it.
 
 ## Where things live
 

@@ -31,7 +31,7 @@ interface ListingCardProps {
   /** When provided (and the listing knows its owner), the buyer bar renders:
    *  shop chip (→ shop page) + Call + WhatsApp. */
   onOpenShop?: (shopId: string) => void
-  /** Overrides the shop display name — the browse feed uses it to tell
+  /** Overrides the shop display name - the browse feed uses it to tell
    *  same-name shops apart ("Nakato Fresh Produce · Jinja"). */
   shopLabel?: string
   /** Buyer-facing distance ("850 m", "2.3 km") shown while "Near me" is on. */
@@ -45,7 +45,7 @@ function ListingPhoto({ listing, className }: { listing: Listing; className?: st
   if (listing.photos.length > 0) {
     return <img src={listing.photos[0]} alt="" loading="lazy" className={cn('size-full object-cover', className)} />
   }
-  // PLACEHOLDER RULE — no photo yet: the neutral tile (flat grey, category
+  // PLACEHOLDER RULE - no photo yet: the neutral tile (flat grey, category
   // name, small camera icon), never a stock or illustrated stand-in.
   return <PlaceholderTile category={listing.category} className={className} />
 }
@@ -60,7 +60,7 @@ function discountPercent(listing: Pick<Listing, 'price' | 'compareAtPrice'>): nu
   return Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)
 }
 
-// The heart — "I want to find this again". Stored on this phone like the
+// The heart - "I want to find this again". Stored on this phone like the
 // basket (buyers never sign in). The pop plays ONLY on a real love. Remounting
 // the icon via key replays the CSS bounce every single time.
 export function HeartButton({
@@ -148,7 +148,7 @@ function PriceLead({ listing, large }: { listing: Listing; large?: boolean }) {
 }
 
 // One plain meta line: "Nakasero · 20 min ago" (+ quantity and distance when
-// they exist). Text, no icons — the words carry it.
+// they exist). Text, no icons - the words carry it.
 function MetaLine({
   listing,
   quantity,
@@ -180,7 +180,7 @@ export function ListingCard({ listing, onOpen, actions, showStatus, onOpenShop, 
     <div className="overflow-hidden rounded-lg border bg-card">
       <button type="button" onClick={() => onOpen(listing.id)} className="w-full text-left" aria-label={copy.card.openAria(listing.title)}>
         <div className="flex gap-3 p-2.5">
-          {/* Photo — small, on the side, its own 1px border and 8px radius */}
+          {/* Photo - small, on the side, its own 1px border and 8px radius */}
           <div className="relative size-24 shrink-0 overflow-hidden rounded-lg border bg-secondary sm:size-28">
             <ListingPhoto listing={listing} />
             <span className="absolute left-1 top-1">
@@ -253,13 +253,13 @@ interface ListingBlockProps {
   listing: Listing & { user?: ListingShopOwner }
   onOpen: (id: string) => void
   /** When provided (and the listing knows its owner), the buyer bar renders:
-   *  shop chip (→ shop page) above Call + WhatsApp. Shop catalogues omit it —
+   *  shop chip (→ shop page) above Call + WhatsApp. Shop catalogues omit it -
    *  the buyer is already inside that shop. */
   onOpenShop?: (shopId: string) => void
   /** When provided (and the listing knows its owner), OFFER blocks get an
    *  add-to-basket button on the photo. Returns whether the add really
    *  happened (useAddToBasket does) so the button only flashes success
-   *  honestly — void is treated as success for loose callers. */
+   *  honestly - void is treated as success for loose callers. */
   onAdd?: (listing: Listing & { user?: ListingShopOwner }) => boolean | void
   /** Same-name shop disambiguation, fed by the browse feed. */
   shopLabel?: string
@@ -269,7 +269,7 @@ interface ListingBlockProps {
 
 // The same listing as a card for grid surfaces (browse feed, shop catalogue,
 // loved shelf). One component serves both shapes: a ROW with a small side
-// photo on phones, a compact photo-first BLOCK in desktop grids — the CSS
+// photo on phones, a compact photo-first BLOCK in desktop grids - the CSS
 // flips at sm. No nested buttons: the open affordance is a click LAYER under
 // the corner overlays.
 export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, distanceLabel }: ListingBlockProps) {
@@ -284,7 +284,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
     <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card">
       <div className="flex flex-1 sm:block">
         {/* Photo: a bordered 96px tile beside the text on phones, the card's
-            full-width top on desktop. No zoom-on-hover — the picture sells,
+            full-width top on desktop. No zoom-on-hover - the picture sells,
             it does not perform. */}
         <div className="relative m-2.5 size-24 shrink-0 overflow-hidden rounded-lg border bg-secondary sm:mx-0 sm:mb-0 sm:mt-0 sm:size-auto sm:aspect-[4/3] sm:w-full sm:rounded-none sm:border-0 sm:border-b">
           <ListingPhoto listing={listing} />
@@ -297,7 +297,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
               listingId={listing.id}
               title={listing.title}
               onPhoto
-              // The 96px row tile on phones is too small for three overlays —
+              // The 96px row tile on phones is too small for three overlays -
               // the heart lives on the desktop block and the detail page.
               // sm:inline-flex (not sm:block): the chip needs flex centering
               // or the heart hugs the left edge of the box.
@@ -332,7 +332,7 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
               desktop the padding wraps all sides evenly. */}
           <div className="py-2.5 pr-2.5 sm:p-2.5">
             {/* Exactly two lines of title keep every card in a row the same
-                height — a 1-line title leaves room, a 5-line one gets cut. */}
+                height - a 1-line title leaves room, a 5-line one gets cut. */}
             <h3 className="line-clamp-2 text-sm font-bold leading-snug">{listing.title}</h3>
             <PriceLead listing={listing} />
             <MetaLine listing={listing} quantity={quantity} distanceLabel={distanceLabel} />

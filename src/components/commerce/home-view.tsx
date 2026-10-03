@@ -1,13 +1,13 @@
 'use client'
 
-// Home — the signed-in dashboard. Public Browse is untouched; this view is
+// Home - the signed-in dashboard. Public Browse is untouched; this view is
 // the seller/buyer's own workbench: their numbers (all computed from real
 // records), the freshest offers around their own location, their saved
 // searches, a freshness nudge for listings going stale, and the market's
 // price trends where enough real listings exist to speak.
 //
 // Style: cream paper, forest green. One sans everywhere; rectangles stay
-// rectangles — this is a functional surface, no curves.
+// rectangles - this is a functional surface, no curves.
 
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -65,7 +65,7 @@ function storeCounty(county: string | null): void {
   try {
     localStorage.setItem(LOCATION_KEY, JSON.stringify({ county }))
   } catch {
-    // private-mode storage — the choice just does not persist
+    // private-mode storage - the choice just does not persist
   }
 }
 
@@ -134,7 +134,7 @@ function SignedInHome() {
   })
   const data = homeQuery.data
 
-  // Mark the visit ONCE per mount, after data is on screen — the "new
+  // Mark the visit ONCE per mount, after data is on screen - the "new
   // matches" number must never zero itself while the user is looking at it.
   const visitMarked = useRef(false)
   const visitMutation = useMutation({
@@ -181,7 +181,7 @@ function SignedInHome() {
     },
     {
       label: copy.home.statLastUpdated,
-      value: data.stats.lastUpdatedAt ? timeAgo(data.stats.lastUpdatedAt) : '—',
+      value: data.stats.lastUpdatedAt ? timeAgo(data.stats.lastUpdatedAt) : copy.home.statNotYet,
       icon: <CalendarClock aria-hidden />,
       go: { name: 'my-listings' } as const,
     },
@@ -315,7 +315,7 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
     isDefault: storedCounty === undefined,
   }))
 
-  // The profile's blurred spot orders "nearest" and powers distance labels —
+  // The profile's blurred spot orders "nearest" and powers distance labels -
   // but only while the user is still looking at their own default area.
   const refSpot =
     chosen.county === location.county && location.lat !== null && location.lng !== null
@@ -357,7 +357,7 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
         </button>
       </div>
 
-      {/* Category chips — the same aisle-sign row as Browse. */}
+      {/* Category chips - the same aisle-sign row as Browse. */}
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
         {[{ key: 'any', label: copy.common.all }, ...CATEGORIES.map((c) => ({ key: c.key, label: c.label }))].map(
           (chip) => {
@@ -461,7 +461,7 @@ function OfferRow({
         {photo ? (
           <img src={photo} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
-          // PLACEHOLDER RULE — flat grey tile with the category name and a
+          // PLACEHOLDER RULE - flat grey tile with the category name and a
           // small camera icon, never a stock or illustrated stand-in.
           <PlaceholderTile category={listing.category} className="size-full" />
         )}
@@ -523,7 +523,7 @@ function LocationPickerDialog({
   onReset: () => void
 }) {
   // Mounted only while open (see BestOffers), so the select starts from the
-  // current choice on every open — no state-sync effect needed.
+  // current choice on every open - no state-sync effect needed.
   const [value, setValue] = useState<string>(current ?? 'any')
 
   return (
@@ -756,7 +756,7 @@ function buildChartConfig(series: { category: string; categoryLabel: string; uni
 }
 
 // One row per day; a series with no snapshot that day leaves the cell null
-// and the line simply bridges it (connectNulls) — no invented numbers.
+// and the line simply bridges it (connectNulls) - no invented numbers.
 function buildChartRows(series: { category: string; points: { date: string; medianPrice: number }[] }[]) {
   const days: string[] = []
   for (let i = 6; i >= 0; i--) {

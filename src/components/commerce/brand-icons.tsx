@@ -3,7 +3,7 @@
 // Real brand glyphs for contact actions that leave the app.
 //
 // Lucide deliberately ships no brand marks, so WhatsApp buttons were using a
-// generic chat bubble — which reads as "in-app messaging", a thing Mudaala
+// generic chat bubble - which reads as "in-app messaging", a thing Mudaala
 // does not have and must not imply. These buttons open the real WhatsApp, so
 // they carry the real WhatsApp logo. Drawn from the official public-domain
 // glyph (the same path every brand icon set ships), filled with currentColor

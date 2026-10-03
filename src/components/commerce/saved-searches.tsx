@@ -17,7 +17,7 @@ import { ErrorState } from './listings-browse'
 import { useState } from 'react'
 import { copy } from '@/lib/copy'
 
-// Saved searches — persisted filters with honest, recomputed match counts.
+// Saved searches - persisted filters with honest, recomputed match counts.
 export function SavedSearches() {
   const { user, isLoading: sessionLoading } = useSession()
   const { navigate, applyQuery } = useAppStore()
@@ -30,7 +30,7 @@ export function SavedSearches() {
     queryFn: () => apiGet<{ searches: SavedSearchT[] }>('/api/saved-searches'),
   })
 
-  // The row whose check is running — checking is read-only, so other rows
+  // The row whose check is running - checking is read-only, so other rows
   // stay live; only the tapped one pauses and spins.
   const [checkingId, setCheckingId] = useState<string | null>(null)
   const checkMutation = useMutation({

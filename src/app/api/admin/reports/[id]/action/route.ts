@@ -1,6 +1,6 @@
-// POST /api/admin/reports/[id]/action — act on a report: HIDE the listing,
+// POST /api/admin/reports/[id]/action - act on a report: HIDE the listing,
 // RESTORE it, or DISMISS the report. Admin-only; every action lands in the
-// AuditLog with the acting admin's id. SHOP reports only accept DISMISS —
+// AuditLog with the acting admin's id. SHOP reports only accept DISMISS -
 // shops have no hidden state, so "hide" has nothing honest to mean there.
 
 import { route, jsonOk, parseBody, ApiError } from '@/lib/api'
@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (action === 'DISMISS') {
         await dismissReportByAdmin(report.id, admin.id)
       } else if (report.targetType !== 'LISTING') {
-        throw new ApiError(409, 'Only ads can be hidden or restored — shops can only be dismissed')
+        throw new ApiError(409, 'Only ads can be hidden or restored. Shops can only be dismissed')
       } else if (action === 'HIDE') {
         await hideListingByAdmin(report.targetId, admin.id)
         await db.report.update({ where: { id: report.id }, data: { status: 'ACTIONED' } })

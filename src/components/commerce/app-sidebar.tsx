@@ -1,12 +1,12 @@
 'use client'
 
-// Desktop app sidebar (>=1024px) — the signed-in workspace navigation.
+// Desktop app sidebar (>=1024px) - the signed-in workspace navigation.
 // Mobile keeps the bottom nav; this rail exists only on lg+ and carries the
 // same eight destinations plus the two actions that deserve permanent
 // placement: posting, and reaching a human on WhatsApp.
 //
 // Style discipline: rectangles, cream surfaces, forest-green active states.
-// No curves here — the sidebar is a functional surface, not a doorway.
+// No curves here - the sidebar is a functional surface, not a doorway.
 
 import {
   Home,
@@ -31,7 +31,7 @@ import { copy } from '@/lib/copy'
 
 // The WhatsApp support number is deployment configuration (SUPPORT_WHATSAPP,
 // international digits without "+"). It arrives through NEXT_PUBLIC_ inlining;
-// when it is not configured the help card is simply not rendered — an absent
+// when it is not configured the help card is simply not rendered - an absent
 // number must never render as a broken or fake link.
 const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''
 
@@ -80,7 +80,7 @@ export function AppSidebar() {
       aria-label="Primary"
       className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r bg-card lg:flex"
     >
-      {/* Brand — the same leaf + lowercase serif wordmark as the header, so
+      {/* Brand - the same leaf + lowercase serif wordmark as the header, so
           the rail reads as part of the same shop, not a different app. */}
       <button
         type="button"
@@ -126,7 +126,7 @@ export function AppSidebar() {
       </nav>
 
       <div className="space-y-3 border-t p-3">
-        {/* The one big action — posting is what this app exists for. */}
+        {/* The one big action - posting is what this app exists for. */}
         <Button
           size="lg"
           className="w-full text-sm"
@@ -137,7 +137,7 @@ export function AppSidebar() {
         </Button>
 
         {SUPPORT_WHATSAPP ? (
-          // Plain wa.me link — leaves the app, opens WhatsApp. No in-app
+          // Plain wa.me link - leaves the app, opens WhatsApp. No in-app
           // messaging is offered, by design.
           <a
             href={supportLink(SUPPORT_WHATSAPP)}

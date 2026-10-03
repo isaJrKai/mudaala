@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — end-to-end browser verification (single-call: server + browser flow,
+# Duuka - end-to-end browser verification (single-call: server + browser flow,
 # because this harness reaps background processes between tool calls).
 set -u
 cd /home/z/my-project

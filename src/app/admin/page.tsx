@@ -1,6 +1,6 @@
-// /admin — the moderation desk. Server-checks the ADMIN_PHONES allowlist
+// /admin - the moderation desk. Server-checks the ADMIN_PHONES allowlist
 // before anything renders: non-admins get a real HTTP 403 (forbidden()),
-// admins get the live queue. The page itself holds no data — the dashboard
+// admins get the live queue. The page itself holds no data - the dashboard
 // client fetches /api/admin/reports, which re-checks every request.
 
 import type { Metadata } from 'next'

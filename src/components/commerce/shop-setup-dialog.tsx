@@ -3,7 +3,7 @@
 // First-run seller onboarding. When someone signs in and their shop is still
 // missing details, we show ONE warm, dismissible welcome: what a shop space
 // is, what to fill in, and a one-tap path there. "Later" remembers the
-// choice on this device — the dialog never nags twice.
+// choice on this device - the dialog never nags twice.
 //
 // The open state is fully DERIVED (no effect-driven setState): the profile
 // query resolves after hydration, so the SSR markup and the first client
@@ -29,7 +29,7 @@ import { useSession } from '@/hooks/use-session'
 
 const DISMISS_KEY = 'mudaala_shop_setup_dismissed'
 
-// localStorage as an external store — server snapshot says "not dismissed",
+// localStorage as an external store - server snapshot says "not dismissed",
 // which matches the post-hydration render (queries have not resolved yet).
 const dismissStore = {
   subscribe(onChange: () => void): () => void {
@@ -60,7 +60,7 @@ const TODO_COPY: Record<keyof ShopChecklistT, { label: string; hint: string; ico
 export function ShopSetupDialog() {
   const { user } = useSession()
   const navigate = useAppStore((s) => s.navigate)
-  // `closed` only ever changes from a user action (Later / Set up / close) —
+  // `closed` only ever changes from a user action (Later / Set up / close) -
   // never from an effect.
   const [closed, setClosed] = useState(false)
   const dismissed = useSyncExternalStore(dismissStore.subscribe, dismissStore.getSnapshot, dismissStore.getServerSnapshot)

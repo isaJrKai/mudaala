@@ -1,6 +1,6 @@
 'use client'
 
-// Session state via TanStack Query — invalidated after sign-in/out/register.
+// Session state via TanStack Query - invalidated after sign-in/out/register.
 
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiGet, apiPost, clearSessionToken } from '@/lib/client'

@@ -1,4 +1,4 @@
-// Mudaala — client navigation + filter state.
+// Mudaala - client navigation + filter state.
 // Views are client-side (the product ships as a single route), synced to the
 // URL hash so the browser back button behaves as users expect.
 
@@ -140,9 +140,13 @@ export function describeQuery(q: Partial<ListingQuery>): string {
   if (q.category) bits.push(q.category.replace(/-/g, ' '))
   if (q.county) bits.push(q.county)
   if (q.minPrice !== undefined || q.maxPrice !== undefined) {
-    const min = q.minPrice !== undefined ? `${q.minPrice}` : ''
-    const max = q.maxPrice !== undefined ? `${q.maxPrice}` : ''
-    bits.push(`${min || 'any'} – ${max || 'any'}`)
+    if (q.minPrice !== undefined && q.maxPrice !== undefined) {
+      bits.push(`${q.minPrice} to ${q.maxPrice}`)
+    } else if (q.minPrice !== undefined) {
+      bits.push(`from ${q.minPrice}`)
+    } else {
+      bits.push(`up to ${q.maxPrice}`)
+    }
   }
   return bits.length > 0 ? bits.join(' · ') : 'Everything'
 }

@@ -1,4 +1,4 @@
-// Settings → Advanced Settings — PostgreSQL deployment connection (CRUD).
+// Settings → Advanced Settings - PostgreSQL deployment connection (CRUD).
 // Passwords and connection strings are stored server-side and never returned
 // unmasked to the browser.
 

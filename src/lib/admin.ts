@@ -1,9 +1,9 @@
-// Mudaala — admin gate for deployment-level settings.
+// Mudaala - admin gate for deployment-level settings.
 // Most settings belong to each shop; a few (like the PostgreSQL deployment
 // connection) belong to the DEPLOYMENT as a whole. Those are gated to a small
 // explicit allowlist: ADMIN_PHONES, a comma-separated list of phone numbers in
-// any accepted dial format ("+256712000001", "0712000001"). Everyone else —
-// signed in or not — gets 403.
+// any accepted dial format ("+256712000001", "0712000001"). Everyone else -
+// signed in or not - gets 403.
 
 import { ApiError, requireUser } from './api'
 import { phoneCandidates } from './validation'
@@ -30,7 +30,7 @@ export async function requireAdmin(message = 'Only the shop admin can change dep
   return user
 }
 
-/** Boolean form for surfaces that branch instead of throwing — e.g. the
+/** Boolean form for surfaces that branch instead of throwing - e.g. the
  *  public listing API lets admins see their own hidden listings back. */
 export function isAdminUser(user: Pick<User, 'phone'>): boolean {
   return isAdminPhone(user.phone)

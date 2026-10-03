@@ -1,9 +1,9 @@
-// Photo upload — the ONLY way images enter Mudaala.
+// Photo upload - the ONLY way images enter Mudaala.
 // requireUser: uploads are a seller action, buyers never need this.
-// Trust is decided by magic bytes, never by the filename a client claims —
+// Trust is decided by magic bytes, never by the filename a client claims -
 // "evil.png" that is really text (or worse) is rejected before it is decoded.
 // Every accepted image is then re-encoded through sharp: EXIF-rotated,
-// fitted inside 1200×1200, and written as WebP — a market photo lands
+// fitted inside 1200×1200, and written as WebP - a market photo lands
 // small enough for a data bundle, and no payload survives as-is.
 // Storage sits behind an interface (src/lib/storage.ts): development writes
 // to the local disk (public/uploads, served statically by Next), production
@@ -15,7 +15,7 @@ import { hit, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS } from '@/lib/rate-limit'
 import { chooseStorage } from '@/lib/storage'
 import sharp from 'sharp'
 
-const MAX_BYTES = 8 * 1024 * 1024 // 8MB pre-compression — phones shoot big
+const MAX_BYTES = 8 * 1024 * 1024 // 8MB pre-compression - phones shoot big
 const MAX_EDGE = 1200 // the largest edge a stored photo may have
 
 // Read the first bytes and say what the file REALLY is, if anything we accept.
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     // fine; bulk-filling the disk is not.
     const verdict = hit(`upload:user:${user.id}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
     if (!verdict.ok) {
-      throw new ApiError(429, 'That is a lot of photos — please wait a while before uploading more')
+      throw new ApiError(429, 'That is a lot of photos - please wait a while before uploading more')
     }
 
     const form = await request.formData().catch(() => null)
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       throw new ApiError(400, 'Choose a photo to upload')
     }
     if (file.size > MAX_BYTES) {
-      throw new ApiError(413, 'That photo is too large — 8MB is the limit')
+      throw new ApiError(413, 'That photo is too large - 8MB is the limit')
     }
 
     // Magic bytes, not the filename, decide acceptance.
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     // Re-encode before saving: EXIF rotation honoured, fitted inside a
     // 1200×1200 box (never enlarged), WebP for weight. If decoding fails the
-    // file lies about what it is — reject it honestly.
+    // file lies about what it is - reject it honestly.
     const input = Buffer.from(await file.arrayBuffer())
     let output: Buffer
     try {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
         .webp({ quality: 82 })
         .toBuffer()
     } catch {
-      throw new ApiError(400, 'That image could not be processed — try another photo')
+      throw new ApiError(400, 'That image could not be processed - try another photo')
     }
 
     // Everything is stored as .webp because the pipeline re-encodes every
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       url = await chooseStorage().save(output, 'webp')
     } catch (err) {
       console.error('[upload] storage write failed:', err)
-      throw new ApiError(502, 'The photo could not be stored right now — please try again')
+      throw new ApiError(502, 'The photo could not be stored right now. Please try again')
     }
 
     return jsonOk({ url }, 201)

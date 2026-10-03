@@ -1,4 +1,4 @@
-// Mudaala — step 1 of password reset: "I forgot my password, send me a code."
+// Mudaala - step 1 of password reset: "I forgot my password, send me a code."
 //
 // ANTI-ENUMERATION IS THE CONTRACT HERE: the response is byte-identical
 // whether or not the phone has an account. An attacker learns nothing except
@@ -6,7 +6,7 @@
 // delivery) happens or fails silently on the server side.
 //
 // Rate limits run BEFORE the account lookup: 3 requests per phone per hour
-// and 10 per IP per hour, for EVERY number — existing or not. Otherwise the
+// and 10 per IP per hour, for EVERY number - existing or not. Otherwise the
 // endpoint doubles as an SMS pump paid for by someone else.
 
 import { db } from '@/lib/db'
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const candidates = phoneCandidates(data.phone)
     const phone = candidates[0]
     if (!phone) {
-      // Invalid format — the same answer login gives, before anything else.
+      // Invalid format - the same answer login gives, before anything else.
       return jsonError(400, 'Enter a valid Ugandan phone number (e.g. 0772 345 678)', {
         phone: 'Enter a valid Ugandan phone number (e.g. 0772 345 678)',
       })
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Identical body either way — this is the anti-enumeration guarantee.
+    // Identical body either way - this is the anti-enumeration guarantee.
     return jsonOk(OK_BODY)
   })
 }

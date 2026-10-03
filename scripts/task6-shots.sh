@@ -1,5 +1,5 @@
 #!/bin/bash
-# TASK 6 — screenshot harness: home, browse, listing, shop at 390px + desktop.
+# TASK 6 - screenshot harness: home, browse, listing, shop at 390px + desktop.
 # Usage: task6-shots.sh before|after
 set -euo pipefail
 

@@ -1,7 +1,7 @@
-// Mudaala — a tiny Markdown renderer for the legal pages.
+// Mudaala - a tiny Markdown renderer for the legal pages.
 // Deliberately dependency-free: the legal text is written by people, in
 // files under /content, and needs headings, paragraphs, lists, links, bold
-// and rules — nothing else. Rendering to React elements (never an HTML
+// and rules - nothing else. Rendering to React elements (never an HTML
 // string) keeps the pages safe by construction: there is no injection path.
 
 import type { ReactNode } from 'react'
@@ -72,7 +72,7 @@ function parseBlocks(source: string): Block[] {
 }
 
 // Inline markdown: **bold**, [text](href) and `code`. Text is rendered as
-// React nodes — the URL scheme is whitelisted so a hand-edited file cannot
+// React nodes - the URL scheme is whitelisted so a hand-edited file cannot
 // inject javascript: links.
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = []

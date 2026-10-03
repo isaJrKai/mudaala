@@ -5,7 +5,7 @@ import { verifyPassword, createSession, setSessionCookie, toPublicUser } from '@
 import { hit, clear, RATE_WINDOW_MS, LOGIN_FAIL_MAX, LOGIN_IP_MAX } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 
-// The caller's IP — first hop of x-forwarded-for, or "local" when absent
+// The caller's IP - first hop of x-forwarded-for, or "local" when absent
 // (direct dev access). Behind a proxy only the first hop is honest anyway.
 function clientIp(request: Request): string {
   return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const ipVerdict = hit(`login:ip:${ip}`, LOGIN_IP_MAX, RATE_WINDOW_MS)
     if (!ipVerdict.ok) return tooMany(ipVerdict.retryAfterSeconds)
 
-    // A number may arrive in any dial format (07.., 2567.., +2567..) —
+    // A number may arrive in any dial format (07.., 2567.., +2567..) -
     // normalize before the lookup so users never have to re-state a format.
     const candidates = phoneCandidates(data.phone)
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       ? await db.user.findFirst({ where: { phone: { in: candidates } } })
       : null
     if (!user || !verifyPassword(data.password, user.passwordHash)) {
-      // Same message for unknown phone and wrong password — no account enumeration.
+      // Same message for unknown phone and wrong password - no account enumeration.
       return jsonError(401, 'Phone number or password is incorrect')
     }
 

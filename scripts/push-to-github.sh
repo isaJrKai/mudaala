@@ -9,7 +9,7 @@
 #
 # What it does:
 #   1. Resolves your GitHub login from the token (unless GH_USER given)
-#   2. Creates the PRIVATE repo <login>/mudaala via the REST API (idempotent —
+#   2. Creates the PRIVATE repo <login>/mudaala via the REST API (idempotent -
 #      continues if it already exists)
 #   3. Adds remote "origin" WITHOUT embedding the token in .git/config
 #   4. Pushes main and mudaala-redesign with -u (token passed one-shot via
@@ -23,7 +23,7 @@ api() { curl -sS -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/
 
 if [ -z "${GH_USER:-}" ]; then
   GH_USER=$(api https://api.github.com/user | sed -n 's/.*"login": *"\([^"]*\)".*/\1/p' | head -1)
-  [ -n "$GH_USER" ] || { echo "Could not resolve login from token — check the token or pass GH_USER=..."; exit 1; }
+  [ -n "$GH_USER" ] || { echo "Could not resolve login from token - check the token or pass GH_USER=..."; exit 1; }
 fi
 echo "GitHub account: ${GH_USER}"
 
@@ -32,13 +32,13 @@ HTTP=$(api -o /tmp/mudaala-repo.json -w '%{http_code}' https://api.github.com/us
 if [ "$HTTP" = "201" ]; then
   echo "Created private repo ${GH_USER}/${REPO_NAME}"
 elif [ "$HTTP" = "422" ]; then
-  echo "Repo ${GH_USER}/${REPO_NAME} already exists — continuing"
+  echo "Repo ${GH_USER}/${REPO_NAME} already exists - continuing"
 else
   # 403 = token can't create repos. That's fine if the repo already exists
-  # (created manually) and the token has Contents write — verify via GET.
+  # (created manually) and the token has Contents write - verify via GET.
   EXISTS=$(api -o /dev/null -w '%{http_code}' "https://api.github.com/repos/${GH_USER}/${REPO_NAME}")
   if [ "$EXISTS" = "200" ]; then
-    echo "Repo ${GH_USER}/${REPO_NAME} already exists (creation skipped: token lacks Administration) — continuing"
+    echo "Repo ${GH_USER}/${REPO_NAME} already exists (creation skipped: token lacks Administration) - continuing"
   else
     echo "Cannot create repo (HTTP $HTTP) and repo does not exist (GET $EXISTS):"
     cat /tmp/mudaala-repo.json; echo

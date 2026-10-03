@@ -3,7 +3,7 @@ import { route, jsonOk, ApiError } from '@/lib/api'
 import { db } from '@/lib/db'
 import { normalizeShopName } from '@/lib/format'
 
-// Public shop-name availability check — powers the live "suggest area" hint
+// Public shop-name availability check - powers the live "suggest area" hint
 // while a seller types their shop name. Shop names are public data (they show
 // on every browse card), so a public read here leaks nothing new.
 //

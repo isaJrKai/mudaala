@@ -28,7 +28,7 @@ import QRCode from 'react-qr-code'
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Two shops can legally share a name — when they appear in the SAME feed,
+// Two shops can legally share a name - when they appear in the SAME feed,
 // suffix each with their area so buyers tap the right one. The shop's own
 // location wins (profile area → district), falling back to the listing's.
 function computeShopLabels(items: ListingsPage['items'] | undefined): Map<string, string> {
@@ -59,7 +59,7 @@ function computeShopLabels(items: ListingsPage['items'] | undefined): Map<string
 }
 
 // "Near me" state machine: idle → locating → on. Denied/unsupported falls
-// back to idle with a gentle hint — browsing works fully without location.
+// back to idle with a gentle hint - browsing works fully without location.
 type NearMeStatus = 'idle' | 'locating' | 'on' | 'denied'
 
 interface NearMeState {
@@ -70,7 +70,7 @@ interface NearMeState {
 
 const NEARME_IDLE: NearMeState = { status: 'idle', lat: null, lng: null }
 
-// Browse — the primary user task: find who buys/sells what, nearby.
+// Browse - the primary user task: find who buys/sells what, nearby.
 export function ListingsBrowse() {
   const { filters, setFilters, resetFilters, navigate } = useAppStore()
   const addToBasket = useAddToBasket()
@@ -93,7 +93,7 @@ export function ListingsBrowse() {
     return () => clearTimeout(t)
   }, [searchInput, filters.q, setFilters])
 
-  // Location is requested ONLY on this tap — never on app open, so nobody is
+  // Location is requested ONLY on this tap - never on app open, so nobody is
   // greeted by a permission wall. Denial keeps the whole feed usable.
   function toggleNearMe() {
     if (nearMe.status === 'locating') return
@@ -122,7 +122,7 @@ export function ListingsBrowse() {
 
   const query = filtersToQuery(filters)
   // A code-shaped query ("dk 2623", "MD-2623") is a till-number punch, not a
-  // text search — canonicalize it and look the shop up directly. Anything
+  // text search - canonicalize it and look the shop up directly. Anything
   // else keeps flowing through the normal listing search.
   const codeQuery = useMemo(() => (filters.q ? (normalizeShopCode(filters.q) ?? '') : ''), [filters.q])
   // Buyer coordinates ride on the URL (never persisted anywhere) and are part
@@ -139,14 +139,14 @@ export function ListingsBrowse() {
     queryKey: ['shop-code', codeQuery],
     queryFn: () => apiGet<ShopLookupResponse>(`/api/shops/lookup?code=${encodeURIComponent(codeQuery)}`),
     enabled: codeQuery !== '',
-    // A code either exists or it doesn't — the first honest answer is final.
+    // A code either exists or it doesn't - the first honest answer is final.
     retry: false,
   })
   const codeShop = codeQuery !== '' && codeLookup.data ? codeLookup.data.shop : null
 
   const shopLabels = useMemo(() => computeShopLabels(data?.items), [data])
 
-  // Distance chips — computed from the same blurred coords the server used,
+  // Distance chips - computed from the same blurred coords the server used,
   // so the label a buyer reads always matches the order they see.
   const distanceLabels = useMemo(() => {
     const map = new Map<string, string>()
@@ -170,7 +170,7 @@ export function ListingsBrowse() {
 
   return (
     <div className="space-y-3">
-      {/* The front door — one green ribbon and the words that matter:
+      {/* The front door - one green ribbon and the words that matter:
           what this place is and what to do first. No eyebrow labels, no
           slogan chips; the grey tile on the right carries no photo until a
           real shop's real photo takes the slot. */}
@@ -190,7 +190,7 @@ export function ListingsBrowse() {
               </p>
             </div>
             <div className="relative hidden sm:block">
-              {/* PLACEHOLDER RULE — the hero carries no photo until a real
+              {/* PLACEHOLDER RULE - the hero carries no photo until a real
                   shop's real photo takes this slot. No seed image, no stock,
                   no illustration: the neutral tile makes no claim. */}
               <PlaceholderTile
@@ -235,7 +235,7 @@ export function ListingsBrowse() {
         </Button>
       </div>
 
-      {/* Category pills — the aisle signs of the market, one tap under the
+      {/* Category pills - the aisle signs of the market, one tap under the
           search bar. Same filter machinery as the FilterDialog dropdown
           (filters.category, 'any' = All), just always visible. Horizontally
           scrollable because eleven aisles don't fit a phone. */}
@@ -287,7 +287,7 @@ export function ListingsBrowse() {
           {nearMe.status === 'locating' ? copy.browse.nearMeLocating : copy.browse.nearMe}
         </Button>
         <SaveSearchButton />
-        {/* Loved — the buyer's shortlist. Same family as Near me: an explicit
+        {/* Loved - the buyer's shortlist. Same family as Near me: an explicit
             mode chip, count visible at a glance, pressed state unambiguous. */}
         <Button
           type="button"
@@ -330,7 +330,7 @@ export function ListingsBrowse() {
 
       <FilterDialog open={showFilters} onOpenChange={setShowFilters} />
 
-      {/* Loved mode replaces the whole feed — the buyer asked for their
+      {/* Loved mode replaces the whole feed - the buyer asked for their
           shortlist, not the market. Explicit intent wins over every other
           mode (search, filters, code punch all wait their turn). */}
       {lovedOnly ? (
@@ -392,7 +392,7 @@ export function ListingsBrowse() {
               {copy.browse.resultsFound(data.total, data.pageCount > 1 ? { page: data.page, pageCount: data.pageCount } : undefined)}
             </p>
             {/* Rows on the phone (small photo on the side), compact blocks in
-                a grid on desktop — the same card flips at sm. */}
+                a grid on desktop - the same card flips at sm. */}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
               {data.items.map((listing) => (
                 <ListingBlock
@@ -419,10 +419,10 @@ export function ListingsBrowse() {
   )
 }
 
-// The featured-shop rail — desktop's right column turns the current results
+// The featured-shop rail - desktop's right column turns the current results
 // into a doorway: one shop from whatever the buyer is looking at, its poster
 // code, its phone line. It follows the search the way a shop window follows
-// the street you're standing on. Hidden below lg — on the phone the feed IS
+// the street you're standing on. Hidden below lg - on the phone the feed IS
 // the page. A rectangle, not a curve: it is a card, and the restraint rule
 // keeps the signature off cards.
 function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
@@ -454,7 +454,7 @@ function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
           {shop.photoUrl ? (
             <img src={shop.photoUrl} alt="" loading="lazy" className="h-32 w-full object-cover" />
           ) : (
-            // PLACEHOLDER RULE — no shop photo yet: the neutral grey tile
+            // PLACEHOLDER RULE - no shop photo yet: the neutral grey tile
             // with the shop's name, never a stock or generated image.
             <PlaceholderTile title={shop.name} label={copy.shop.coverTileAria(shop.name)} className="h-32 w-full" />
           )}
@@ -492,7 +492,7 @@ function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
   )
 }
 
-// The Loved shelf — the shortlist, rendered as the same photo-first blocks
+// The Loved shelf - the shortlist, rendered as the same photo-first blocks
 // as the feed. Every item is re-fetched from the public API when the shelf
 // opens (the heart stores only an id), so what the buyer sees is what is
 // really there right now: sold-out items say so instead of pretending.
@@ -504,7 +504,7 @@ function LovedShelf({
 }: {
   onOpen: (id: string) => void
   onOpenShop: (shopId: string) => void
-  // Same shape ListingBlock hands every caller — blocks may come back from
+  // Same shape ListingBlock hands every caller - blocks may come back from
   // the public detail endpoint, but the add contract stays the wide one.
   onAdd: (listing: Listing & { user?: ListingShopOwnerT }) => boolean | void
   onBrowse: () => void
@@ -523,7 +523,7 @@ function LovedShelf({
             const res = await apiGet<{ listing: ListingDetailT }>(`/api/listings/${id}`)
             return res.listing
           } catch (err) {
-            // A 404 means the seller deleted it — a heart on a ghost is
+            // A 404 means the seller deleted it - a heart on a ghost is
             // clutter that also eats a shortlist slot, so it unloves itself.
             if (err instanceof Error && /404|does not exist|removed/i.test(err.message)) {
               unlove(id)
@@ -610,7 +610,7 @@ function LovedShelf({
   )
 }
 
-// The result of punching a MD code into search — one shop, whole card taps
+// The result of punching a MD code into search - one shop, whole card taps
 // through, same affordance as a listing card. The code chip repeats so the
 // buyer can confirm the number they typed matches the shop they got.
 function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOpen: () => void }) {

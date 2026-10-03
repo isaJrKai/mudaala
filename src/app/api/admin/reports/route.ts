@@ -1,4 +1,4 @@
-// GET /api/admin/reports — the moderation queue. Admin-only (ADMIN_PHONES,
+// GET /api/admin/reports - the moderation queue. Admin-only (ADMIN_PHONES,
 // fail closed). Each row carries what an admin needs to judge it: the
 // target ad or shop, the reason in plain words, the reporter's optional
 // note and when it came in. Defaults to the OPEN queue; pass ?status=…
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       take: 200,
     })
 
-    // Reporter display names for signed-in reporters — admins may need to
-    // follow up. Guests stay anonymous ("a guest") — IPs never reach the UI.
+    // Reporter display names for signed-in reporters - admins may need to
+    // follow up. Guests stay anonymous ("a guest") - IPs never reach the UI.
     const reporterIds = [...new Set(reports.map((r) => r.reporterId).filter(Boolean))] as string[]
     const reporters = await db.user.findMany({
       where: { id: { in: reporterIds } },

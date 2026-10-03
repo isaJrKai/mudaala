@@ -1,10 +1,10 @@
-// Home dashboard data — the signed-in landing view.
+// Home dashboard data - the signed-in landing view.
 //
 // Every number here is computed from records that already exist: saved
 // searches, listings, notifications. The one piece of NEW state is
 // User.lastHomeVisitAt, which marks where "new matches since last visit"
 // counts from. Visits are recorded by POST /api/home/visit (fired once per
-// Home mount) so the GET stays read-only — refreshing the dashboard never
+// Home mount) so the GET stays read-only - refreshing the dashboard never
 // silently zeroes the card while the user is looking at it.
 
 import { route, jsonOk, requireUser } from '@/lib/api'

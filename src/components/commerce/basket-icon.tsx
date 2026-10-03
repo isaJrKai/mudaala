@@ -1,13 +1,13 @@
 'use client'
 
-// Mudaala's basket glyph — the lucide ShoppingBasket shape with one addition:
+// Mudaala's basket glyph - the lucide ShoppingBasket shape with one addition:
 // a "goods" layer that rises inside the basket as the buyer's list grows.
 //
 //   • The fill is a rect clipped to the basket body, moved with transform
 //     only (GPU path, no geometry animation). The transition lives in
 //     globals.css (.basket-fill) so rapid adds RETARGET smoothly instead of
-//     restarting — CSS transition, not keyframes.
-//   • It never quite reaches the brim (capped ~85% of the body) — the
+//     restarting - CSS transition, not keyframes.
+//   • It never quite reaches the brim (capped ~85% of the body) - the
 //     basket always has room, per the design brief.
 //   • fill level is a FRACTION OF THE BASKET BODY (0..1), already capped by
 //     the caller; the math below maps it into viewBox units.
@@ -24,7 +24,7 @@ export function BasketGlyph({
   fill,
   className,
 }: {
-  /** 0..1 — how full the basket BODY looks. The caller caps below 1. */
+  /** 0..1 - how full the basket BODY looks. The caller caps below 1. */
   fill: number
   className?: string
 }) {
@@ -46,14 +46,14 @@ export function BasketGlyph({
       className={cn('size-5 shrink-0', className)}
     >
       <defs>
-        {/* Interior of the basket body — slightly inset so the fill never
+        {/* Interior of the basket body - slightly inset so the fill never
             peeks past the 2px outline strokes drawn on top of it. */}
         <clipPath id={clipId}>
           <path d="M3.9 11 L20.1 11 L18.8 18.3 Q18.5 20.2 16.7 20.2 L7.3 20.2 Q5.5 20.2 5.2 18.3 Z" />
         </clipPath>
       </defs>
 
-      {/* The goods — under every stroke, clipped to the body. */}
+      {/* The goods - under every stroke, clipped to the body. */}
       <g clipPath={`url(#${clipId})`}>
         <rect
           className="basket-fill"
@@ -66,7 +66,7 @@ export function BasketGlyph({
         />
       </g>
 
-      {/* The basket itself — handles, rim, body, weave ribs — over the fill. */}
+      {/* The basket itself - handles, rim, body, weave ribs - over the fill. */}
       <path d="m5 11 4-7" />
       <path d="m19 11-4-7" />
       <path d="M2 11h20" />

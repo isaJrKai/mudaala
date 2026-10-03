@@ -1,5 +1,5 @@
 #!/bin/bash
-# TASK 6 — extra shots: signed-in home (fixture account) + browse re-check.
+# TASK 6 - extra shots: signed-in home (fixture account) + browse re-check.
 set -euo pipefail
 BASE="http://localhost:3000"
 OUT="/home/z/my-project/download/task6-screens/after"

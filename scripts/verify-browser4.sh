@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — round 4: golden path for shop naming (new UG seller end-to-end).
+# Duuka - round 4: golden path for shop naming (new UG seller end-to-end).
 set -u
 cd /home/z/my-project
 
@@ -36,7 +36,7 @@ REGTAB=$(echo "$SNAP" | rg -o 'tab "Create account" \[ref=([a-z0-9]+)\]' -r '$1'
 ab fill "reg-name" "Okello Grains" >/dev/null 2>&1
 ab fill "reg-phone" "0781234567" >/dev/null 2>&1
 sleep 1
-echo "country hint: $(text 2200 | rg -o 'Uganda — your prices will show in USh' | head -1)"
+echo "country hint: $(text 2200 | rg -o 'Uganda - your prices will show in USh' | head -1)"
 ab fill "reg-password" "password123" >/dev/null 2>&1
 SNAP=$(ab snapshot -i)
 SUBREF=$(echo "$SNAP" | rg -o 'button "Create account" \[ref=([a-z0-9]+)\]' -r '$1' | tail -1)

@@ -15,7 +15,7 @@ if port_open; then
     echo "[harness] server already up (canonical, dev.log live)"
     need_boot=0
   else
-    echo "[harness] non-canonical server squatting :3000 — restarting with tee dev.log"
+    echo "[harness] non-canonical server squatting :3000 - restarting with tee dev.log"
     pkill -f "next dev" 2>/dev/null; pkill -f "next-server" 2>/dev/null; sleep 3
   fi
 fi

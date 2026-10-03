@@ -1,4 +1,4 @@
-// Health check — app alive + database reachable. No auth, no PII: a load
+// Health check - app alive + database reachable. No auth, no PII: a load
 // balancer or uptime monitor should be able to hit this bare.
 
 import { route, jsonOk } from '@/lib/api'

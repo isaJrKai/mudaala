@@ -1,9 +1,9 @@
-// Maintenance sweep endpoint — runs the real expiry + expiring-soon processes.
+// Maintenance sweep endpoint - runs the real expiry + expiring-soon processes.
 // In production this is called by a scheduler (cron / Supabase pg_cron) that
 // presents the shared secret: header x-cron-secret must match CRON_SECRET.
 // It is idempotent, so calling it repeatedly is safe. Fails closed: if
 // CRON_SECRET is not configured the endpoint refuses to run rather than being
-// world-open. (Expiry inside the app does not depend on this endpoint —
+// world-open. (Expiry inside the app does not depend on this endpoint -
 // public reads run the same sweep.)
 
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -27,7 +27,7 @@ export async function POST() {
     const configured = process.env.CRON_SECRET
 
     if (!configured) {
-      return jsonError(503, 'Sweep endpoint is not configured — set CRON_SECRET to enable scheduled sweeps')
+      return jsonError(503, 'Sweep endpoint is not configured. Set CRON_SECRET to enable scheduled sweeps')
     }
     if (!secretMatches(presented, configured)) {
       return jsonError(403, 'Invalid cron secret')
@@ -35,7 +35,7 @@ export async function POST() {
 
     const expired = await expireOverdueListings()
     const expiring = await notifyExpiringSoon()
-    // Daily price medians — same sweep, derived honestly from ACTIVE listings.
+    // Daily price medians - same sweep, derived honestly from ACTIVE listings.
     const priceSnapshots = await recordPriceSnapshots()
     return jsonOk({ expired, expiringNotified: expiring, priceSnapshots })
   })

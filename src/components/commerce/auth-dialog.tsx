@@ -27,7 +27,7 @@ export function AuthDialog() {
           <DialogTitle className="text-xl font-bold tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
           <DialogDescription>One account for everything. Buy, sell, save searches and get alerts.</DialogDescription>
         </DialogHeader>
-        {/* 'forgot' is a reachable tab value with no trigger — the Sign in form's
+        {/* 'forgot' is a reachable tab value with no trigger - the Sign in form's
             "Forgot password?" link switches to it, so the TabsList stays two
             clearly-named doors. */}
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'signin' | 'register' | 'forgot')}>
@@ -51,7 +51,7 @@ export function AuthDialog() {
 }
 
 // Dev-only demo accounts: one tap fills real seeded credentials. They are the
-// fastest way for anyone reviewing the app to get in — no typing, no typos.
+// fastest way for anyone reviewing the app to get in - no typing, no typos.
 const DEMO_ACCOUNTS = [
   { label: 'Nakato Fresh Produce (Kampala)', phone: '0772123456' },
   { label: 'Kampalamart Scrap (Kampala)', phone: '0776123456' },
@@ -197,7 +197,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
       setErrors(fieldErrors)
       return
     }
-    // The checkbox is required — caught client-side with the same words the
+    // The checkbox is required - caught client-side with the same words the
     // server uses, so an unchecked box never even becomes a request.
     if (!acceptTerms) {
       setErrors({ acceptTerms: 'Confirm you are 18+ and accept the Terms and Privacy Policy' })
@@ -237,7 +237,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         <p className="text-xs text-muted-foreground">This is the name buyers will see on your listings.</p>
         {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
       </div>
-      {/* Uganda is the only market for now — shown as fixed fact, not a
+      {/* Uganda is the only market for now - shown as fixed fact, not a
           choice, so nobody wonders whether their country is supported. */}
       <div className="space-y-1.5">
         <Label htmlFor="reg-country">Country</Label>
@@ -275,7 +275,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
         <p className="text-xs text-muted-foreground">At least 8 characters.</p>
         {errors.password ? <p className="text-sm text-destructive">{errors.password}</p> : null}
       </div>
-      {/* Required 18+ / Terms / Privacy confirmation — also enforced by the
+      {/* Required 18+ / Terms / Privacy confirmation - also enforced by the
           API, so an old client cannot skip it. */}
       <div className="space-y-1.5">
         <div className="flex items-start gap-2.5">
@@ -317,7 +317,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
 
 // Two calm steps, no jargon: the phone, then the code from the SMS. The API
 // answers the same way whether or not the number is registered, so the first
-// screen never says "that number is wrong" — the code screen is where a real
+// screen never says "that number is wrong" - the code screen is where a real
 // mismatch (wrong code, expired code) is explained, and always with the same
 // sentence.
 function ForgotPasswordForm({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
@@ -340,7 +340,7 @@ function ForgotPasswordForm({ onDone, onBack }: { onDone: () => void; onBack: ()
     setBusy(true)
     try {
       await apiPost<{ ok: boolean; message: string }>('/api/auth/forgot-password', { phone })
-      // Same message either way — relay it as-is and move on to the code.
+      // Same message either way - relay it as-is and move on to the code.
       setStep('code')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the code. Please try again.')

@@ -1,11 +1,11 @@
-// Mudaala — in-memory rate limiting for auth endpoints.
+// Mudaala - in-memory rate limiting for auth endpoints.
 // A sliding window of attempt timestamps per key, held in process memory.
 // Right-sized for a single-instance deployment (the app today); if the app
-// ever scales horizontally, move the window into the shared database — the
+// ever scales horizontally, move the window into the shared database - the
 // call sites do not need to change.
 //
 // Limits are per phone (brute-forcing ONE account) and per IP (flooding many
-// accounts from one machine). Failed logins are what count against a phone —
+// accounts from one machine). Failed logins are what count against a phone -
 // a successful sign-in clears that phone's failures, so a person mistyping
 // their password is never locked out of their shop by their own traffic.
 
@@ -36,7 +36,7 @@ export function hit(key: string, max: number, windowMs: number): RateVerdict {
   return { ok: true, retryAfterSeconds: 0 }
 }
 
-/** A success clears the bucket — used so failed-login counters reset on sign-in. */
+/** A success clears the bucket - used so failed-login counters reset on sign-in. */
 export function clear(key: string): void {
   buckets.delete(key)
 }
@@ -45,7 +45,7 @@ export function clear(key: string): void {
 export const RATE_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MIN ?? 15) * 60_000
 
 // Login: 5 FAILED attempts per phone per 15 min; 20 total attempts per IP in
-// the same window (the IP bucket counts every attempt — a flood is a flood
+// the same window (the IP bucket counts every attempt - a flood is a flood
 // even when each phone fails only once).
 export const LOGIN_FAIL_MAX = Number(process.env.RATE_LIMIT_LOGIN_MAX ?? 5)
 export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 20)
@@ -55,18 +55,18 @@ export const LOGIN_IP_MAX = Number(process.env.RATE_LIMIT_LOGIN_IP_MAX ?? 20)
 export const REGISTER_WINDOW_MS = 60 * 60_000
 export const REGISTER_IP_MAX = Number(process.env.RATE_LIMIT_REGISTER_MAX ?? 5)
 
-// Publish: 20 listings per user per day (spec) — plenty for a real shop's
+// Publish: 20 listings per user per day (spec) - plenty for a real shop's
 // morning restock, hostile to catalogue-spam.
 export const PUBLISH_WINDOW_MS = 24 * 60 * 60_000
 export const PUBLISH_DAY_MAX = Number(process.env.RATE_LIMIT_PUBLISH_MAX ?? 20)
 
-// Upload: 30 photos per user per hour (spec) — a full catalogue shoot in one
+// Upload: 30 photos per user per hour (spec) - a full catalogue shoot in one
 // sitting is fine; a bulk-fill attack is not.
 export const UPLOAD_WINDOW_MS = 60 * 60_000
 export const UPLOAD_HOUR_MAX = Number(process.env.RATE_LIMIT_UPLOAD_MAX ?? 30)
 
 // Reports: 10 ACCEPTED reports per day per reporter (a sliding 24h window,
-// not a calendar day — consistent with the other windows here). Signed-in
+// not a calendar day - consistent with the other windows here). Signed-in
 // reporters are keyed by user id; guests by IP. The guest cap is env-tunable
 // so a shared dev box / CI runner (one IP for the whole suite) can raise it
 // without touching the per-user limit the product actually promises.
@@ -75,8 +75,8 @@ export const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000
 export const REPORT_IP_DAY_MAX = Number(process.env.RATE_LIMIT_REPORT_IP_MAX ?? REPORT_DAY_MAX)
 
 // Password reset: requesting a CODE costs 3 per phone per hour and 10 per IP
-// per hour. The per-phone cap applies to EVERY number — existing account or
-// not — so nobody can use the endpoint as an SMS pump or an existence probe.
+// per hour. The per-phone cap applies to EVERY number - existing account or
+// not - so nobody can use the endpoint as an SMS pump or an existence probe.
 // The per-IP cap is env-tunable for the same shared-dev-box reason as above.
 export const RESET_PHONE_MAX = Number(process.env.RATE_LIMIT_RESET_PHONE_MAX ?? 3)
 export const RESET_IP_MAX = Number(process.env.RATE_LIMIT_RESET_IP_MAX ?? 10)

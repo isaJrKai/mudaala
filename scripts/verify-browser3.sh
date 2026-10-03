@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — browser verification round 3: real UI sign-in via demo fixtures.
+# Duuka - browser verification round 3: real UI sign-in via demo fixtures.
 set -u
 cd /home/z/my-project
 
@@ -59,7 +59,7 @@ ab find text "Create account" click >/dev/null 2>&1
 ab fill "reg-name" "Okello Grains" >/dev/null 2>&1
 ab fill "reg-phone" "0781234567" >/dev/null 2>&1
 ab fill "reg-password" "password123" >/dev/null 2>&1
-text 1400 | rg -o 'Uganda — your prices will show in USh|Country|Phone number' | head -4
+text 1400 | rg -o 'Uganda - your prices will show in USh|Country|Phone number' | head -4
 ab find text "Create account" click >/dev/null 2>&1; sleep 3
 text 900 | rg -o 'Account created[^
 ]*|welcome, Okello Grains|Okello Grains' | head -3

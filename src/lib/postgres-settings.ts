@@ -1,4 +1,4 @@
-// PostgreSQL deployment connection — storage + real connectivity test.
+// PostgreSQL deployment connection - storage + real connectivity test.
 // Config is persisted in AppSetting and never returned unmasked.
 // In production these values belong in environment variables; the settings UI
 // exists so connection details can be captured and tested without redeploying.
@@ -16,7 +16,7 @@ export type StoredPostgresConfig = PostgresConfig & { configuredAt?: string }
 // before they touch AppSetting. The key comes from SETTINGS_ENC_KEY; without
 // it a stable machine-local fallback is derived from DATABASE_URL so dev does
 // not silently lose saved config across restarts. Values written before
-// encryption (no "enc:" prefix) decrypt to themselves — nothing breaks.
+// encryption (no "enc:" prefix) decrypt to themselves - nothing breaks.
 const ENC_PREFIX = 'enc:'
 
 function settingsKey(): Buffer {
@@ -116,7 +116,7 @@ interface TcpTestResult {
 }
 
 // Real TCP reachability test with a hard timeout. This verifies the host
-// accepts connections — it does NOT verify credentials or the database itself;
+// accepts connections - it does NOT verify credentials or the database itself;
 // the response says exactly that, honestly.
 export function testTcpConnection(target: ParsedTarget, timeoutMs = 5000): Promise<TcpTestResult> {
   return new Promise((resolve) => {
@@ -141,9 +141,9 @@ export function testTcpConnection(target: ParsedTarget, timeoutMs = 5000): Promi
     socket.once('error', (err: NodeJS.ErrnoException) => {
       const reason =
         err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN'
-          ? 'Host not found — check the hostname'
+          ? 'Host not found. Check the hostname'
           : err.code === 'ECONNREFUSED'
-            ? 'Connection refused — is PostgreSQL running on that port?'
+            ? 'Connection refused. Is PostgreSQL running on that port?'
             : err.code === 'ETIMEDOUT'
               ? 'Connection timed out'
               : `Connection failed (${err.code ?? 'unknown error'})`

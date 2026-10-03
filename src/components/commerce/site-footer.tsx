@@ -1,4 +1,4 @@
-// Site footer — the quiet bottom rail with the legal links. Rendered by the
+// Site footer - the quiet bottom rail with the legal links. Rendered by the
 // root layout so every page (app, public ad pages, legal pages) carries the
 // same three doors: Safety, Privacy and Terms.
 

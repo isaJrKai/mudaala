@@ -1,4 +1,4 @@
-// Mudaala — canonical site origin.
+// Mudaala - canonical site origin.
 //
 // Ad pages carry real URLs into the world (WhatsApp shares, OG tags, the
 // sitemap, JSON-LD), so absolute links need ONE origin. Production sets

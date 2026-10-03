@@ -1,4 +1,4 @@
-// Mudaala — distance math, shared by the server (nearest-first ordering) and
+// Mudaala - distance math, shared by the server (nearest-first ordering) and
 // the client (distance chips on cards). Pure functions, no dependencies.
 
 interface LatLng {
@@ -21,7 +21,7 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
 }
 
 // Coordinates are rounded to 3 decimals (~110 m) BEFORE anything is stored or
-// sent back — a seller's exact spot (e.g. their home) never exists on the
+// sent back - a seller's exact spot (e.g. their home) never exists on the
 // server, while "which shop is closer" still works.
 export function roundCoord(value: number): number {
   return Math.round(value * 1000) / 1000

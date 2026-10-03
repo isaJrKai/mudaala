@@ -1,5 +1,5 @@
 // The safety card sits directly ABOVE the Call / WhatsApp buttons on every
-// ad page — buyers read it before contact happens, not after. Three habits
+// ad page - buyers read it before contact happens, not after. Three habits
 // only, because that is what fits between the price and the phone number:
 // meet in public, check the goods, never pay in advance.
 

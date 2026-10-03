@@ -1,4 +1,4 @@
-// Mudaala — shared validation schemas (zod).
+// Mudaala - shared validation schemas (zod).
 // Used by BOTH the API routes (integrity boundary) and the forms (usability).
 // Never duplicate these rules elsewhere.
 
@@ -33,7 +33,7 @@ export function normalizePhone(raw: string, country: CountryKey = 'UG'): string 
   return normalizeFor(raw, country)
 }
 
-/** A raw number may arrive in any dial format — produce the normalized
+/** A raw number may arrive in any dial format - produce the normalized
  *  candidate(s). Kept plural on purpose: if another market is ever added,
  *  login should not need rewriting. */
 export function phoneCandidates(raw: string): string[] {
@@ -50,7 +50,7 @@ export function countryPhoneMessage(country: CountryKey): string {
 }
 
 // Shared untransformed phone string for schemas that carry an explicit country
-// (register / listings) — the route normalizes after parsing so the error can
+// (register / listings) - the route normalizes after parsing so the error can
 // name the right country.
 const rawPhone = z.string().trim().min(1, 'Phone number is required').max(20, 'Phone number is too long')
 
@@ -59,7 +59,7 @@ export const registerSchema = z.object({
   phone: rawPhone,
   country: z.enum(COUNTRY_KEYS as [string, ...string[]]).default('UG'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
-  // Task 4 — the 18+ / Terms / Privacy confirmation. Optional in the SCHEMA
+  // Task 4 - the 18+ / Terms / Privacy confirmation. Optional in the SCHEMA
   // (so the route can answer with one friendly message for both missing and
   // false), but REQUIRED by the route: registration is refused without it.
   acceptTerms: z.boolean().optional(),
@@ -93,11 +93,11 @@ export function passwordProblem(password: string, phone?: string | null): string
   if (password.length < 8) return 'Password must be at least 8 characters'
   if (password.length > 100) return 'Password is too long'
   if (COMMON_PASSWORDS.has(password.toLowerCase())) {
-    return 'That password is too easy to guess — please choose a different one'
+    return 'That password is too easy to guess. Please choose a different one'
   }
   if (phone) {
     // Every everyday form of the number is off-limits: +2567…, 07… and the
-    // bare local digits — people really do type their own number as a password.
+    // bare local digits - people really do type their own number as a password.
     const local = phone.replace(/^\+\d{3}/, '')
     if (password === phone || password === `0${local}` || password === local) {
       return 'Your password cannot be your phone number'
@@ -127,7 +127,7 @@ const priceSchema = z
   .max(100_000_000, 'Price is too large')
   .refine((v) => Number.isFinite(v) && Math.round(v * 100) === v * 100, 'Price can have at most 2 decimal places')
 
-// Photo URLs — the upload API returns /uploads/<file>; external https URLs are
+// Photo URLs - the upload API returns /uploads/<file>; external https URLs are
 // allowed so sellers can paste a link instead of uploading. The API route
 // sanitizes entries again (never trust the client array shape).
 const photoUrlSchema = z
@@ -145,7 +145,7 @@ const quantitySchema = z
   .max(10_000_000, 'Quantity is too large')
 
 // Base object schema (no refinements) so .partial()/.omit() remain available.
-// NOTE: country/currency are deliberately OPTIONAL without defaults — in zod 4
+// NOTE: country/currency are deliberately OPTIONAL without defaults - in zod 4
 // a .default() survives .partial() and would silently inject 'UG'/'UGX' into
 // every PATCH. Servers derive the country from the user/listing instead.
 const listingBaseSchema = z.object({
@@ -155,7 +155,7 @@ const listingBaseSchema = z.object({
   category: z.enum(CATEGORY_KEYS as [string, ...string[]], { message: 'Choose a category' }),
   price: priceSchema.nullable(),
   // Optional "was" price for discounts. Only meaningful alongside a current
-  // price — the create schema and the PATCH handler enforce that pairing.
+  // price - the create schema and the PATCH handler enforce that pairing.
   compareAtPrice: priceSchema.nullable().optional(),
   currency: z.enum(CURRENCY_KEYS as [string, ...string[]]).optional(),
   priceNegotiable: z.boolean().default(false),
@@ -179,7 +179,7 @@ export const listingCreateSchema = listingBaseSchema
     path: ['unit'],
   })
   .refine((v) => v.compareAtPrice == null || v.price !== null, {
-    message: 'Add the current price first — the old price only shows as a discount next to it',
+    message: 'Add the current price first. The old price only shows as a discount next to it',
     path: ['compareAtPrice'],
   })
   .refine((v) => v.compareAtPrice == null || v.price == null || v.compareAtPrice > v.price, {
@@ -214,7 +214,7 @@ export const listingQuerySchema = z.object({
   maxPrice: z.number().min(0).max(100_000_000).optional(),
   unit: z.string().trim().max(20).optional(),
   sort: z.enum(['newest', 'price_asc', 'price_desc', 'nearest']).default('newest').optional(),
-  // Buyer's position for sort=nearest ("Near me"). Never persisted — it only
+  // Buyer's position for sort=nearest ("Near me"). Never persisted - it only
   // shapes the ordering of one response.
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),

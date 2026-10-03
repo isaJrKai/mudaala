@@ -1,4 +1,4 @@
-// Friendly 403 — shown when forbidden() fires (e.g. non-admins visiting
+// Friendly 403 - shown when forbidden() fires (e.g. non-admins visiting
 // /admin). Same tone as the gone-ad page: honest, calm, a way forward.
 
 import Link from 'next/link'

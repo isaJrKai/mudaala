@@ -1,4 +1,4 @@
-// Mudaala's 404. Warm, honest, one way out — no dead-end void.
+// Mudaala's 404. Warm, honest, one way out - no dead-end void.
 
 import Link from 'next/link'
 

@@ -1,14 +1,14 @@
-// Mudaala — price trends domain service.
+// Mudaala - price trends domain service.
 //
 // PriceSnapshot rows are DERIVED data: the daily cron sweep computes the
 // median asking price per (category, unit, currency) from ACTIVE listings.
-// Nothing here invents a number — a median is only recorded when at least
+// Nothing here invents a number - a median is only recorded when at least
 // MIN_SAMPLE real listings back it, and each median stays inside one
 // currency so "USh 20,000 / kg" can never be averaged with "KSh 500 / kg".
 
 import { db } from '@/lib/db'
 
-// Below this many active listings a "median" is just someone's single price —
+// Below this many active listings a "median" is just someone's single price -
 // the chart stays empty instead of pretending the market spoke.
 export const MIN_SAMPLE = 5
 
@@ -29,7 +29,7 @@ export function median(values: number[]): number {
 // currency) means the sweep can run repeatedly (and from multiple callers)
 // without duplicating rows or inflating counts. OFFER listings only: an
 // OFFER's price is what a seller ASKS; a REQUEST's price is what a buyer
-// WANTS TO PAY — averaging the two would fabricate a number neither side
+// WANTS TO PAY - averaging the two would fabricate a number neither side
 // ever quoted.
 export async function recordPriceSnapshots(): Promise<number> {
   const rows = await db.listing.findMany({
@@ -43,7 +43,7 @@ export async function recordPriceSnapshots(): Promise<number> {
     take: 5000,
   })
 
-  // Group in JS — SQLite groupBy can't cap-by-group and the volumes here are
+  // Group in JS - SQLite groupBy can't cap-by-group and the volumes here are
   // market-stall scale.
   const groups = new Map<string, { category: string; unit: string; currency: string; prices: number[] }>()
   for (const row of rows) {
@@ -98,7 +98,7 @@ interface TrendSeries {
 }
 
 // The category a user cares about most: counted from what they post and what
-// they save — the two real signals the product already has.
+// they save - the two real signals the product already has.
 function topCategories(
   ownListings: { category: string }[],
   savedSearchCategories: (string | null | undefined)[],
@@ -117,7 +117,7 @@ function topCategories(
 
 // Pick the (unit, currency) a series should follow for one category.
 // Preference 1: the combo the USER actually posts in that category (their own
-// active priced listings — the market they personally trade in).
+// active priced listings - the market they personally trade in).
 // Preference 2: the combo with the most recorded sample across the window
 // (what the market actually speaks in), so saved-search-only categories still
 // get a line when data exists.
@@ -144,7 +144,7 @@ function pickUnitCurrency(
 }
 
 // Build the 7-day series for a user's top categories. Categories with no
-// qualifying snapshots return an EMPTY points array — the caller decides how
+// qualifying snapshots return an EMPTY points array - the caller decides how
 // to present honest absence ("Not enough listings yet").
 export async function priceTrendsForUser(params: {
   ownListings: { category: string; unit: string | null; currency: string }[]

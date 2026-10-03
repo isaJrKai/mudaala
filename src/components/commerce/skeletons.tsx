@@ -3,7 +3,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Grey skeletons mirroring the real cards, so loading never shifts layout.
-// No illustrations, no spinners — flat grey blocks.
+// No illustrations, no spinners - flat grey blocks.
 function ListingCardSkeleton() {
   return (
     <div className="rounded-lg border bg-card p-2.5">
@@ -30,7 +30,7 @@ export function ListingListSkeleton({ count = 5 }: { count?: number }) {
 }
 
 // Block skeleton mirrors the desktop grid card: photo area on top, three
-// text lines under it — same proportions as the loaded blocks.
+// text lines under it - same proportions as the loaded blocks.
 function ListingBlockSkeleton() {
   return (
     <div className="overflow-hidden rounded-lg border bg-card">

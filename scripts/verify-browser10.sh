@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Duuka — round 10: the complete golden path in ONE uninterrupted call.
+# Duuka - round 10: the complete golden path in ONE uninterrupted call.
 set -u
 cd /home/z/my-project
 

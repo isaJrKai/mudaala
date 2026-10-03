@@ -2,7 +2,7 @@
 // pictures, so every category carries a concrete visual cue wherever text
 // alone would not be enough (empty photo placeholders, empty states).
 //
-// Implemented as a map of PRE-BUILT elements at module level — no components
+// Implemented as a map of PRE-BUILT elements at module level - no components
 // are created during render, which keeps the React-compiler lint rules happy.
 import {
   Beef,
@@ -33,7 +33,7 @@ const CATEGORY_GLYPHS: Record<string, React.ReactNode> = {
   other: <Package aria-hidden />,
 }
 
-// Warm, muted tint per category for photo placeholders — recognizable blocks
+// Warm, muted tint per category for photo placeholders - recognizable blocks
 // of color, no decorative gradients.
 const CATEGORY_TINTS: Record<string, string> = {
   'scrap-recyclables': 'bg-stone-100 text-stone-500',

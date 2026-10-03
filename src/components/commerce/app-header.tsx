@@ -16,11 +16,12 @@ import {
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import { basketCount, basketUnits, useBasket } from '@/lib/basket'
+import { copy } from '@/lib/copy'
 import { BasketGlyph } from './basket-icon'
 
 // How full the basket icon looks, as a fraction of the basket body. A sqrt
 // curve so the FIRST item is already clearly visible (~27% of the body) and
-// each later add still nudges it; capped at 0.85 — the basket never quite
+// each later add still nudges it; capped at 0.85 - the basket never quite
 // reaches the brim, per the brief. 14 units = "as full as it gets".
 function basketFillLevel(units: number): number {
   if (units <= 0) return 0
@@ -34,13 +35,13 @@ export function AppHeader() {
   const { toast } = useToast()
 
   // Desktop navigation moved to the AppSidebar rail (lg+); the header keeps
-  // the brand, basket and account — the pieces that follow every scroll.
+  // the brand, basket and account - the pieces that follow every scroll.
 
   const basket = useBasket()
   const basketItems = basketCount(basket)
   const units = basketUnits(basket)
 
-  // Pop + badge bump fire only when the count GROWS during this visit —
+  // Pop + badge bump fire only when the count GROWS during this visit -
   // never on first render (a page reload with a saved basket must not look
   // like an add). Both are WAAPI one-shots on DOM refs: external-system
   // mutations from an effect, no React state, no cascading render. Reduced
@@ -83,7 +84,7 @@ export function AppHeader() {
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
         <button type="button" onClick={() => navigate({ name: 'home' })} className="flex items-center gap-1.5" aria-label="Mudaala home">
           {/* The wordmark is the signboard: lowercase serif in the brand
-              green, the way the market paints a good shop name — with one
+              green, the way the market paints a good shop name - with one
               leaf for the goods that come out of the ground. No icon chip. */}
           <Leaf className="size-[18px] fill-primary/15 text-primary" aria-hidden />
           <span className="font-display text-[19px] font-bold lowercase leading-none tracking-tight text-primary">
@@ -92,12 +93,12 @@ export function AppHeader() {
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* The basket — buyer-side, always visible, signed in or not. Green
+          {/* The basket - buyer-side, always visible, signed in or not. Green
               badge: items waiting, not an alarm like unread alerts. */}
           <button
             type="button"
             onClick={() => navigate({ name: 'basket' })}
-            aria-label={`Basket — ${basketItems} ${basketItems === 1 ? 'item' : 'items'}`}
+            aria-label={copy.basket.iconAria(basketItems)}
             aria-current={view.name === 'basket' ? 'page' : undefined}
             className={cn(
               'press relative inline-flex size-9 items-center justify-center rounded-md',
@@ -117,7 +118,7 @@ export function AppHeader() {
             ) : null}
           </button>
           {sessionLoading ? (
-            // Skeleton — never flash "Sign in" while the session is still
+            // Skeleton - never flash "Sign in" while the session is still
             // being checked; that fake-logged-out blink is what made refresh
             // feel like a logout.
             <span className="inline-flex h-8 w-24 items-center rounded-md bg-muted animate-pulse" aria-hidden />

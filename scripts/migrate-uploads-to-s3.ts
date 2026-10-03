@@ -1,11 +1,11 @@
 /**
- * Mudaala — one-off migration: push existing local photos to the bucket.
+ * Mudaala - one-off migration: push existing local photos to the bucket.
  *
  * When a deployment switches from local-disk storage to S3-compatible storage
  * (STORAGE_* env), the photos that already live in public/uploads/ must follow.
  * This script:
  *   1. uploads every REAL USER photo in public/uploads/ to the bucket under
- *      photos/<name> — PLACEHOLDER RULE: the seed folder is never uploaded,
+ *      photos/<name> - PLACEHOLDER RULE: the seed folder is never uploaded,
  *      and never rewritten to a bucket URL (seed rows and legacy rows still
  *      referencing /uploads/seed/ are skipped and reported),
  *   2. optionally (--rewrite) rewrites the URLs stored in the database
@@ -37,7 +37,7 @@ async function main() {
   const db = new PrismaClient()
 
   const files = (await fs.readdir(UPLOAD_DIR).catch(() => [] as string[])).filter(
-    // PLACEHOLDER RULE — seed photos are development fixtures: they are
+    // PLACEHOLDER RULE - seed photos are development fixtures: they are
     // never migrated to cloud storage and never rewritten to bucket URLs.
     // Removing seed data deletes the whole public/uploads/seed/ folder.
     (name) => name !== 'seed',
@@ -57,7 +57,7 @@ async function main() {
 
   if (REWRITE) {
     const base = (env.publicUrl ?? `${env.endpoint}/${env.bucket}`).replace(/\/$/, '')
-    // PLACEHOLDER RULE — a seed photo path must never become a bucket URL:
+    // PLACEHOLDER RULE - a seed photo path must never become a bucket URL:
     // the upload sweep above never uploaded seed files, so rewriting such a
     // reference would point at a photo that does not exist in the bucket.
     // This second guard keeps any seed path untouched even if the row-level
@@ -71,7 +71,7 @@ async function main() {
     }
     let touched = 0
     let skippedSeed = 0
-    // Every row referencing a local upload — flagged seed rows are skipped
+    // Every row referencing a local upload - flagged seed rows are skipped
     // here (not filtered out silently), and so are LEGACY rows that predate
     // the isSeed flag but still point into /uploads/seed/. Remove-seed-data
     // deletes those before any production copy; until then they must never
@@ -112,7 +112,7 @@ async function main() {
       }
     }
     console.log(`${touched} database row(s) rewritten to the bucket's public URL`)
-    console.log(`${skippedSeed} seed row(s) left untouched (PLACEHOLDER RULE — never migrated, never rewritten)`)
+    console.log(`${skippedSeed} seed row(s) left untouched (PLACEHOLDER RULE - never migrated, never rewritten)`)
   }
 
   await db.$disconnect()

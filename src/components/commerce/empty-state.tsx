@@ -10,7 +10,7 @@ interface EmptyStateProps {
 }
 
 // Empty states are plain text: say what is missing, offer the one action
-// that helps. No icon boxes, no illustrations, nothing decorative — an
+// that helps. No icon boxes, no illustrations, nothing decorative - an
 // empty screen should read as words on a surface, not a themed graphic.
 export function EmptyState({ title, description, action, className }: EmptyStateProps) {
   return (

@@ -1,7 +1,7 @@
-// Mudaala — step 2 of password reset: code + new password.
+// Mudaala - step 2 of password reset: code + new password.
 //
-// EVERY failure mode below returns the same message — unknown phone, no code
-// ever issued, expired code, already-used code, killed code, wrong code —
+// EVERY failure mode below returns the same message - unknown phone, no code
+// ever issued, expired code, already-used code, killed code, wrong code -
 // because distinguishing them would tell an attacker which of their guesses
 // got warmer. One generic sentence, every time.
 //
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       ? await db.user.findFirst({ where: { phone: { in: candidates } } })
       : null
 
-    // Same generic answer when the account does not exist — no enumeration.
+    // Same generic answer when the account does not exist - no enumeration.
     if (!user) return jsonError(400, GENERIC_FAIL)
 
     const reset = await db.passwordReset.findFirst({
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       return jsonError(400, GENERIC_FAIL)
     }
 
-    // Correct code — now the new password must earn its place.
+    // Correct code - now the new password must earn its place.
     const pwProblem = passwordProblem(data.newPassword, user.phone)
     if (pwProblem) {
       // The code stays alive: fixing a weak password should not cost another SMS.
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     await db.$transaction([
       db.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(data.newPassword) } }),
-      // A password change revokes EVERYWHERE — every device, every channel.
+      // A password change revokes EVERYWHERE - every device, every channel.
       db.session.deleteMany({ where: { userId: user.id } }),
       db.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date(), attempts: reset.attempts } }),
       db.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } }),
@@ -72,5 +72,5 @@ export async function POST(request: Request) {
     return jsonOk({ ok: true, message: 'Password updated. Sign in with your new password.' })
   })
 }
-// Note: the old password is never compared here — the SMS code IS the proof
+// Note: the old password is never compared here - the SMS code IS the proof
 // of identity, and a user who forgot their password cannot repeat it.

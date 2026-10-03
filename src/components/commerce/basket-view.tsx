@@ -1,14 +1,14 @@
 'use client'
 
-// The basket view — the Mudaala-native "checkout": one list per shop, and
+// The basket view - the Mudaala-native "checkout": one list per shop, and
 // sending it means opening WhatsApp with the whole list pre-written. No
-// payment, no order tracking, no login — the seller's WhatsApp inbox is the
+// payment, no order tracking, no login - the seller's WhatsApp inbox is the
 // order inbox, which is exactly where they already answer customers.
 //
 // Honesty rules enforced here:
 //   • Every line is re-checked against the public listing API; gone/expired/
 //     fulfilled items are flagged before the buyer sends anything.
-//   • The subtotal is labelled an estimate — the seller confirms.
+//   • The subtotal is labelled an estimate - the seller confirms.
 //   • The basket lives on this phone (localStorage), and the UI says so.
 
 import { useEffect, useRef, useState } from 'react'
@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
 
 // Shared add handler for every surface that sells (blocks, detail page):
-// one honest toast either way — never a silent no-op, never a fake success.
+// one honest toast either way - never a silent no-op, never a fake success.
 // Returns whether the add actually happened, so the button can show its
 // "added" flash ONLY when the basket really changed.
 export function useAddToBasket() {
@@ -46,13 +46,13 @@ export function useAddToBasket() {
     if (addToBasket(listing)) {
       toast({
         title: 'Added to basket',
-        description: 'Basket is in the top bar — send the whole list to the shop when you are ready.',
+        description: copy.basket.topBarHint,
       })
       return true
     }
     toast({
       title: 'Could not add that',
-      description: 'A shop list holds at most 20 items — open the basket and remove something first.',
+      description: copy.basket.listCapHint,
       variant: 'destructive',
     })
     return false
@@ -60,7 +60,7 @@ export function useAddToBasket() {
 }
 
 // The brief "added" flash on an add button: true for ~1.2s after a REAL
-// success, then back. Callers render a check (or "Added") while it is up —
+// success, then back. Callers render a check (or "Added") while it is up -
 // feedback the interface heard you, without stealing the toast's job.
 export function useAddedFlash(): [boolean, (ok: boolean) => void] {
   const [added, setAdded] = useState(false)
@@ -77,7 +77,7 @@ export function useAddedFlash(): [boolean, (ok: boolean) => void] {
   return [added, flash]
 }
 
-// Live status per line — the public detail endpoint, one call per line.
+// Live status per line - the public detail endpoint, one call per line.
 // A basket holds at most 20 lines per shop, so this stays light. 'GONE'
 // covers 404 (deleted); anything not ACTIVE is flagged as unavailable.
 function useLineStatuses(shopId: string, ids: string[]) {
@@ -141,7 +141,7 @@ export function BasketView() {
 
 // The qty number answers the stepper itself: a small scale pulse on every
 // change, so the eye finds the number that just moved. WAAPI one-shot on a
-// ref — external-system mutation, no React state, no cascading render.
+// ref - external-system mutation, no React state, no cascading render.
 function QtyNumber({ qty, title }: { qty: number; title: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const prevRef = useRef<number | null>(null)
@@ -190,7 +190,7 @@ function BasketShopSection({
   const sendableLines = sendable.map(([, line]) => line)
   const subtotal = basketSubtotal(sendableLines)
 
-  // The subtotal flash — Mudaala's answer to the ticker-tape cue: when the
+  // The subtotal flash - Mudaala's answer to the ticker-tape cue: when the
   // number moves because the buyer edited a quantity, it flashes green for
   // "went up" and the warm red for "went down", then settles. Direction,
   // read at a glance without parsing digits. WAAPI on a ref (no re-render,
@@ -219,7 +219,7 @@ function BasketShopSection({
 
   return (
     <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Basket for ${shop.name}`}>
-      {/* Shop header — taps through, because buyers often want the full
+      {/* Shop header - taps through, because buyers often want the full
           catalogue next to their list. */}
       <button
         type="button"
@@ -299,7 +299,7 @@ function BasketShopSection({
         })}
       </ul>
 
-      {/* Footer — the send. Stale lines stay visible but never ride along in
+      {/* Footer - the send. Stale lines stay visible but never ride along in
           the message: the buyer sees exactly what will be asked for. */}
       <div className="space-y-2 border-t bg-secondary/40 px-4 py-3">
         {stale.length > 0 ? (

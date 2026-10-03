@@ -1,11 +1,11 @@
 'use client'
 
-// The shop — a seller's own space on Mudaala. Everything a buyer needs to trust
+// The shop - a seller's own space on Mudaala. Everything a buyer needs to trust
 // them and browse their whole catalogue: who they are, where they are, when
 // they are open, a call/WhatsApp button, and every active listing they run.
 // Buyers never sign in to see any of this.
 // The shop's identity code (MD-XXXX) and its printable QR poster live here
-// too — the poster is the seller's tool for pulling walk-up customers onto
+// too - the poster is the seller's tool for pulling walk-up customers onto
 // their page (print it, stick it on the stall, buyers scan).
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
@@ -33,12 +33,12 @@ export function ShopView({ id }: { id: string }) {
   const { user, isLoading: sessionLoading } = useSession()
   const addToBasket = useAddToBasket()
   const [posterOpen, setPosterOpen] = useState(false)
-  // Copy-the-code feedback: the button itself becomes the receipt — it swaps
+  // Copy-the-code feedback: the button itself becomes the receipt - it swaps
   // to a check + "Copied" for a beat, the same swap pattern as Add to basket.
   const [copied, setCopied] = useState(false)
   // The QR encodes an absolute URL, which only exists in the browser.
   // useSyncExternalStore gives '' during SSR/hydration and the real origin
-  // after mount — hydration-safe without setState-in-effect (the origin of a
+  // after mount - hydration-safe without setState-in-effect (the origin of a
   // page never changes while it is open, so no real subscription is needed).
   const origin = useSyncExternalStore(
     () => () => {},
@@ -82,7 +82,7 @@ export function ShopView({ id }: { id: string }) {
   const doneCount = Object.values(shop.checklist).filter(Boolean).length
   const isOwner = !sessionLoading && user?.id === shop.id
   // Copy the till-style code. If the clipboard refuses (permissions), nothing
-  // breaks — the code sits right there in big monospace; typing it was always
+  // breaks - the code sits right there in big monospace; typing it was always
   // the honest fallback.
   const copyShopCode = async () => {
     if (!shop.shopCode) return
@@ -91,13 +91,13 @@ export function ShopView({ id }: { id: string }) {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1600)
     } catch {
-      // No clipboard permission — nothing to fix, the code is on screen.
+      // No clipboard permission - nothing to fix, the code is on screen.
     }
   }
   // Share link: opens WhatsApp with the text pre-written (wa.me with no
   // recipient → the sender picks the chat or status). The code rides along so
   // the shop stays findable even after forwarding. Owner says "our"; a buyer
-  // forwarding the shop says "found" — same link, honest voice for whoever
+  // forwarding the shop says "found" - same link, honest voice for whoever
   // is tapping share.
   const shareHref =
     shopUrl && shop.shopCode
@@ -115,7 +115,7 @@ export function ShopView({ id }: { id: string }) {
       </Button>
 
       {/* The owner's mirror: only the seller ever sees this strip. It names
-          the page as THEIRS — ownership is felt, not claimed — and answers
+          the page as THEIRS - ownership is felt, not claimed - and answers
           the first question every new seller has ("what do customers actually
           get shown?") with a one-tap edit. A buyer loading this page never
           knows the strip exists. */}
@@ -139,10 +139,10 @@ export function ShopView({ id }: { id: string }) {
         </section>
       ) : null}
 
-      {/* Shop identity — the seller's own space, named by them. The name is
+      {/* Shop identity - the seller's own space, named by them. The name is
           the signboard: serif, in the brand green, the way a market shop
           paints its name. The cover carries no photo until the seller uploads
-          one: the flat grey tile (shop name + camera) stands in — no stock,
+          one: the flat grey tile (shop name + camera) stands in - no stock,
           no seed, no generated images anywhere. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
         {shop.photoUrl ? (
@@ -161,7 +161,7 @@ export function ShopView({ id }: { id: string }) {
             />
           </div>
         ) : (
-          // PLACEHOLDER RULE — no photo yet: the neutral grey tile with the
+          // PLACEHOLDER RULE - no photo yet: the neutral grey tile with the
           // shop's name and a small camera icon. Never a stock image.
           <div className="relative">
             <PlaceholderTile
@@ -178,7 +178,7 @@ export function ShopView({ id }: { id: string }) {
             <h1 className="font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
               {shop.name}
             </h1>
-            {/* The painter's stroke under a market signboard — drawn once on
+            {/* The painter's stroke under a market signboard - drawn once on
                 open, then it just sits there, the way a good sign does. */}
             <svg viewBox="0 0 150 8" className="mt-1.5 h-2 w-32 text-primary/60 sm:w-48" aria-hidden="true">
               <path
@@ -212,7 +212,7 @@ export function ShopView({ id }: { id: string }) {
             ) : null}
           </p>
 
-          {/* Trust, not decoration: the one chip we can actually back — the
+          {/* Trust, not decoration: the one chip we can actually back - the
               number on screen IS the seller's login line, the API guarantees
               it. No "verified" claims we cannot prove. The profile-completeness
               chip is the seller's to-do, so only the seller ever sees it. */}
@@ -247,7 +247,7 @@ export function ShopView({ id }: { id: string }) {
               </button>
             </p>
           ) : (
-            // And no invented copy for buyers either — the honest line beats
+            // And no invented copy for buyers either - the honest line beats
             // a template's polished filler.
             <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground/85">
               {copy.listing.noStory}
@@ -255,9 +255,9 @@ export function ShopView({ id }: { id: string }) {
           )}
         </div>
 
-        {/* Shop contact — the same direct links buyers get everywhere. The
+        {/* Shop contact - the same direct links buyers get everywhere. The
             line above the buttons says WHY they exist: no middleman, no fees,
-            the shop's own phone rings. The owner reads the mirror version —
+            the shop's own phone rings. The owner reads the mirror version -
             these are their incoming lines. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
           <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
@@ -290,7 +290,7 @@ export function ShopView({ id }: { id: string }) {
       </section>
 
       {/* The bridge for buyers: the code IS the address. Someone who landed
-          here from a shared link can carry the shop away — copy the till-style
+          here from a shared link can carry the shop away - copy the till-style
           code, or forward the page on WhatsApp. The owner gets the poster tool
           below instead; two QRs on one page is one too many. */}
       {!isOwner && shop.shopCode ? (
@@ -338,7 +338,7 @@ export function ShopView({ id }: { id: string }) {
         </section>
       ) : null}
 
-      {/* Owner tool: the printable QR poster. Buyers never see this — they are
+      {/* Owner tool: the printable QR poster. Buyers never see this - they are
           already on the page. The seller prints it for the stall, a wheelbarrow
           notice or the shop window; one scan lands on this exact shop. */}
       {isOwner && shop.shopCode ? (
@@ -373,7 +373,7 @@ export function ShopView({ id }: { id: string }) {
         </section>
       ) : null}
 
-      {/* The catalogue — every active listing this shop runs */}
+      {/* The catalogue - every active listing this shop runs */}
       <section aria-label="Shop catalogue" className="space-y-3">
         <div>
           <h2 className="text-base font-semibold">{copy.shop.catalogue(shop.activeCount)}</h2>
@@ -399,7 +399,7 @@ export function ShopView({ id }: { id: string }) {
             }
           />
         ) : (
-          // Rows on the phone, compact blocks in a grid on desktop — the
+          // Rows on the phone, compact blocks in a grid on desktop - the
           // same card as the browse feed, so a shop feels like its own
           // corner of the same market.
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
@@ -415,7 +415,7 @@ export function ShopView({ id }: { id: string }) {
         )}
       </section>
 
-      {/* Printable poster overlay — flat white, big QR, the permanent code.
+      {/* Printable poster overlay - flat white, big QR, the permanent code.
           The print stylesheet (globals.css) makes the paper show only this. */}
       {posterOpen ? (
         <div className="shop-poster fixed inset-0 z-50 overflow-y-auto bg-white p-5" role="dialog" aria-modal="true" aria-label={`QR poster for ${shop.name}`}>
@@ -426,7 +426,7 @@ export function ShopView({ id }: { id: string }) {
             </Button>
           </div>
           <div className="mx-auto max-w-md overflow-hidden rounded-lg border-2 border-neutral-900 bg-white text-center">
-            {/* The paper carries the Mudaala curve too — this poster is the
+            {/* The paper carries the Mudaala curve too - this poster is the
                 brand's PHYSICAL surface. A shopper in the market should
                 recognize a Mudaala poster from across the row, the same way
                 they recognize the app. Layout follows the printed-poster
@@ -447,7 +447,7 @@ export function ShopView({ id }: { id: string }) {
               {shop.photoUrl ? (
                 <img src={shop.photoUrl} alt="" className="mx-auto size-28 rounded-lg border border-neutral-300 object-cover" />
               ) : (
-                // PLACEHOLDER RULE — the printed poster gets the same neutral
+                // PLACEHOLDER RULE - the printed poster gets the same neutral
                 // grey tile the app shows. No stock or generated images.
                 <span className="mx-auto flex size-28 flex-col items-center justify-center gap-1 rounded-lg border border-neutral-300 bg-neutral-100 text-neutral-500">
                   <Leaf className="size-6" aria-hidden />
@@ -465,7 +465,7 @@ export function ShopView({ id }: { id: string }) {
                 {shopUrl ? (
                   <QRCode value={shopUrl} size={200} level="H" role="img" aria-label={`QR code for ${shop.name}'s shop`} />
                 ) : null}
-                {/* The leaf badge — the same mark the app wears, centered on
+                {/* The leaf badge - the same mark the app wears, centered on
                     the code like the printed poster. level="H" (30% recovery)
                     keeps the QR fully scannable under the badge, on paper and
                     behind laminate. */}
@@ -497,7 +497,7 @@ export function ShopView({ id }: { id: string }) {
 }
 
 // Catalogue cards already sit inside the shop, so the per-card shop chip is
-// redundant — attach the owner identity for the record, not for navigation.
+// redundant - attach the owner identity for the record, not for navigation.
 // (The shop page has no use for coordinates; nulls keep the shape honest.)
 function shopOwnerFrom(shop: ShopPageT['shop']): ListingShopOwner {
   return {

@@ -2,14 +2,14 @@
 //
 // Two jobs:
 //
-// 1. CSRF protection — every state-changing API request (POST/PATCH/PUT/
+// 1. CSRF protection - every state-changing API request (POST/PATCH/PUT/
 //    DELETE) that carries an Origin header must come from this deployment's
 //    own host. Browsers attach Origin to cross-site requests, so a foreign
 //    site can no longer make a victim's cookie ride along on a write. The
 //    check is strictly stronger than "cookie-authenticated only": a foreign
 //    Origin is rejected even when the request also carries a Bearer token,
 //    and requests without an Origin (server-to-server clients, the test
-//    suite) pass — those are not browsers and cannot be forged this way.
+//    suite) pass - those are not browsers and cannot be forged this way.
 //
 // 2. The public pages /l/[id] and /s/[code] have segment not-found boundaries
 //    that receive no route params. When a gone ad 404s, the boundary still
@@ -38,7 +38,7 @@ function hostOf(originHeader: string | null): string | null {
 // Entries are comma-separated; an entry starting with a dot matches the
 // whole suffix (cookie-Domain semantics: ".space-z.ai" trusts that suffix
 // and its subdomains). Leaving this unset changes nothing for deployments
-// whose proxy preserves Host — the foreign-Origin block stays exactly as
+// whose proxy preserves Host - the foreign-Origin block stays exactly as
 // strict as before.
 function trustedHostEntries(): string[] {
   return (process.env.CSRF_TRUSTED_HOSTS ?? '')
@@ -63,7 +63,7 @@ export default function proxy(request: NextRequest) {
       const seenHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
       if (!originOwnsDeployment(originHost, seenHost)) {
         return NextResponse.json(
-          { error: 'This request was blocked for your protection — it did not come from Mudaala' },
+          { error: 'This request was blocked for your protection. It did not come from Mudaala' },
           { status: 403 },
         )
       }

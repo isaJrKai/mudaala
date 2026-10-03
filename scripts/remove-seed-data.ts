@@ -1,12 +1,12 @@
 /**
- * Mudaala — PLACEHOLDER RULE: one-step seed removal.
+ * Mudaala - PLACEHOLDER RULE: one-step seed removal.
  *
  * Every photo in the app today (seed listings, seed shop photos,
  * public/uploads/seed, hero images) is a TEMPORARY PLACEHOLDER that will be
  * replaced with real photos taken by real shops. Seed rows are flagged
  * isSeed = true by scripts/seed.ts; this script removes everything seed in
- * ONE step before launch — seed listings, seed photos, seed shops, seed
- * users — and nothing else. It is safe to run repeatedly.
+ * ONE step before launch - seed listings, seed photos, seed shops, seed
+ * users - and nothing else. It is safe to run repeatedly.
  *
  * Modes:
  *   npx tsx scripts/remove-seed-data.ts           # dry-run: report only
@@ -15,7 +15,7 @@
  *
  * Legacy rows: data seeded before the isSeed flag existed carries no flag,
  * so seed users are ALSO identified by (a) the demo phone numbers defined in
- * scripts/seed.ts (parsed from the file — never executed) and (b) any photo
+ * scripts/seed.ts (parsed from the file - never executed) and (b) any photo
  * URL pointing into /uploads/seed/. `--mark` stamps those rows isSeed=true;
  * the dry-run and --yes always consider both sets.
  */
@@ -99,7 +99,7 @@ async function main() {
   }
 
   if (!YES) {
-    console.log('\nDRY-RUN — nothing was deleted. Re-run with --mark to flag legacy rows, or --yes to remove everything seed.')
+    console.log('\nDRY-RUN - nothing was deleted. Re-run with --mark to flag legacy rows, or --yes to remove everything seed.')
     await db.$disconnect()
     return
   }
@@ -129,7 +129,7 @@ async function main() {
       (await db.businessProfile.count({ where: { photoUrl: { contains: SEED_PATH } } })),
   }
   if (Object.values(leftovers).some((n) => n !== 0)) {
-    console.error('VERIFICATION FAILED — seed traces remain:', leftovers)
+    console.error('VERIFICATION FAILED - seed traces remain:', leftovers)
     process.exit(1)
   }
   console.log('\nVerified: zero seed users, listings, shop profiles, or seed photo references remain.')

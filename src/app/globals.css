@@ -10,7 +10,7 @@
      device ships it, system-ui otherwise. No display sans, no mono voices. */
   --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-sans);
-  /* Display serif (Fraunces) — ONLY the logo wordmark and shop names. */
+  /* Display serif (Fraunces) - ONLY the logo wordmark and shop names. */
   --font-display: var(--font-fraunces);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -69,7 +69,7 @@
   --muted-foreground: oklch(0.51 0.014 90);
   --accent: oklch(0.94 0.025 150);            /* light green tint */
   --accent-foreground: oklch(0.34 0.07 155);
-  /* Warm brick red — earthy, not alarm-neon. Darker than the shadcn stock
+  /* Warm brick red - earthy, not alarm-neon. Darker than the shadcn stock
      value, so white badge text on it clears WCAG AA properly. */
   --destructive: oklch(0.55 0.17 26);
   --border: oklch(0.906 0.008 85);
@@ -106,7 +106,7 @@
   --accent: oklch(0.30 0.03 155);
   --accent-foreground: oklch(0.93 0.03 150);
   /* Darkened just enough that white badge text on it clears WCAG AA
-     (4.63:1) — the stock-shadcn-style value sat at 3.62 and failed. */
+     (4.63:1) - the stock-shadcn-style value sat at 3.62 and failed. */
   --destructive: oklch(0.58 0.16 26);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
@@ -151,14 +151,14 @@
 }
 
 /*
- * Motion layer — small, physical, honest. Transform/opacity only; every
+ * Motion layer - small, physical, honest. Transform/opacity only; every
  * effect here has a named purpose (feedback, state indication) and a
  * reduced-motion answer. Nothing decorative moves for its own sake.
  */
 
 /* The basket's rising fill: a TRANSITION, not keyframes, so tapping add
    twice in a second retargets mid-flight instead of restarting. 600ms is a
-   deliberate exception to the sub-300ms rule — the buyer asked for the
+   deliberate exception to the sub-300ms rule - the buyer asked for the
    "slowly filling up" feel, and it plays a few times per session, not
    hundreds. */
 .basket-fill {
@@ -166,7 +166,7 @@
 }
 
 /* Press feedback: every primary pressable answers the finger. Unlayered on
-   purpose — it overrides Tailwind's transition-colors where both apply,
+   purpose - it overrides Tailwind's transition-colors where both apply,
    because this declaration already includes the color properties. */
 .press {
   transition:
@@ -194,7 +194,7 @@
 }
 
 /* The seller's "it worked" number: the expiry label of a freshly refreshed
-   listing flashes green, then eases back to its settled muted color — the
+   listing flashes green, then eases back to its settled muted color - the
    same cue family as the buyer's subtotal flash, mirrored onto the seller's
    one number that moves. Color only, remounted via key so it replays. */
 @keyframes flash-good {
@@ -208,7 +208,7 @@
 /* The signboard stroke: the painter's line under a market shop's name.
    Draws in once when the shop page opens (pathLength normalized to 1 so
    the dash math is independent of the SVG's rendered size), then sits
-   still — a sign is painted once, not forever animating. */
+   still - a sign is painted once, not forever animating. */
 @keyframes sign-draw {
   from { stroke-dashoffset: 1; }
   to { stroke-dashoffset: 0; }
@@ -221,7 +221,7 @@
 /* Touch screens: slightly thicker icon strokes read better at small sizes
    (fat fingers, cheap panels, sunlight). CSS presentation properties beat
    the SVG stroke-width attribute, so one rule covers every lucide icon and
-   every hand-drawn glyph that ships at stroke 2 — no component changes. */
+   every hand-drawn glyph that ships at stroke 2 - no component changes. */
 @media (pointer: coarse) {
   .lucide,
   svg[stroke-width="2"] {
@@ -243,7 +243,7 @@
   .flash-good {
     animation: none;
   }
-  /* The stroke appears fully painted — dashoffset defaults to 0 — no draw-in. */
+  /* The stroke appears fully painted - dashoffset defaults to 0 - no draw-in. */
   .sign-draw {
     animation: none;
   }
@@ -260,7 +260,7 @@
 
 /*
  * Shop QR poster printing: when the seller prints from the poster overlay,
- * ONLY the poster lands on paper — the app around it disappears. The overlay
+ * ONLY the poster lands on paper - the app around it disappears. The overlay
  * is a normal fixed layer on screen (scrollable on small screens) and a clean
  * full page in print.
  */

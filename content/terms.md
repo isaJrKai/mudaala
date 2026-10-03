@@ -20,9 +20,9 @@ Listings for the following are rejected or removed:
 
 - Weapons and ammunition
 - Drugs and drug paraphernalia
-- Stolen goods — including anything described with words like "no papers" or "stolen"
+- Stolen goods, including anything described with words like "no papers" or "stolen"
 - Government, police or military property
-- Public infrastructure — electric cables, transformer parts, manhole covers, railway metal
+- Public infrastructure: electric cables, transformer parts, manhole covers, railway metal
 - Counterfeit goods and fakes
 
 Breaking this rule can get your listing removed without notice and your account banned.
