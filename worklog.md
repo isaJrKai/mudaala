@@ -1248,3 +1248,20 @@ Stage Summary:
 - Commit 61aec52 on main.
 - Basket rail is xl+ only by design (1280px+); sm/lg keep the top-bar basket icon and the full basket view, so nothing regressed on smaller screens.
 - Mockup elements deliberately NOT built: star ratings, Verified Sellers badge, slogans, checkout button, stock-photo hero (all violate the honesty/placeholder/copy rules the repo enforces).
+
+---
+Task ID: basket-dock-reshape
+Agent: main (Super Z)
+Task: User feedback on the live rail: "goes all the way from top to bottom... it squeezes the listings... our thing with ui/ux is order". Keep the motivation, remove the wall.
+
+Work Log:
+- Redesign: the rail is now a two-state dock. Resting = a w-16 strip fixed to the right edge under the header (top-14, rounded-l-xl, its top border continuing the header's bottom line): BasketGlyph with the shared fill curve, count badge, stacked running total (symbol over amount, whitespace-nowrap after a font-swap wrap scare - range-rects verified one line), chevron. Invited = the old w-80 panel slides in (translate-x + visibility transition, 200ms, motion-reduce:transition-none), floating at bottom-4 with a rounded corner and shadow, OVERLAYING the grid: RailShell reserves xl:pr-16 instead of xl:pr-80, main width measured identical with panel open vs closed (1024px at 1536), so the listings never reflow.
+- Motivation kept on the strip: total updates live (verified USh 20,000 -> 40,000 on a stepper bump) and a WAAPI pop (same pattern as the top-bar basket) fires when units grow in this visit; reduced motion skips it. Panel keeps everything the rail had: per-shop cards, steppers, gone/stale flags, per-shop estimate, WhatsApp/Call send, Open basket link. Esc closes; focus moves into the panel on open and back to the strip on close (guarded against the first-mount steal via mountedRef).
+- basketFillLevel moved from app-header.tsx to lib/basket.ts (one fill curve, two surfaces). Copy: one new key basket.hideRail. page.tsx comment updated to describe the dock.
+- Gate: tsc clean, eslint clean, suite 407/0 via bugprobe.sh (rerun after the nowrap edit).
+- Browser golden path (agent-browser): 1536 rest state (strip visible, panel visibility:hidden, pr 64px); panel open = overlay not push, shop card + stepper + send verified; Esc restores strip; strip total USh 40,000 at qty 2; 1280px main width 976px vs 720px under the old pr-80 wall (+256px of listings); 390px mounts nothing (display:none, pr 0, mobile header basket intact); publish view has no dock and 0 padding; dev.log clean. Shots: tool-results/dock-rest-final.png, dock-panel-open.png, dock-strip-zoom.png, dock-mobile-390.png.
+
+Stage Summary:
+- Commit 15999e8 on main.
+- Squeeze math: at 1280 the listing area grows 720 -> 976px; at 1536 it grows 976 -> 1024px (full max-w-5xl), and the panel costs the grid nothing because it floats.
+- The empty basket shows the honest empty state inside the panel only when the buyer opens it; the resting strip is always there as the affordance.
