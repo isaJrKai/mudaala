@@ -1137,3 +1137,27 @@ Work Log:
 Stage Summary:
 - The rule is now enforced in code, documented in the README, and pinned by the suite: seed photos never upload to the bucket, never rewrite to bucket URLs, and the production-copy sequence starts with remove-seed-data.
 - For the future production-migration task: run remove-seed-data (dry-run -> --yes), then the data copy, then migrate-uploads-to-s3 (STORAGE_* set, --rewrite). The suite's hermetic sweep keeps fixture users out of any copy automatically.
+
+---
+Task ID: task6-polish-placeholder
+Agent: main (Super Z)
+Task: TASK 6 — polish pass (real marketplace feel) + placeholder behaviour. Copy centralization, listing cards, template-tell removal, typography, realistic seed content, grey-tile placeholder behaviour (hero/shop covers/seller add-photo prompt/browse photo ranking), plain empty/loading states, before+after screenshots.
+
+Work Log:
+- Before screenshots: scripts/task6-shots.sh captured browse/listing/shop/ad-page at 390px + 1440px into download/task6-screens/before/ (home signed-out + a signed-in extra).
+- Copy: new src/lib/copy.ts (zero imports, server+client safe) holds app/nav/common/browse/hero/home/listing/shop/publish/mySales/alerts/saved/basket strings incl. interpolated helpers; all commerce components + app pages + layout metadata now pull from it. Banned voice removed everywhere: no em dashes, no seamless/empower/discover/unlock, no uppercase eyebrows (Karibu · Uganda, Featured shop, Karibu · welcome), ✓ marks dropped, "Chat"→"WhatsApp", "Call seller"/"Call shop"→"Call", "Post a listing"→"Post an ad".
+- Cards: listing-card.tsx rewritten as ONE responsive component — row with small side photo (<sm) / compact block (sm+); name+price lead in large bold tabular numbers; single meta line "area · qty · distance · time" with FreshnessDot; photo rules cover/8px/1px border/no shadow/zoom removed; blur pills on photo overlays → solid bg-black/70; heart+add hidden on the 96px row tile (badge only), kept on blocks/detail.
+- Template tells: Sparkles removed (Bell for new matches), font-display reduced to logo wordmark + shop names ONLY (home greeting/stats/headings, browse hero, ad-page title, legal h1, auth dialog, not-found pages all sans); hero slogan chips + MudaalaCurve kept only as the brand ribbon; shadow-sm off publish-form selects; categoryTint glyph tiles → PlaceholderTile.
+- Type: globals.css --font-sans: Inter, system-ui… (Geist Sans/Mono imports dropped; Fraunces kept for logo/shop names); tabular-nums on every price/count/code; font-mono usages (shop codes) → sans tracking-widest.
+- Placeholders: PlaceholderTile gained a title prop (shop covers/featured rail/hero grey tile with shop name); shop cover no-photo state is now the grey tile (was green initial block); poster fallback tile too; seed ships NO photos — 30 tracked /public/uploads/seed PNGs + scripts/generate-seed-images.mjs deleted, seed.ts sets photos '[]' and profile photoUrl null; README placeholder paragraph updated; seller add-photo prompt ("Add a photo: ads with photos get more calls" + Add photo → edit view) on My Listings rows and the detail page (owner-only, photo-less).
+- Ranking: searchListings 'newest' now fetches a capped 500-row freshness window and re-ranks in memory (24h bands; hasPhoto first inside the band; refreshedAt/index tiebreak), mirroring the existing 'nearest' pattern; price sorts and nearest unchanged.
+- Seed: rewritten in seller voice (FRESH MATOOKE from Mpigi, COPPER SCRAP 99.5% clean, CHARCOAL sacks 50kg, gas refills, Owino bales…; short sentences, capitals, phone lines in descriptions; Owino/Nakasero/Kisenyi/Ntinda areas). 8 users/16 listings/2 saved searches unchanged; +256712000001 admin phone untouched; all rows isSeed.
+- States: EmptyState is plain text (icon prop removed; all callers updated), "No ads here yet. Be the first to post."; skeletons mirror the new row/block shapes; ListingGridSkeleton columns 1/2/3→1/3.
+- Tests +5: 16.13–16.17 (with-photo ranks above a FRESHER no-photo ad in-band; junk javascript: photo URL sanitizes away → no boost, no junk URL in feed). Gate: tsc clean, eslint clean, suite 404/0 via bugprobe.sh, post-run DB recon 0 non-seed.
+- After screenshots: same 9 surfaces + signed-in home (fixture 0772123456/demo1234) in download/task6-screens/after/.
+
+Stage Summary:
+- Commit 0138ea1 on main (starter-launch remains stale; last N task commits landed on main per repo convention).
+- Ops incident worth remembering: the dev server was OOM-killed mid-session (kernel log shows 9 OOM kills historically); on relaunch next-server hung at "Starting..." with a corrupted Turbopack cache — `rm -rf .next` + relaunch fixed it. Boot recipe: export the postgres DATABASE_URL first (platform shell exports a SQLite file: URL that breaks prisma db:push), optionally NODE_OPTIONS=--max-old-space-size=2560 to keep the kernel OOM killer away.
+- Screenshot harnesses kept (untracked → committed): scripts/task6-shots.sh, scripts/task6-shots-extra.sh; fixture IDs inside go stale after any reseed (update via /api/listings?q=...).
+- Not done / out of scope: real seller photos (by design — grey tiles until real uploads); signed-in dashboard deeper polish beyond copy/serif/Sparkles removal; Inter is not self-hosted (CSS stack falls back to system-ui locally — self-hosting via next/font when network allows is a small follow-up).
