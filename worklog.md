@@ -1437,3 +1437,20 @@ Stage Summary:
 - Commit d985026 on main. Suite baseline stays 431/0.
 - The WhatsApp list now reads like an order book for multi-item baskets; the hero photo is a one-line team switch waiting for our file; the tabs question needed no code - they already show, swipeable, on the phone.
 - Open (flagged to Isaac): send the real photo for the hero (or say the word) - drop it at public/hero-banner.jpg and set HERO_IMAGE_PATH to '/hero-banner.jpg' and it goes live on desktop and phone. v2 request-to-pay stays parked.
+
+---
+Task ID: hero-photo-cut
+Agent: main (Super Z)
+Task: Isaac's verdict on the hero photo flag: "remove the hero photo, its not professional". Cut the photo slot from the Browse hero entirely.
+
+Work Log:
+- listings-browse.tsx: removed the HeroSlot component (placeholder tile + img with onError fallback), the 42% right grid column on desktop, and the phone h-24 photo strip conditional. The ribbon is now one green band with the words only - heading, one-liner on the phone, full sub on sm+ capped at max-w-xl. The MudaalaCurve sweeps above and below stay; they carry the ribbon's identity, not the photo.
+- lib/constants.ts: HERO_IMAGE_PATH deleted (no dead machinery left - if a photo ever returns, it is a small feature to re-add, not a dormant switch).
+- lib/copy.ts: hero block (tileLabel, photoAlt) removed; PlaceholderTile untouched (still serves listing cards, detail, shop covers, home).
+- Verified in agent-browser: 390px - no tile text, zero hero imgs, single column, ribbon 143px, curve sweeps intact (tool-results/hero-no-photo-390.png); 1440px - block layout, no tile, ribbon 210px, words left-aligned full width (hero-no-photo-1440.png). Console: only HMR rebuild noise; zero page errors.
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh (no API surface touched).
+
+Stage Summary:
+- Commit 52528a4 on main. Suite baseline stays 431/0.
+- The Browse hero is words-only by Isaac's call; the "coming soon" tile that read as unfinished is gone from every breakpoint, and the team-side photo switch no longer exists in code.
+- Open: none for this round. v2 request-to-pay stays parked per Isaac.
