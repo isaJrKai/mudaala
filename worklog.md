@@ -1402,3 +1402,22 @@ Stage Summary:
 - Commit 479759f on main. Suite baseline stays 431/0.
 - The model Isaac named: CART = collects while you shop (own icon, own dock). BASKET = upper surface, final decisions: pay each seller, send the list, call. The header basket icon is untouched.
 - Open (flagged to Isaac, not built): the cart dock is desktop-only today (xl); mobile has the basket icon only. A mobile cart surface is a decision for him. v2 request-to-pay stays parked.
+
+---
+Task ID: cart-on-mobile
+Agent: main (Super Z)
+Task: Isaac: "we need a cart to those mobiles now". The cart-vs-basket round left the cart dock xl-only and flagged exactly this open item: a phone buyer could add to the cart but had no cart surface to review it on. This round built it.
+
+Work Log:
+- CartDock is now one cart with two docks. Below xl: a slim bar that materialises with the first line (ShoppingCart glyph + count badge, "Cart N item(s)", running total, ChevronUp) fixed above the bottom nav (bottom = env(safe-area-inset-bottom) + 3.75rem; at lg where the nav is gone it drops to bottom-4 and left-[16.75rem] to clear the workspace sidebar). Tapping it opens a bottom sheet (max-w-md, max-h-70dvh, rounded-t-2xl, scrim bg-black/40 z-50 over the nav) holding the SAME collector content as the xl side panel. Empty cart = no bar anywhere (it leaves the DOM).
+- Honesty rules carried over untouched: the sheet is a pure collector - zero pay buttons, zero WhatsApp/call, estimate labelled "The seller confirms the final total", done chips, staleness notes. The only money door is the header link "Open basket to pay" which navigates to #/basket (cart surfaces unmount there - basket is not a rail view) and the basket view keeps its one Pay button. Basket header icon and basket view untouched all round.
+- Shared extraction: CartTitle (icon + Cart + badge) and CartBody (empty state with Browse + per-shop RailShop sections, min-h-0 flex-1 scroll) now render inside BOTH the xl panel and the phone sheet. RailShop untouched. Scrim is tap-to-close and sits above the bottom nav so a stray thumb cannot navigate away mid-review.
+- Focus bug (latent on xl too, now fixed): focus into an opened panel could silently no-op because the docks transition visibility discretely - for one frame after the commit the just-opened surface still computes as visibility:hidden (the transition's from-value) and focus() refuses. New module helper focusWhenVisible(el) focuses and retries on the next animation frame until the focus takes (capped at 5). Close returns focus to the bar/strip the same way. Verified: open focus lands on cart-mobile-sheet (390) and basket-rail-panel (1536); Esc/scrim/X return it to the bar.
+- Shell: main bottom padding pb-24 -> pb-28 on mobile (constant at every cart state so nothing reflows when the bar materialises). copy.cart gained itemsLabel(n) and closeSheet ("Close the cart", the sheet X); comment rewritten to the two-dock story. lib/basket: StoredBasket exported for CartBody typing.
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh (no API surface changed; baseline held).
+- Browser verified (agent-browser): 390px - bar absent at 0 items, materialises on first add ("Cart 1 item USh 20,000", lucide-shopping-cart, 3px clear of the nav, no horizontal overflow); sheet holds two sellers at once (Kisenyi + Nakato, steppers live: +1 unit moved the bar total 38,000 -> 58,000), trash empties to the "Your cart is empty" state and the bar disappears; scrim tap, X and Esc all close; door link lands on #/basket with its pay button (tool-results/cart-bar-390.png, cart-sheet-two-sellers-390.png, cart-sheet-empty-390.png). 1024px - bar clears the sidebar (left 268), sheet floats at bottom-4 fully rounded (cart-bar-lg-1024.png). 1536px regression - strip + panel unchanged, mobile bar absent, panel focus lands (cart-strip-xl-1536.png). Console + page errors clean.
+
+Stage Summary:
+- Commit 7b99bd6 on main. Suite baseline stays 431/0.
+- The cart now follows the buyer on every screen: side strip/panel on desktop, bar/sheet above the bottom nav on phones - collector everywhere, money only in the basket.
+- Open: none for this round. v2 request-to-pay stays parked per Isaac.
