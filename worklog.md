@@ -1121,3 +1121,19 @@ Work Log:
 Stage Summary:
 - Preview logins (and every other state-changing action from the preview) work again; CSRF protection intact.
 - The two preview-infrastructure env keys are now both understood and documented: FRAME_ANCESTORS (embed permission) and CSRF_TRUSTED_HOSTS (origin trust behind the rewriting edge). If the platform ever wipes .env again, both must be restored alongside the auth/cron keys.
+
+---
+Task ID: seed-migration-rule
+Agent: main (Super Z)
+Task: New standing rule from the owner — do NOT migrate seed/placeholder photos or seed data to the cloud; migrate only real user uploads; run scripts/remove-seed-data.ts before the production data copy.
+
+Work Log:
+- Audited both enforcement points. migrate-uploads-to-s3.ts already excluded public/uploads/seed/ from the upload sweep and filtered isSeed rows in --rewrite. remove-seed-data.ts is launch-ready (dry-run default, --mark for legacy rows, --yes deletes seed users/listings/shops + the seed photo folder, post-delete verification exits 1 on any seed trace; suite 17.8-17.10 exercises the dry-run).
+- Closed one real hole: --rewrite would have rewritten a LEGACY unflagged row still pointing into /uploads/seed/ to a bucket URL for a file that was never uploaded. Now: flagged and seed-path rows are skipped AND reported; mapUrl keeps any seed path untouched as a second guard; script header documents the launch sequence (remove-seed-data BEFORE the production data copy).
+- README now states the ordering explicitly (remove seed data before any production copy or cloud migration; the photo migration is seed-safe on its own).
+- Tests +1: 17.16 — the migration refuses to run without a configured bucket (fail closed), spawned via the established execSync pattern with emptied STORAGE_* env.
+- Gate: tsc clean, eslint clean, suite 399/0 via bugprobe.sh; post-run DB recon clean.
+
+Stage Summary:
+- The rule is now enforced in code, documented in the README, and pinned by the suite: seed photos never upload to the bucket, never rewrite to bucket URLs, and the production-copy sequence starts with remove-seed-data.
+- For the future production-migration task: run remove-seed-data (dry-run -> --yes), then the data copy, then migrate-uploads-to-s3 (STORAGE_* set, --rewrite). The suite's hermetic sweep keeps fixture users out of any copy automatically.
