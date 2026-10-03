@@ -1230,3 +1230,21 @@ Stage Summary:
 - Commit c368f42 on main (docs only; the behavioural fix is 1cad0c6).
 - CSRF posture unchanged: forged and lookalike origins are still 403; the allowlist is server-side env config, not client input; unset = previous strict behaviour.
 - If the user still sees the block in the preview, ask for the exact URL in the address bar: the embed origin may need its own entry in CSRF_TRUSTED_HOSTS.
+
+---
+Task ID: basket-rail-codecard-footer
+Agent: main (Super Z)
+Task: Build the three steals the user approved from the mockup review: desktop basket rail, sidebar shop-code card, footer legal links (which turned into a footer consolidation).
+
+Work Log:
+- Basket rail (src/components/commerce/basket-rail.tsx, new): RailShell wraps the shell column, reads the view, mounts the fixed right rail (w-80, top-14 below sticky header) on buying views only (home, browse, listing, shop) and applies xl:pr-80 there; seller views render unchanged full-width. Rail shows per-shop cards: shop header (taps through), lines with qty steppers (setLineQty), gone/stale flags, estimated subtotal, one send action (WhatsApp when the shop has it, else Call). Reuses useLineStatuses from basket-view (now exported; same React Query key so one fetch serves both surfaces) - the no-stale-lines-in-messages rule holds on the rail too.
+- Shop-code card (app-sidebar.tsx internal ShopCodeCard): title + till-number hint, uppercase tracking-widest input, submit normalizes via normalizeShopCode (same MD-XXXX rule as Browse search), useMutation lookup on /api/shops/lookup, onSuccess navigates to the shop and clears the form (event-driven, no effect setState - eslint rule satisfied). badFormat + server error messages inline.
+- Footer consolidation: found the root layout rendering SiteFooter globally AND page.tsx rendering a second inline footer (two stacked footers on the app). SiteFooter removed from layout.tsx; every surface now declares its own: shell uses <SiteFooter padded /> (lg sidebar offset comes free from the shell, pb-16 bottom-nav clearance, mt-auto sticky), and l/[id], s/[code], privacy, safety, terms, not-found, forbidden import it explicitly. SiteFooter gained the footerNote honest line; s/[code] hardcoded footer line centralized to copy keys.
+- Copy: basket-view inline strings centralized (viewSubOne/Many, itemsOnList, shopListAria, openShopAria, openLineAria, oneLess/MoreAria, priceOnAsking, goneRemoved/goneUnavailable, staleNone/SomeNote, estimateNote, sendList(+Aria), nothingToSend, noWhatsappNote, callWithList(+Aria), clearList, openBasket, railAria); new codeCard group (title, hint, placeholder 'MD-2623' after the e.g. prefix truncated in the narrow field, go, inputAria, badFormat).
+- Gate: tsc clean, eslint clean, suite 407/0 via bugprobe.sh (run after all source changes).
+- Browser golden path (agent-browser, 1536px + 390px): empty rail state; add COPPER SCRAP from Browse lands in rail with shop/line/stepper/price; stepper increments to qty 2 and subtotal 40,000; Open basket navigates to #/basket with the same list; code punch 'md 1117' lands in Nakato Fresh Produce's shop and clears; 'banana' shows the format error; publish view has no rail and 0 padding-right; mobile 390px rail display:none, single footer; /terms single footer with legal links; page bottom shows exactly one footer (tool-results/rail-with-item.png, footer-one.png). dev.log clean.
+
+Stage Summary:
+- Commit 61aec52 on main.
+- Basket rail is xl+ only by design (1280px+); sm/lg keep the top-bar basket icon and the full basket view, so nothing regressed on smaller screens.
+- Mockup elements deliberately NOT built: star ratings, Verified Sellers badge, slogans, checkout button, stock-photo hero (all violate the honesty/placeholder/copy rules the repo enforces).
