@@ -43,11 +43,11 @@ export async function POST(request: Request) {
     // fine; bulk-filling the disk is not. The IP bucket rides beside it so
     // one machine juggling accounts cannot multiply the budget.
     const ip = getClientIp(request)
-    const ipVerdict = hit(`upload:ip:${ip}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
+    const ipVerdict = await hit(`upload:ip:${ip}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
     if (!ipVerdict.ok) {
       throw new ApiError(429, 'That is a lot of photos - please wait a while before uploading more')
     }
-    const verdict = hit(`upload:user:${user.id}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
+    const verdict = await hit(`upload:user:${user.id}`, UPLOAD_HOUR_MAX, UPLOAD_WINDOW_MS)
     if (!verdict.ok) {
       throw new ApiError(429, 'That is a lot of photos - please wait a while before uploading more')
     }

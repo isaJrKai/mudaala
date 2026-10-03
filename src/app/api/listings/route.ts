@@ -51,11 +51,11 @@ export async function POST(request: Request) {
     // juggling many accounts cannot multiply the budget ( getClientIp is
     // the edge-stamped address; a spoofed x-forwarded-for opens nothing).
     const ip = getClientIp(request)
-    const ipVerdict = hit(`publish:ip:${ip}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
+    const ipVerdict = await hit(`publish:ip:${ip}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
     if (!ipVerdict.ok) {
       throw new ApiError(429, 'You have published a lot today - please continue tomorrow')
     }
-    const verdict = hit(`publish:user:${user.id}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
+    const verdict = await hit(`publish:user:${user.id}`, PUBLISH_DAY_MAX, PUBLISH_WINDOW_MS)
     if (!verdict.ok) {
       throw new ApiError(429, 'You have published a lot today - please continue tomorrow')
     }

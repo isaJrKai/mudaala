@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     ])
 
     // Clear any stale failed-login lockout so the new password works right away.
-    for (const phone of candidates) clear(`login:fail:${phone}`)
+    for (const phone of candidates) await clear(`login:fail:${phone}`)
 
     return jsonOk({ ok: true, message: 'Password updated. Sign in with your new password.' })
   })

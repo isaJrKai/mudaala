@@ -30,6 +30,7 @@ import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/
 import { getClientIp } from '../src/lib/client-ip'
 import { pickMovers, MOVER_MIN_SAMPLE, MOVER_MIN_PCT, MOVER_LIMIT } from '../src/lib/price-movers'
 import { addToBasket, setLineQty, restoreLine, markShopDone, isShopDone, readBasket, basketCount } from '../src/lib/basket'
+import { createMemoryRateLimiter, createRedisRateLimiter } from '../src/lib/rate-limit'
 import { businessProfileSchema, MOMO_NETWORKS } from '../src/lib/validation'
 
 const BASE = 'http://localhost:3000'
@@ -2006,6 +2007,77 @@ async function main() {
       } else {
         ok('15.49 same guest, forged x-forwarded-for changed - still a 409 duplicate', false, 'fixture ad did not publish')
       }
+    }
+
+    // ---- 15m. The rate limiter is one interface: memory default, redis when REDIS_URL, memory when redis dies ----
+    {
+      // Memory semantics on the interface (the default store).
+      const mem = createMemoryRateLimiter()
+      const memA = await mem.hit('suite:mem', 2, 60_000)
+      const memB = await mem.hit('suite:mem', 2, 60_000)
+      const memC = await mem.hit('suite:mem', 2, 60_000)
+      ok(
+        '15.50 memory store blocks past max and says when to come back',
+        memA.ok && memB.ok && !memC.ok && memC.retryAfterSeconds >= 1 && memC.retryAfterSeconds <= 60,
+      )
+      await mem.clear('suite:mem')
+      ok('15.51 memory store clear reopens the bucket', (await mem.hit('suite:mem', 2, 60_000)).ok)
+
+      // Redis store against an in-process fake ZSET: same window, same verdicts.
+      type Member = { score: number; value: string }
+      const zsets = new Map<string, Member[]>()
+      const fake = {
+        async zremrangebyscore(k: string, min: string | number, max: string | number) {
+          const zs = zsets.get(k) ?? []
+          const lo = min === '-inf' ? -Infinity : Number(min)
+          const hi = max === '+inf' ? Infinity : Number(max)
+          const keep = zs.filter((m) => !(m.score >= lo && m.score <= hi))
+          zsets.set(k, keep)
+          return zs.length - keep.length
+        },
+        async zcard(k: string) {
+          return (zsets.get(k) ?? []).length
+        },
+        async zadd(k: string, score: number, member: string) {
+          zsets.set(k, [...(zsets.get(k) ?? []), { score, value: member }])
+          return 1
+        },
+        async zrange(k: string, start: number, stop: number) {
+          const zs = [...(zsets.get(k) ?? [])].sort((a, b) => a.score - b.score)
+          return zs.slice(start, stop + 1).flatMap((m) => [m.value, String(m.score)])
+        },
+        async pexpire() {
+          return 1
+        },
+        async del(k: string) {
+          const had = zsets.has(k)
+          zsets.delete(k)
+          return had ? 1 : 0
+        },
+      }
+      const red = createRedisRateLimiter(fake)
+      const rA = await red.hit('suite:redis', 2, 60_000)
+      const rB = await red.hit('suite:redis', 2, 60_000)
+      const rC = await red.hit('suite:redis', 2, 60_000)
+      ok(
+        '15.52 redis store enforces the same sliding window on the ZSET',
+        rA.ok && rB.ok && !rC.ok && rC.retryAfterSeconds >= 1,
+      )
+      await red.clear('suite:redis')
+      ok('15.53 redis store clear reopens the bucket', (await red.hit('suite:redis', 2, 60_000)).ok)
+
+      // Redis erroring mid-flight - the in-memory window takes over for that
+      // call, so a redis outage never becomes a brute-force door.
+      const grumpy = new Proxy(fake, {
+        get(target, prop) {
+          if (prop === 'zcard' || prop === 'zadd') return () => Promise.reject(new Error('redis down'))
+          return (target as Record<string | symbol, unknown>)[prop]
+        },
+      })
+      const broken = createRedisRateLimiter(grumpy as typeof fake)
+      const f1 = await broken.hit('suite:down', 1, 60_000)
+      const f2 = await broken.hit('suite:down', 1, 60_000)
+      ok('15.54 redis down degrades to the in-memory window - limits still hold', f1.ok && !f2.ok)
     }
   }
 

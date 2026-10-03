@@ -39,14 +39,14 @@ export async function POST(request: Request) {
     }
 
     // Caps for every number, real or not.
-    const phoneVerdict = hit(`reset:phone:${phone}`, RESET_PHONE_MAX, RESET_WINDOW_MS)
+    const phoneVerdict = await hit(`reset:phone:${phone}`, RESET_PHONE_MAX, RESET_WINDOW_MS)
     if (!phoneVerdict.ok) {
       return NextResponse.json(
         { error: 'Too many code requests for this number. Please wait an hour and try again.' },
         { status: 429, headers: { 'retry-after': String(phoneVerdict.retryAfterSeconds) } },
       )
     }
-    const ipVerdict = hit(`reset:ip:${ip}`, RESET_IP_MAX, RESET_WINDOW_MS)
+    const ipVerdict = await hit(`reset:ip:${ip}`, RESET_IP_MAX, RESET_WINDOW_MS)
     if (!ipVerdict.ok) {
       return NextResponse.json(
         { error: 'Too many code requests from this device. Please wait an hour and try again.' },

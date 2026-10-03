@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const ip = getClientIp(request)
 
     // Per-IP flood barrier: one machine hammering many phones.
-    const ipVerdict = hit(`login:ip:${ip}`, LOGIN_IP_MAX, RATE_WINDOW_MS)
+    const ipVerdict = await hit(`login:ip:${ip}`, LOGIN_IP_MAX, RATE_WINDOW_MS)
     if (!ipVerdict.ok) return tooMany(ipVerdict.retryAfterSeconds)
 
     // A number may arrive in any dial format (07.., 2567.., +2567..) -
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     // Per-phone lockout on repeated FAILURES: the 6th attempt on a locked
     // phone gets 429 even with the right password.
     for (const phone of candidates) {
-      const verdict = hit(`login:fail:${phone}`, LOGIN_FAIL_MAX, RATE_WINDOW_MS)
+      const verdict = await hit(`login:fail:${phone}`, LOGIN_FAIL_MAX, RATE_WINDOW_MS)
       if (!verdict.ok) return tooMany(verdict.retryAfterSeconds)
     }
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Success clears the failure counters for every form of this phone.
-    for (const phone of candidates) clear(`login:fail:${phone}`)
+    for (const phone of candidates) await clear(`login:fail:${phone}`)
 
     const session = await createSession(user.id)
     await setSessionCookie(session.token, session.expiresAt)

@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     // IP per hour). The IP is the edge-stamped address - a client-forged
     // x-forwarded-for does not open a fresh bucket.
     const ip = getClientIp(request)
-    const verdict = hit(`register:ip:${ip}`, REGISTER_IP_MAX, REGISTER_WINDOW_MS)
+    const verdict = await hit(`register:ip:${ip}`, REGISTER_IP_MAX, REGISTER_WINDOW_MS)
     if (!verdict.ok) {
       return NextResponse.json(
         { error: 'Too many accounts created from this device. Please wait about an hour, then try again.' },
