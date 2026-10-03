@@ -1092,3 +1092,17 @@ Work Log:
 Stage Summary:
 - Preview chain verified healthy end to end from inside the sandbox; feed de-polluted again.
 - Root cause of the leak: a crashed suite run skips section 19 (the sweep lives at the end of main()). A future hardening option is an on-start sweep of run-tagged fixtures, but the safe cleanup tool already covers recovery.
+
+---
+Task ID: preview-frame-fix
+Agent: main (Super Z)
+Task: User reported "saying preview chat refused to connect".
+
+Work Log:
+- Root cause: a regression from MY .env reconstruction after the sandbox reset. next.config.ts reads FRAME_ANCESTORS at boot (default 'self') and the old wiped .env had it set for the sandbox — the preview legitimately embeds the app in a CROSS-ORIGIN iframe (next.config.ts comment says exactly that). With 'self' restored, the app sent frame-ancestors 'self' + X-Frame-Options: SAMEORIGIN, so the preview pane's browser blocked the embed and rendered the classic "refused to connect".
+- Fix: FRAME_ANCESTORS=* in .env (dev sandbox; production flips to 'none' or an allowlist per next.config.ts). Restarted the canonical dev boot; headers through :81 now show frame-ancestors * and X-Frame-Options is absent (XFO cannot express wildcards — mirrors next.config.ts).
+- Gate: suite 396/0 via bugprobe.sh (15.30-15.32 validate the new header shape dynamically), post-run DB recon clean.
+
+Stage Summary:
+- Preview embed unblocked: the app no longer refuses cross-origin embedding in the sandbox.
+- Lesson recorded: .env.example documents FRAME_ANCESTORS only as a production knob; the sandbox needs it set too. If the platform wipes .env again, restore ALL sandbox keys (DATABASE_URL, ALLOW_BEARER_AUTH, ADMIN_PHONES, CRON_SECRET, SETTINGS_ENCRYPTION_KEY, FRAME_ANCESTORS).
