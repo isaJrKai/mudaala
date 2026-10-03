@@ -1507,3 +1507,16 @@ Stage Summary:
 - The fix targets the P1012 database step - everything after it (tsc, lint, the 461-check suite) has never had a chance to run remotely yet; the run decides.
 - Still owed from Isaac (carried from the dead chat): (1) does he already have a domain, or pick one (~$10/yr)? (2) app lives on Oracle's free VM (recommended) or his own box? The guide covers both; the answers pick Step 0.
 - v2 MTN request-to-pay stays parked. SMS stays parked per Isaac (password reset is the only waiter).
+
+---
+Task ID: robot-verdict
+Agent: main (Super Z)
+Task: Watch the robot's run on the recovered commits and record the verdict.
+
+Work Log:
+- Push 8c51eb0 landed on main (the push that failed twice in the dead session). Run 37147872894 on sha 8c51eb0: completed SUCCESS in 2.7 min.
+- Every step green: postgres:16 container up, schema created against real Postgres (the P1012 step that killed every run since Oct 2), Prisma client, seed, tsc, eslint, dev server, the full API behavior suite, cleanup.
+
+Stage Summary:
+- First green CI run since Oct 1 - the robot now checks what the app actually runs on.
+- Still owed from Isaac: the domain answer and the VM answer (Step 0 of docs/deploy-cloudflare.md).
