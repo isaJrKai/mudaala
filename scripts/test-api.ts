@@ -29,6 +29,7 @@ import { validateEnv } from '../src/lib/env'
 import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
 import { pickMovers, MOVER_MIN_SAMPLE, MOVER_MIN_PCT, MOVER_LIMIT } from '../src/lib/price-movers'
 import { addToBasket, setLineQty, restoreLine, markShopDone, isShopDone, readBasket, basketCount } from '../src/lib/basket'
+import { businessProfileSchema, MOMO_NETWORKS } from '../src/lib/validation'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -427,6 +428,35 @@ async function main() {
       hours: null,
     }, alice)
     ok('profile rejects hostile photoUrl → 400', badPhotoProfile.status === 400)
+
+    // Mobile-money merchant identity round-trip: set, verify on the public
+    // shop page, reject the broken pairs, then clear - alice ends this
+    // section with no code attached, exactly like she started.
+    const momoBase = {
+      businessName: `Alice Test Shop ${RUN_TAG}`,
+      photoUrl: photoUrl ?? null,
+      category: 'other',
+      description: null,
+      county: 'Kampala',
+      area: null,
+      phone: alicePhone,
+      whatsapp: null,
+      hours: null,
+    }
+    const momoPut = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: '600200', momoNetwork: 'MTN' }, alice)
+    ok('profile PUT with merchant code (200)', momoPut.status === 200 && momoPut.json?.profile?.momoMerchantCode === '600200' && momoPut.json?.profile?.momoNetwork === 'MTN')
+
+    const momoShop = await call('GET', `/api/shops/${alice.user!.id}`)
+    ok('public shop page carries the merchant code and network', momoShop.status === 200 && momoShop.json?.shop?.momoMerchantCode === '600200' && momoShop.json?.shop?.momoNetwork === 'MTN')
+
+    const momoNoNetwork = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: '600200' }, alice)
+    ok('merchant code without a network → 400', momoNoNetwork.status === 400)
+
+    const momoBadCode = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: 'MD-4821', momoNetwork: 'MTN' }, alice)
+    ok('merchant code must be digits only → 400', momoBadCode.status === 400)
+
+    const momoClear = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: null, momoNetwork: null }, alice)
+    ok('merchant code clears and the shop page stops offering it', momoClear.status === 200 && momoClear.json?.profile?.momoMerchantCode === null && momoClear.json?.profile?.momoNetwork === null)
 
     await call('DELETE', `/api/listings/${withPhotos.json.listing.id}`, undefined, alice)
   }
@@ -2292,7 +2322,48 @@ async function main() {
     )
   }
 
-  console.log(`\n== 21. Hermetic sweep - this run leaves no fixtures behind ==`)
+  console.log(`\n== 21. Merchant code schema - the pay sheet's guardrails (pure, no db) ==`)
+  {
+    const base = {
+      businessName: 'Kisenyi Scrap Dealers',
+      photoUrl: null,
+      category: 'scrap-recyclables',
+      description: null,
+      county: 'Kampala',
+      area: null,
+      phone: '0776123456',
+      whatsapp: null,
+      hours: null,
+    }
+    const parse = (extra: Record<string, unknown>) => businessProfileSchema.safeParse({ ...base, ...extra })
+
+    const pair = parse({ momoMerchantCode: '600200', momoNetwork: 'MTN' })
+    ok(
+      '21.1 a merchant code rides with its network and both may be absent',
+      pair.success && pair.data.momoMerchantCode === '600200' && pair.data.momoNetwork === 'MTN' &&
+        parse({}).success && parse({ momoMerchantCode: null, momoNetwork: null }).success,
+    )
+
+    const lone = parse({ momoMerchantCode: '600200' })
+    ok(
+      '21.2 a code without a network is rejected: the sheet could not say which dial string to teach',
+      !lone.success,
+    )
+
+    const letters = parse({ momoMerchantCode: 'MD-4821', momoNetwork: 'AIRTEL' })
+    const short = parse({ momoMerchantCode: '12', momoNetwork: 'MTN' })
+    ok(
+      '21.3 the code is digits only (a shop code or phone number pasted in is not a merchant code)',
+      !letters.success && !short.success,
+    )
+    ok(
+      '21.4 the sheet knows exactly two rails: MTN and Airtel',
+      MOMO_NETWORKS.length === 2 && MOMO_NETWORKS[0] === 'MTN' && MOMO_NETWORKS[1] === 'AIRTEL',
+      MOMO_NETWORKS.join('/'),
+    )
+  }
+
+  console.log(`\n== 22. Hermetic sweep - this run leaves no fixtures behind ==`)
   {
     const ids = [...createdUserIds]
     // Targets the fixtures own or were reported about: listings + shop
@@ -2333,14 +2404,14 @@ async function main() {
       where: { listingId: { not: null }, ...(liveIds.length ? { NOT: { listingId: { in: liveIds } } } : {}) },
     })
     ok(
-      '21.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
+      '22.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
       delUsers.count === aliveBefore,
     )
     console.log(
       `swept: ${delUsers.count} user(s), ${delReports.count} report(s), ${delAudits.count} audit row(s), ${delDangling.count} dangling notification(s)`,
     )
     const leftovers = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
-    ok('21.2 zero users from this run remain', leftovers === 0)
+    ok('22.2 zero users from this run remain', leftovers === 0)
   }
 
   console.log(`\n========================================`)

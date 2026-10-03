@@ -53,6 +53,11 @@ interface ShopPageData {
     phoneConfirmed: boolean
     // Public identity code ("MD-4821") - stable for the life of the shop.
     shopCode: string | null
+    // Self-reported mobile-money merchant identity. The pay sheet renders
+    // from these; null means the shop takes mobile money on their personal
+    // number instead (the sheet says so honestly).
+    momoMerchantCode: string | null
+    momoNetwork: string | null
     memberSince: string
     activeCount: number
     checklist: ShopChecklist
@@ -174,6 +179,8 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       whatsapp: profile?.whatsapp ?? null,
       phoneConfirmed: !profile?.phone || samePhoneLine(profile.phone, user.phone),
       shopCode: profile?.shopCode ?? null,
+      momoMerchantCode: profile?.momoMerchantCode ?? null,
+      momoNetwork: profile?.momoNetwork ?? null,
       memberSince: user.createdAt.toISOString(),
       activeCount: listings.length,
       checklist,

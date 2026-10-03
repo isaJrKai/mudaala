@@ -241,17 +241,41 @@ export const savedSearchCreateSchema = z.object({
   query: listingQuerySchema.omit({ page: true, pageSize: true, sort: true }),
 })
 
-export const businessProfileSchema = z.object({
-  businessName: z.string().trim().min(2, 'Business name must be at least 2 characters').max(80, 'Business name is too long'),
-  photoUrl: photoUrlSchema.nullable(),
-  category: z.enum(CATEGORY_KEYS as [string, ...string[]]).nullable(),
-  description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullable(),
-  county: z.string().trim().min(1, 'Choose your district or region').max(30).nullable(),
-  area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
-  phone: rawPhone,
-  whatsapp: rawPhone.nullable(),
-  hours: z.string().trim().max(120, 'Opening hours must be 120 characters or fewer').nullable(),
-})
+// The mobile-money merchant identity a seller can attach to their shop.
+// Self-reported, honestly labeled in the UI ("entered by the shop") - the
+// telco's confirmation screen is the real name check. The code must be the
+// digits-only identifier the network gave them (3 to 15 digits covers MoMo
+// Pay and Airtel merchant codes; no letters, no plus signs - those are
+// phone numbers, not codes). The two fields stand or fall together: a code
+// without a network (or the reverse) would render a pay sheet that cannot
+// say which dial string it belongs to.
+export const MOMO_NETWORKS = ['MTN', 'AIRTEL'] as const
+export const momoMerchantCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{3,15}$/, 'A merchant code is 3 to 15 digits, with no letters')
+  .nullable()
+
+export const businessProfileSchema = z
+  .object({
+    businessName: z.string().trim().min(2, 'Business name must be at least 2 characters').max(80, 'Business name is too long'),
+    photoUrl: photoUrlSchema.nullable(),
+    category: z.enum(CATEGORY_KEYS as [string, ...string[]]).nullable(),
+    description: z.string().trim().max(500, 'Description must be 500 characters or fewer').nullable(),
+    county: z.string().trim().min(1, 'Choose your district or region').max(30).nullable(),
+    area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
+    phone: rawPhone,
+    whatsapp: rawPhone.nullable(),
+    hours: z.string().trim().max(120, 'Opening hours must be 120 characters or fewer').nullable(),
+    // .nullish() so older form payloads that predate the pay sheet (and the
+    // suite's earlier profile PUTs) keep passing unchanged.
+    momoMerchantCode: momoMerchantCodeSchema.nullish(),
+    momoNetwork: z.enum(MOMO_NETWORKS, { message: 'Choose your network' }).nullish(),
+  })
+  .refine((d) => Boolean(d.momoMerchantCode) === Boolean(d.momoNetwork), {
+    message: 'Choose your network when you add a merchant code',
+    path: ['momoNetwork'],
+  })
 
 // PostgreSQL deployment connection (Settings → Advanced Settings).
 export const postgresConfigSchema = z.object({

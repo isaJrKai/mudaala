@@ -74,6 +74,13 @@ model BusinessProfile {
   // Public shop identity code (e.g. "MD-4821"). Auto-assigned once, then
   // NEVER changed - buyers and printed QR posters rely on its stability.
   shopCode     String? @unique
+  // Self-reported mobile-money merchant identity (MTN MoMo Pay / Airtel
+  // merchant code). Mudaala never touches the money: the pay sheet just
+  // hands the buyer the code and the dial string, and the telco's own
+  // confirmation screen is the name check. Nullable - most sellers start
+  // as plain wallet numbers. momoNetwork is required whenever a code is set.
+  momoMerchantCode String?
+  momoNetwork      String?
   // Optional shop spot. The seller taps "Add my shop location" while standing
   // AT the shop; the API rounds to 3 decimals (~100 m) BEFORE storing, so a
   // precise home/private position can never exist server-side. Buyers only

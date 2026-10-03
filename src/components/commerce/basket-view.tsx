@@ -13,12 +13,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CheckCircle2, Minus, Phone, Plus, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, CheckCircle2, Minus, Phone, Plus, Smartphone, Store, Trash2, TriangleAlert } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { ToastAction } from '@/components/ui/toast'
+import { PaySheet } from '@/components/commerce/pay-sheet'
 import { apiGet } from '@/lib/client'
-import type { ListingDetail } from '@/lib/client'
+import type { ListingDetail, ShopPage } from '@/lib/client'
 import { formatPrice, telLink } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import {
@@ -257,9 +258,23 @@ function BasketShopSection({
   const basket = useBasket()
   const done = isShopDone(basket, shopId)
   const removeLine = useRemoveLine()
+  const [payOpen, setPayOpen] = useState(false)
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
+
+  // The pay sheet runs on FRESH shop data, never on the basket's snapshot:
+  // a merchant code is exactly the thing a buyer should see as it is NOW.
+  // Same query key the shop page uses, so one fetch warms both surfaces. If
+  // the fetch fails the sheet still opens on the P2P path with the phone
+  // the basket already holds - the number cannot go stale, it is the shop's
+  // own line.
+  const payQuery = useQuery({
+    queryKey: ['shop', shopId],
+    queryFn: () => apiGet<ShopPage>(`/api/shops/${shopId}`),
+    enabled: payOpen,
+    staleTime: 60_000,
+  })
 
   const fresh = entries.filter(([id]) => !statuses.data || statuses.data[id] === 'ACTIVE')
   const stale = entries.filter(([id]) => statuses.data && statuses.data[id] !== 'ACTIVE')
@@ -410,9 +425,9 @@ function BasketShopSection({
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2">
           {shop.whatsapp && sendable.length > 0 ? (
-            <Button asChild className="press h-10 flex-1 bg-emerald-700 text-white hover:bg-emerald-800">
+            <Button asChild className="press h-10 w-full bg-emerald-700 text-white hover:bg-emerald-800">
               <a
                 href={orderWhatsAppHref(shop, sendableLines)}
                 target="_blank"
@@ -424,21 +439,50 @@ function BasketShopSection({
             </Button>
           ) : null}
           {sendable.length === 0 ? (
-            <Button className="h-10 flex-1" disabled>
+            <Button className="h-10 w-full" disabled>
               <WhatsAppIcon className="size-4" aria-hidden /> {copy.basket.nothingToSend}
             </Button>
           ) : null}
           {!shop.whatsapp && sendable.length > 0 ? (
-            <p className="flex-1 self-center text-xs text-muted-foreground">
+            <p className="self-center text-xs text-muted-foreground">
               {copy.basket.noWhatsappNote}
             </p>
           ) : null}
-          <Button asChild variant="outline" className="press h-10 flex-1" disabled={sendable.length === 0}>
-            <a href={telLink(shop.phone)} aria-label={copy.basket.callWithListAria(shop.name)}>
-              <Phone className="size-4" aria-hidden /> {copy.basket.callWithList}
-            </a>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="press h-10 flex-1"
+              onClick={() => setPayOpen(true)}
+              aria-label={copy.pay.openAria(shop.name)}
+            >
+              <Smartphone className="size-4" aria-hidden /> {copy.pay.open}
+            </Button>
+            <Button asChild variant="outline" className="press h-10 flex-1" disabled={sendable.length === 0}>
+              <a href={telLink(shop.phone)} aria-label={copy.basket.callWithListAria(shop.name)}>
+                <Phone className="size-4" aria-hidden /> {copy.basket.callWithList}
+              </a>
+            </Button>
+          </div>
         </div>
+
+        {/* The pay sheet opens on FRESH shop data, never the basket's
+            snapshot - a merchant code is exactly the thing a buyer should
+            see as it is NOW. Same query key the shop page uses, so one
+            fetch warms both surfaces. If the fetch fails the sheet still
+            opens on the P2P path with the phone the basket already holds:
+            the number cannot go stale, it is the shop's own line. */}
+        {payOpen && !payQuery.isLoading ? (
+          <PaySheet
+            open={payOpen}
+            onOpenChange={setPayOpen}
+            shopName={shop.name}
+            phone={payQuery.data?.shop.phone ?? shop.phone}
+            merchantCode={payQuery.data?.shop.momoMerchantCode ?? null}
+            network={payQuery.data?.shop.momoNetwork ?? null}
+            estimate={subtotal}
+          />
+        ) : null}
 
         <div className="flex items-center justify-between gap-2">
           <Button

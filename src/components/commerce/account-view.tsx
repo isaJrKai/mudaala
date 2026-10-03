@@ -12,8 +12,9 @@ import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { apiGet, apiPut } from '@/lib/client'
 import type { BusinessProfileT, SessionUser } from '@/lib/client'
-import { businessProfileSchema, fieldErrors } from '@/lib/validation'
+import { businessProfileSchema, fieldErrors, MOMO_NETWORKS } from '@/lib/validation'
 import { CATEGORIES, countryDef } from '@/lib/constants'
+import { copy } from '@/lib/copy'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { formatPhonePretty } from '@/lib/format'
@@ -31,6 +32,9 @@ interface ProfileFormState {
   phone: string
   whatsapp: string
   hours: string
+  /** 'none' when the shop takes mobile money on their number alone. */
+  momoNetwork: string
+  momoCode: string
 }
 
 // Debounce a changing value (shop-name typing) without setState-in-effect:
@@ -146,6 +150,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     phone: user.phone,
     whatsapp: '',
     hours: '',
+    momoNetwork: 'none',
+    momoCode: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -169,6 +175,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         phone: p?.phone ?? user.phone,
         whatsapp: p?.whatsapp ?? '',
         hours: p?.hours ?? '',
+        momoNetwork: p?.momoNetwork ?? 'none',
+        momoCode: p?.momoMerchantCode ?? '',
       })
       setHydrated(true)
     }
@@ -227,6 +235,17 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     })
   }
 
+  // Radix Select fires onValueChange('') during hydration whenever the
+  // controlled value is not yet in its item registry (the content portal is
+  // unmounted while closed), which used to wipe category, county and now
+  // momoNetwork to '' on a fresh page load - and made Save fail with raw
+  // zod errors. Ignore the spurious reset; only a real pick gets through.
+  // The SelectValue children below keep the current value VISIBLE while the
+  // registry is still empty.
+  const onSelect = (key: 'category' | 'county' | 'momoNetwork') => (v: string) => {
+    if (v !== '') set(key, v)
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErrors({})
@@ -241,6 +260,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       phone: form.phone,
       whatsapp: form.whatsapp.trim() === '' ? null : form.whatsapp.trim(),
       hours: form.hours.trim() === '' ? null : form.hours.trim(),
+      momoMerchantCode: form.momoCode.trim() === '' ? null : form.momoCode.trim(),
+      momoNetwork: form.momoNetwork === 'none' ? null : form.momoNetwork,
     }
     const parsed = businessProfileSchema.safeParse(payload)
     if (!parsed.success) {
@@ -341,9 +362,13 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="bp-category">Trade</Label>
-          <Select value={form.category} onValueChange={(v) => set('category', v)}>
+          <Select value={form.category} onValueChange={onSelect('category')}>
             <SelectTrigger id="bp-category" aria-invalid={Boolean(errors.category)}>
-              <SelectValue />
+              <SelectValue>
+                {form.category === 'none' || !form.category
+                  ? 'Not specified'
+                  : (CATEGORIES.find((c) => c.key === form.category)?.label ?? form.category)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-64">
               <SelectItem value="none">Not specified</SelectItem>
@@ -358,9 +383,11 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="bp-county">District / Region</Label>
-          <Select value={form.county} onValueChange={(v) => set('county', v)}>
+          <Select value={form.county} onValueChange={onSelect('county')}>
             <SelectTrigger id="bp-county">
-              <SelectValue />
+              <SelectValue>
+                {form.county === 'none' || !form.county ? 'Not specified' : form.county}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="max-h-64">
               <SelectItem value="none">Not specified</SelectItem>
@@ -398,6 +425,48 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <Input id="bp-wa" type="tel" inputMode="tel" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
         {errors.whatsapp ? <p role="alert" className="text-sm text-destructive">{errors.whatsapp}</p> : null}
       </div>
+
+      {/* Mobile-money merchant identity. Self-reported and buyer-visible -
+          the helper text says exactly that, so the seller knows the code is
+          a promise buyers will read, not a private note. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="bp-momo-network">{copy.pay.sellerNetworkLabel}</Label>
+          <Select value={form.momoNetwork} onValueChange={onSelect('momoNetwork')}>
+            <SelectTrigger id="bp-momo-network">
+              <SelectValue>
+                {form.momoNetwork === 'MTN'
+                  ? copy.pay.networkMTN
+                  : form.momoNetwork === 'AIRTEL'
+                    ? copy.pay.networkAirtel
+                    : copy.pay.sellerNone}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{copy.pay.sellerNone}</SelectItem>
+              {MOMO_NETWORKS.map((n) => (
+                <SelectItem key={n} value={n}>
+                  {n === 'MTN' ? copy.pay.networkMTN : copy.pay.networkAirtel}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.momoNetwork ? <p role="alert" className="text-sm text-destructive">{errors.momoNetwork}</p> : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="bp-momo-code">{copy.pay.sellerCodeLabel}</Label>
+          <Input
+            id="bp-momo-code"
+            inputMode="numeric"
+            value={form.momoCode}
+            onChange={(e) => set('momoCode', e.target.value)}
+            maxLength={15}
+            placeholder="e.g. 600200"
+          />
+          {errors.momoMerchantCode ? <p role="alert" className="text-sm text-destructive">{errors.momoMerchantCode}</p> : null}
+        </div>
+      </div>
+      <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">{copy.pay.sellerNote}</p>
 
       <div className="space-y-1.5">
         <Label htmlFor="bp-desc">About the business</Label>

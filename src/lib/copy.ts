@@ -418,6 +418,55 @@ export const copy = {
     badFormat: 'A shop code looks like MD-2623. You will find it on the shop poster or in their WhatsApp status.',
   },
 
+  // The mobile-money pay sheet. Mudaala never touches money and never sees
+  // the result: the sheet hands the buyer the shop's own code (or personal
+  // number) and the dial string, and the telco's confirmation screen does
+  // the name check. Every line here is the honest version of a checkout.
+  pay: {
+    open: 'Pay by mobile money',
+    openAria: (shop: string) => `Pay ${shop} by mobile money`,
+    titleMerchant: (shop: string) => `Pay ${shop} by mobile money`,
+    titlePersonal: (shop: string) => `Send ${shop} money`,
+    // The name check, stated where the buyer is about to need it.
+    nameCheck: (shop: string, network: string) =>
+      `When you confirm, ${network} shows the registered name. Make sure it matches ${shop}.`,
+    nameCheckPersonal: (shop: string) =>
+      `On the confirmation screen, check the name matches ${shop} before you send.`,
+    // The shop entered this itself - the app never vetted it, and says so.
+    codeLabel: 'Merchant code',
+    codeNote: 'The shop entered this code itself. Mudaala cannot verify it.',
+    personalLabel: 'Shop number',
+    estimate: (amount: string) => `Your list estimate is ${amount}. The seller confirms the final amount.`,
+    noEstimate: 'Agree the amount with the seller first. You type it before you send.',
+    dialLabel: 'Dial this',
+    dialHint: 'Your dialer opens with everything typed in. Press call, then enter your PIN.',
+    dialFallbackHint: 'Copy the dial code, paste it in your phone app, press call, then enter your PIN.',
+    copyDial: 'Copy dial code',
+    copyDialAria: 'Copy the full dial code',
+    copyCode: 'Copy code',
+    copyCodeAria: 'Copy the merchant code',
+    copied: 'Copied',
+    personalHint: (phone: string) => `Send to ${phone} on your money line, or in your mobile money app.`,
+    mtnMenu: 'Or dial *165# and choose Pay Bill.',
+    airtelMenu: 'Dial *185# and choose Pay Bill, then enter this code.',
+    // The beera steady block. Short, warm, and load-bearing: this is the
+    // product, not a legal checkbox.
+    cautionTitle: 'Beera steady',
+    cautionAgree: 'Agree the amount with the seller in your call or chat first.',
+    cautionDirect: 'This sends money straight to the shop. Mudaala cannot reverse it or get it back.',
+    cautionName: 'If the name on the confirmation does not match the shop, do not send.',
+    close: 'Close',
+    // Seller-side fields (shop profile form). The helper text is the honesty
+    // contract at the point of entry: self-reported, buyer-visible, no fees.
+    sellerNetworkLabel: 'Mobile money network',
+    sellerCodeLabel: 'Merchant code',
+    sellerNone: 'No merchant code',
+    networkMTN: 'MTN MoMo Pay',
+    networkAirtel: 'Airtel merchant',
+    sellerNote:
+      'Only enter your own merchant code. Buyers see it on your shop page and in their basket and pay you directly. Mudaala never touches the money.',
+  },
+
   mySales: {
     title: 'My listings',
     count: (n: number) => `${n} ${n === 1 ? 'listing' : 'listings'}`,

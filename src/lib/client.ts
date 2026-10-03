@@ -112,6 +112,9 @@ export interface BusinessProfileT {
   verified: boolean
   /** Public identity code ("MD-4821") - assigned once, never changes. */
   shopCode: string | null
+  /** Self-reported mobile-money merchant identity (pay sheet). */
+  momoMerchantCode: string | null
+  momoNetwork: string | null
   /** Shop spot, pre-rounded to ~100 m server-side. Null when not shared. */
   lat: number | null
   lng: number | null
@@ -214,6 +217,10 @@ interface ShopInfo {
   phoneConfirmed: boolean
   /** Public identity code ("MD-4821") - stable for the life of the shop. */
   shopCode: string | null
+  /** Self-reported merchant code + network for the pay sheet. Null when the
+   *  shop takes mobile money on their personal number instead. */
+  momoMerchantCode: string | null
+  momoNetwork: string | null
   memberSince: string
   activeCount: number
   checklist: ShopChecklistT
