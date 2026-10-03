@@ -1195,3 +1195,21 @@ Work Log:
 Stage Summary:
 - The repo contains zero em dashes and zero en dashes in product code, content and docs; the suite now fails if one returns.
 - Standing rule recorded in README: all UI copy in src/lib/copy.ts, plain Kampala English, no template words, no long dashes anywhere.
+
+---
+Task ID: deep-clean-hygiene
+Agent: main (Super Z)
+Task: User asked for a self-directed deep clean ("be hygienic too"), building on the dash sweep: vigilance about design, strict arrangement, discipline in organisation front and back end.
+
+Work Log:
+- Copy discipline gap found and closed: the public ad page (src/app/l/[id]/page.tsx) never imported copy.ts. It carried a slogan footer ("Mudaala - trade locally, discover more", banned word discover), "Call seller" (TASK 6 renamed this to Call), "Active since" (in-app detail says "Member since"), a hyphen-joined shop code hint, "(Google Maps - for pickup)" and five hardcoded aria labels. All strings now come from copy.ts; listing-detail.tsx and the ad page share one voice incl. the same OFFER/REQUEST seller heading switch. ShareAdRow/PlaceholderTile defaults centralized too; admin reports quote user details with straight quotes; one stray font-mono on a shop URL is sans.
+- Export hygiene: ProhibitedRule, PROHIBITED_ITEMS (constants.ts), EnvReport (env.ts), LegalDoc (legal-page.tsx), CreateReportInput (reports.ts) un-exported (in-file use only); dead AdRow alias deleted (ad-page.ts). Verified by deadcode-scan + tsc.
+- Repo hygiene: scripts/ dropped from 159 tracked files to 16 active tools. Removed: 100+ committed verification PNGs, test-photo-upload.jpg, and 24 one-off diagnostics/harnesses (check-coords, check-similar, check-uploads, deep-clean-recon, destructive-contrast, palette-contrast, inspect-db, inspect-test-data, pick-preview-ids, repro-twin, seed-notifications, stage-stale-listing, generate-owino-shop.mjs, report-data.js, patch-report-docx.py, verify-browser.sh + 2-6, 9-11, verify-shop-face.sh, verify-t1b.sh). Cross-reference check confirmed nothing kept references anything removed.
+- Config comments: next.config.ts (4) and eslint.config.mjs (1) em dashes removed; these files were outside the previous sweep.
+- Enforcement: suite 18.1 extras now include next.config.ts, eslint.config.mjs, scripts/seed.ts; new 18.3 fails the run if any binary screenshot lands in scripts/ again. Two ad-page tests updated to assert canonical copy (Member since, aria-label="Call ") instead of the drifted strings.
+- Gate: tsc clean, eslint clean, suite 407/0 via bugprobe.sh (hermetic sweep 0 leftovers). agent-browser recon: ad page, browse, home show no em/en dash in visible text; footer now reads "Looking for something else? Browse the market"; shot at tool-results/deepclean-adpage.png.
+
+Stage Summary:
+- Commit 6a00956 on main. 158 files changed, +60 / -1,615.
+- New suite baseline: 407/0.
+- Not done / open: the login CSRF false positive on cross-origin iframe preview ("This request was blocked for your protection") remains unfixed pending user confirmation; fix must keep rejecting forged origins.
