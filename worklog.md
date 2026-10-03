@@ -1078,3 +1078,17 @@ Stage Summary:
 - The OG requirement is verified working: photo-less ads share the neutral cream Mudaala card; seed photos can never be the share image (filtered pre-firstPhoto; the card route takes no photo input at all); junk input can't poison the card.
 - The accidental /api/upload deletion from fa8fa1f is reverted (7e78887) — photo publishing works again; file modes restored.
 - Sandbox fully reprovisioned (Postgres 5433 + .env); documented again: prisma/CLI commands need the explicit postgres DATABASE_URL, bare tsx needs bugprobe.sh.
+
+---
+Task ID: preview-revive
+Agent: main (Super Z)
+Task: User reported "preview is dead".
+
+Work Log:
+- Diagnosed the whole chain: Postgres 5433 up, Next dev 3000 up (/, /l/{id}, /api/health all 200), and the platform preview path verified from inside — :81 (Caddy per Caddyfile) proxies to :3000 and returns the real homepage HTML and {"ok":true,"app":"up","database":"up"}. The app side of the preview was never dead after the earlier re-provision.
+- Found real damage the user WOULD see: 2 non-seed listings ("Test copper scrap offering" etc.) from Alice Tester + Kampala Tester, leaked by the mid-session suite run that crashed at section 3b (crash prevented that run's hermetic sweep from executing; the next run's sweep only knows its own users). Visible in the public feed.
+- Cleaned with the safe tool: cleanup-test-data.ts dry-run review then --yes -> 2 test users, 2 listings, 2 dangling notifications, 2 price snapshots removed. Verified 8 seed users / 16 seed listings / 0 non-seed; feed back to the 14 clean market items.
+
+Stage Summary:
+- Preview chain verified healthy end to end from inside the sandbox; feed de-polluted again.
+- Root cause of the leak: a crashed suite run skips section 19 (the sweep lives at the end of main()). A future hardening option is an on-start sweep of run-tagged fixtures, but the safe cleanup tool already covers recovery.
