@@ -1323,3 +1323,26 @@ Stage Summary:
 - Commit 17839e1 on main. Suite baseline now 427/0.
 - The architecture line held: no credentials needed (that was the point of v1), money moves buyer-to-seller on telco rails, Mudaala is a road sign with the exact dial string.
 - Open / next: v2 request-to-pay prototype behind a flag (needs registered business + merchant agreement for production; sandbox is free to build). publish-form.tsx Selects share the Radix hydration-reset pattern (same guard would fix it). Airtel deep dial string deliberately not fabricated until verified against a real Airtel merchant flow.
+
+---
+Task ID: pay-sheet-name-the-code-brings
+Agent: main (Super Z)
+Task: Isaac corrected the pay sheet's name coaching: "When you confirm, AIRTEL shows the registered name. Make sure it matches Ntinda Home & Kitchen. this is not always the case, i think sellers while setting up merchant code can set up the name the code brings" - the confirm-screen name is whatever the seller typed at telco registration, so a hard match-the-shop-name line false-alarms on honest sellers.
+
+Work Log:
+- Schema + migration 20261003130108: BusinessProfile.momoMerchantName String? - the name the code brings on the telco's confirm screen, self-reported like the code, optional even WITH a code (three-field bundle: code + network + name).
+- Validation: momoMerchantNameSchema (trimmed 2-60, human messages) + second refine: a name cannot ride without a code (the sheet would show a name nothing vouches for). .nullish() keeps older payloads passing.
+- Copy (copy.ts pay): nameCheck(shop, network) DELETED in favor of nameCheck(network, registered) ("Expect ${registered}") when the shop stated the name, nameCheckUnnamed(network) ("The shop has not told us that name, so check it looks right") when it did not; nameCheckPersonal now says the wallet name can be the owner's name; new confirmNameLabel/confirmNameNote block under the code; cautionName rewritten to "If it is not the name this sheet expects, do not send"; seller-side sellerNameLabel "Name the code brings" + helper ("Type that name exactly as it shows, even if it is not your shop name").
+- Pay sheet: merchantName prop; expect-block renders ONLY when the shop stated the name - an unnamed shop gets the honest description, never an implied promise; dialog description picks named/unnamed/personal per branch.
+- Seller form (account-view): momoName state + hydrate; the input renders only while a code is entered; payload sends the three fields as one bundle (clearing the code drops network AND name so nothing is stranded). Network/code/name round-trip verified over PUT.
+- Shop payload: getShopPage + ShopInfo + BusinessProfileT carry momoMerchantName; both PaySheet call sites (shop-view, basket-view) pass it.
+- Seed: Kisenyi MTN 600200 registered as "Ssalongo Ssemakula" (owner's name - the common real case), Ntinda AIRTEL 200415 as "NTINDA HOME & KITCHEN" (matching, uppercased like Airtel renders); set-seed-momo.ts patches the sandbox the same way.
+- Suite: 3b round-trip extended (name set + public page carries it + lone-name 400 + clear) and section 21 grew 21.5/21.6/21.7 (rides-with-code, lone-name rejected, trim/2-60 bounds). Baseline 427 -> 431/0.
+- Gate: tsc clean, eslint clean, suite 431/0 via bugprobe.sh.
+- Browser verified (agent-browser): Ntinda sheet "Expect NTINDA HOME & KITCHEN" + expect block + Airtel menu path; Kisenyi sheet "Expect Ssalongo Ssemakula" (the mismatch case); unnamed fallback sheet after clearing the name in the seller form ("The shop has not told us that name..."); basket golden path: estimate USh 20,000 + name block + dial string *165*3*600200*20000# with tel: href intact; iPhone emulation: name block renders, copy-only guard unchanged. Shots: tool-results/pay-sheet-ntinda-named.png, pay-sheet-kisenyi-person-name.png, pay-sheet-unnamed-fallback.png, pay-sheet-basket-named.png, pay-sheet-iphone-named.png. Console + dev.log clean.
+- NOTE (tooling, not app): agent-browser `fill @ref ""` silently no-ops on this React form - DOM showed empty but state kept the old value, and Save re-persisted it. Keyboard clear (click, Control+a, Backspace) works. If a browser edit "does not stick", suspect the empty fill before suspecting the app.
+
+Stage Summary:
+- Commit ab7f155 on main. Suite baseline now 431/0.
+- The name check is now a three-way contract: the seller states the name the code brings, the sheet prints it under the code, the buyer compares SCREEN to SHEET. The shop name is no longer part of the promise.
+- Open / next: publish-form.tsx Selects still share the Radix hydration-reset pattern (guard known); v2 request-to-pay behind a flag still parked pending registered business + merchant agreement.
