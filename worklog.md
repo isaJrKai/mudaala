@@ -1488,3 +1488,22 @@ Work Log:
 Stage Summary:
 - main pushed to github.com/isaJrKai/mudaala (private): all work through hardening round 2 is now on GitHub.
 - Advised Isaac: the token was pasted in chat, so once the setup is confirmed he can regenerate it and paste a fresh one if he wants it rotated.
+
+---
+Task ID: ci-fix-and-launch-guide
+Agent: main (Super Z)
+Task: Recover the dead session's two unpushed commits (CI fix + docs/deploy-cloudflare.md) from Isaac's shared-chat link, rebuild them, and land the push he asked for twice ("i have refreshed. push").
+
+Work Log:
+- Isaac supplied the share link (chat.z.ai/s/ed663dfc...) to the dead session. Extracted it with a headless browser: production build verified clean on Next 16.3.8; launch guide written as docs/deploy-cloudflare.md; CI root-caused there (workflow still on the SQLite era while schema.prisma says postgresql -> P1012 at the database step on every run since Oct 2) and fixed locally as 6f529ce; both commits died with the old container, every push attempt failed, the session never recovered.
+- Rebuilt .github/workflows/ci.yml: postgres:16 service container (pg_isready healthcheck) + DATABASE_URL postgresql://postgres:postgres@localhost:5432/mudaala replaces the file:./db/custom.db SQLite URL; runner PINNED to ubuntu-22.04 so October's ubuntu-latest bump (22.04 -> 24.04) can't shift the floor under the suite; header comment now tells the Postgres truth. Kept db push (schema.prisma is the source of truth; zero drift risk) and every other step byte-identical. The trigger line is untouched: branches: [main] is what the file always said.
+- Lesson recorded: my tooling's output renderer strips the substring "[m" from echoed text, which made a healthy "branches: [main]" line read as "branches: ain]" and sent me chasing a corruption that never existed. Byte-level counts on the fetched original settled it - the original was always correct. Trust byte counts, not rendered output.
+- Rebuilt docs/deploy-cloudflare.md to the recovered spec: Oracle free-forever VM (ARM A1, 4 OCPU/24GB) -> Postgres -> .env (required-keys table mirroring .env.example) -> prisma migrate deploy + build -> systemd (mudaala.service + sweep timer hitting /api/cron/sweep with the x-cron-secret) -> Cloudflare Tunnel (create, config.yml, route dns, service install) with HTTPS at the edge -> R2 photo storage section -> seed purge via scripts/remove-seed-data.ts (dry-run then --yes) -> launch-day phone checklist (8 checks incl. the reboot test) -> SMS parked (password reset only) -> nightly pg_dump backup cron. Verified against the repo: scripts/remove-seed-data.ts modes, package.json build/start (standalone), .env.example key names, migrations present.
+- YAML validated by parse: trigger {push: [main], pull_request}, runs-on ubuntu-22.04, 1 service (postgres), 11 steps.
+- Pushed the three commits and watched the robot's run; verdict reported to Isaac in chat (a follow-up commit records it here if anything needs fixing).
+
+Stage Summary:
+- The two lost commits are rebuilt and on GitHub; Isaac's "push" instruction finally executed.
+- The fix targets the P1012 database step - everything after it (tsc, lint, the 461-check suite) has never had a chance to run remotely yet; the run decides.
+- Still owed from Isaac (carried from the dead chat): (1) does he already have a domain, or pick one (~$10/yr)? (2) app lives on Oracle's free VM (recommended) or his own box? The guide covers both; the answers pick Step 0.
+- v2 MTN request-to-pay stays parked. SMS stays parked per Isaac (password reset is the only waiter).
