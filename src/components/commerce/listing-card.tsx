@@ -299,7 +299,9 @@ export function ListingBlock({ listing, onOpen, onOpenShop, onAdd, shopLabel, di
               onPhoto
               // The 96px row tile on phones is too small for three overlays —
               // the heart lives on the desktop block and the detail page.
-              className="absolute right-1 top-1 z-20 hidden sm:right-1.5 sm:top-1.5 sm:block"
+              // sm:inline-flex (not sm:block): the chip needs flex centering
+              // or the heart hugs the left edge of the box.
+              className="absolute right-1 top-1 z-20 hidden sm:right-1.5 sm:top-1.5 sm:inline-flex"
             />
           ) : null}
           {listing.photos.length > 1 ? (
