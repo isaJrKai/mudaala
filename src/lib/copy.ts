@@ -427,14 +427,24 @@ export const copy = {
     openAria: (shop: string) => `Pay ${shop} by mobile money`,
     titleMerchant: (shop: string) => `Pay ${shop} by mobile money`,
     titlePersonal: (shop: string) => `Send ${shop} money`,
-    // The name check, stated where the buyer is about to need it.
-    nameCheck: (shop: string, network: string) =>
-      `When you confirm, ${network} shows the registered name. Make sure it matches ${shop}.`,
+    // The name check, stated where the buyer is about to need it. The name
+    // on the confirm screen is whatever the shop typed when it registered
+    // the code, so it can honestly differ from the shop name. When the shop
+    // states that name, the buyer compares SCREEN to SHEET. When it does
+    // not, we say so instead of pretending the shop name will show up.
+    nameCheck: (network: string, registered: string) =>
+      `When you confirm, ${network} shows the registered name. Expect ${registered}.`,
+    nameCheckUnnamed: (network: string) =>
+      `When you confirm, ${network} shows the name the shop gave the network. The shop has not told us that name, so check it looks right before you send.`,
     nameCheckPersonal: (shop: string) =>
-      `On the confirmation screen, check the name matches ${shop} before you send.`,
+      `On the confirmation screen, the name is the one the number is registered to. It can be the owner's name, not the shop. Not sure it is ${shop}? Ask first, then send.`,
     // The shop entered this itself - the app never vetted it, and says so.
     codeLabel: 'Merchant code',
     codeNote: 'The shop entered this code itself. Mudaala cannot verify it.',
+    // The name the code brings, shown right under the code so the buyer
+    // reads one against the other.
+    confirmNameLabel: 'On the confirm screen, expect',
+    confirmNameNote: 'The shop told us the name the code brings. If your screen shows a different name, do not send.',
     personalLabel: 'Shop number',
     estimate: (amount: string) => `Your list estimate is ${amount}. The seller confirms the final amount.`,
     noEstimate: 'Agree the amount with the seller first. You type it before you send.',
@@ -454,13 +464,16 @@ export const copy = {
     cautionTitle: 'Beera steady',
     cautionAgree: 'Agree the amount with the seller in your call or chat first.',
     cautionDirect: 'This sends money straight to the shop. Mudaala cannot reverse it or get it back.',
-    cautionName: 'If the name on the confirmation does not match the shop, do not send.',
+    cautionName: 'Check the name on the confirmation. If it is not the name this sheet expects, do not send.',
     close: 'Close',
     // Seller-side fields (shop profile form). The helper text is the honesty
     // contract at the point of entry: self-reported, buyer-visible, no fees.
     sellerNetworkLabel: 'Mobile money network',
     sellerCodeLabel: 'Merchant code',
     sellerNone: 'No merchant code',
+    sellerNameLabel: 'Name the code brings',
+    sellerNameHelper:
+      'When a buyer pays this code, the network shows a name on their screen. Type that name exactly as it shows, even if it is not your shop name. Buyers check it before they send.',
     networkMTN: 'MTN MoMo Pay',
     networkAirtel: 'Airtel merchant',
     sellerNote:

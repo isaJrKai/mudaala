@@ -248,12 +248,21 @@ export const savedSearchCreateSchema = z.object({
 // Pay and Airtel merchant codes; no letters, no plus signs - those are
 // phone numbers, not codes). The two fields stand or fall together: a code
 // without a network (or the reverse) would render a pay sheet that cannot
-// say which dial string it belongs to.
+// say which dial string it belongs to. momoMerchantName is the name the
+// code brings on the telco's confirmation screen - the seller states it so
+// buyers compare screen to sheet instead of guessing against the shop name.
 export const MOMO_NETWORKS = ['MTN', 'AIRTEL'] as const
 export const momoMerchantCodeSchema = z
   .string()
   .trim()
   .regex(/^\d{3,15}$/, 'A merchant code is 3 to 15 digits, with no letters')
+  .nullable()
+
+export const momoMerchantNameSchema = z
+  .string()
+  .trim()
+  .min(2, 'Write the name exactly as it shows on the confirmation screen')
+  .max(60, 'The name must be 60 characters or fewer')
   .nullable()
 
 export const businessProfileSchema = z
@@ -271,10 +280,15 @@ export const businessProfileSchema = z
     // suite's earlier profile PUTs) keep passing unchanged.
     momoMerchantCode: momoMerchantCodeSchema.nullish(),
     momoNetwork: z.enum(MOMO_NETWORKS, { message: 'Choose your network' }).nullish(),
+    momoMerchantName: momoMerchantNameSchema.nullish(),
   })
   .refine((d) => Boolean(d.momoMerchantCode) === Boolean(d.momoNetwork), {
     message: 'Choose your network when you add a merchant code',
     path: ['momoNetwork'],
+  })
+  .refine((d) => !d.momoMerchantName || Boolean(d.momoMerchantCode), {
+    message: 'The name the code brings goes together with a merchant code',
+    path: ['momoMerchantName'],
   })
 
 // PostgreSQL deployment connection (Settings → Advanced Settings).

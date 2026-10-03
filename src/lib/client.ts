@@ -115,6 +115,9 @@ export interface BusinessProfileT {
   /** Self-reported mobile-money merchant identity (pay sheet). */
   momoMerchantCode: string | null
   momoNetwork: string | null
+  /** The name the code brings on the telco's confirm screen, as the shop
+   *  stated it. Null when the shop has not told us. */
+  momoMerchantName: string | null
   /** Shop spot, pre-rounded to ~100 m server-side. Null when not shared. */
   lat: number | null
   lng: number | null
@@ -221,6 +224,10 @@ interface ShopInfo {
    *  shop takes mobile money on their personal number instead. */
   momoMerchantCode: string | null
   momoNetwork: string | null
+  /** The name the code brings, as the shop stated it. Null when the shop
+   *  has not told us - the sheet then says so instead of implying the shop
+   *  name will show up. */
+  momoMerchantName: string | null
   memberSince: string
   activeCount: number
   checklist: ShopChecklistT

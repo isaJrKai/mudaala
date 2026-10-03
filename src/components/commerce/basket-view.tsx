@@ -480,6 +480,7 @@ function BasketShopSection({
             phone={payQuery.data?.shop.phone ?? shop.phone}
             merchantCode={payQuery.data?.shop.momoMerchantCode ?? null}
             network={payQuery.data?.shop.momoNetwork ?? null}
+            merchantName={payQuery.data?.shop.momoMerchantName ?? null}
             estimate={subtotal}
           />
         ) : null}

@@ -35,6 +35,9 @@ interface ProfileFormState {
   /** 'none' when the shop takes mobile money on their number alone. */
   momoNetwork: string
   momoCode: string
+  /** The name the code brings on the telco's confirm screen. Empty when
+   *  the shop has not told us (and hidden until a code is entered). */
+  momoName: string
 }
 
 // Debounce a changing value (shop-name typing) without setState-in-effect:
@@ -152,6 +155,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     hours: '',
     momoNetwork: 'none',
     momoCode: '',
+    momoName: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -177,6 +181,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         hours: p?.hours ?? '',
         momoNetwork: p?.momoNetwork ?? 'none',
         momoCode: p?.momoMerchantCode ?? '',
+        momoName: p?.momoMerchantName ?? '',
       })
       setHydrated(true)
     }
@@ -250,6 +255,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     e.preventDefault()
     setErrors({})
 
+    const momoCode = form.momoCode.trim()
     const payload = {
       businessName: form.businessName,
       photoUrl: form.photoUrl.trim() === '' ? null : form.photoUrl.trim(),
@@ -260,8 +266,12 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       phone: form.phone,
       whatsapp: form.whatsapp.trim() === '' ? null : form.whatsapp.trim(),
       hours: form.hours.trim() === '' ? null : form.hours.trim(),
-      momoMerchantCode: form.momoCode.trim() === '' ? null : form.momoCode.trim(),
-      momoNetwork: form.momoNetwork === 'none' ? null : form.momoNetwork,
+      // The merchant identity is one bundle: code, network, and the name
+      // the code brings. No code means none of the three go out, so a
+      // cleared code can never leave a name stranded behind it.
+      momoMerchantCode: momoCode === '' ? null : momoCode,
+      momoNetwork: momoCode === '' ? null : form.momoNetwork === 'none' ? null : form.momoNetwork,
+      momoMerchantName: momoCode === '' || form.momoName.trim() === '' ? null : form.momoName.trim(),
     }
     const parsed = businessProfileSchema.safeParse(payload)
     if (!parsed.success) {
@@ -466,6 +476,25 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           {errors.momoMerchantCode ? <p role="alert" className="text-sm text-destructive">{errors.momoMerchantCode}</p> : null}
         </div>
       </div>
+      {/* The name the code brings: only asked once a code exists, because
+          the seller registers the name with the network, not with us. It
+          can honestly differ from the shop name - the helper says type it
+          exactly as the network shows it, and the pay sheet holds the buyer
+          to THAT name instead of the shop name. */}
+      {form.momoCode.trim() !== '' ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="bp-momo-name">{copy.pay.sellerNameLabel}</Label>
+          <Input
+            id="bp-momo-name"
+            value={form.momoName}
+            onChange={(e) => set('momoName', e.target.value)}
+            maxLength={60}
+            placeholder="e.g. Ntinda Home & Kitchen"
+          />
+          <p className="text-xs leading-relaxed text-muted-foreground">{copy.pay.sellerNameHelper}</p>
+          {errors.momoMerchantName ? <p role="alert" className="text-sm text-destructive">{errors.momoMerchantName}</p> : null}
+        </div>
+      ) : null}
       <p className="-mt-2 text-xs leading-relaxed text-muted-foreground">{copy.pay.sellerNote}</p>
 
       <div className="space-y-1.5">

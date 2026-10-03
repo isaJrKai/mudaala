@@ -310,6 +310,7 @@ export function ShopView({ id }: { id: string }) {
         phone={shop.phone}
         merchantCode={shop.momoMerchantCode}
         network={shop.momoNetwork}
+        merchantName={shop.momoMerchantName}
         estimate={null}
       />
 

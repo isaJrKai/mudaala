@@ -55,9 +55,12 @@ interface ShopPageData {
     shopCode: string | null
     // Self-reported mobile-money merchant identity. The pay sheet renders
     // from these; null means the shop takes mobile money on their personal
-    // number instead (the sheet says so honestly).
+    // number instead (the sheet says so honestly). momoMerchantName is the
+    // name the code brings on the telco's confirm screen - the shop states
+    // it so buyers compare screen to sheet, not screen to shop name.
     momoMerchantCode: string | null
     momoNetwork: string | null
+    momoMerchantName: string | null
     memberSince: string
     activeCount: number
     checklist: ShopChecklist
@@ -181,6 +184,7 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       shopCode: profile?.shopCode ?? null,
       momoMerchantCode: profile?.momoMerchantCode ?? null,
       momoNetwork: profile?.momoNetwork ?? null,
+      momoMerchantName: profile?.momoMerchantName ?? null,
       memberSince: user.createdAt.toISOString(),
       activeCount: listings.length,
       checklist,

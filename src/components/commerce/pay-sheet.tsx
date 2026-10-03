@@ -10,9 +10,12 @@
 //     iPhone, where the system strips * and # from tel: links (a stripped
 //     string can CALL a wrong number), it copies the string for a manual
 //     paste instead - the guard is deliberate, not a missed feature,
-//   - tells the buyer to match the registered name on the telco's own
-//     confirmation screen, and says plainly that the code is self-reported
-//     and the payment cannot be reversed.
+//   - states the name the shop says its code brings, so the buyer compares
+//     the telco's confirmation screen to THIS sheet - never to the shop
+//     name, which the shop may honestly have registered differently (a
+//     person's name, an older trading name),
+//   - and says plainly that the code is self-reported and the payment
+//     cannot be reversed.
 //
 // The cautions are the product, not decoration: this sheet's whole job is
 // structuring a payment that would otherwise happen over screenshots.
@@ -39,6 +42,10 @@ export interface PaySheetProps {
   phone: string
   merchantCode: string | null
   network: string | null
+  /** The name the code brings on the telco's confirm screen, as the shop
+   *  stated it. Null when the shop has not told us - the sheet then says
+   *  so instead of implying the shop name will show up. */
+  merchantName: string | null
   /** The basket's estimate, when one exists. Never invented here. */
   estimate: { amount: number; currency: string } | null
 }
@@ -59,7 +66,7 @@ function isAppleDialer(): boolean {
   return /iPhone|iPad|iPod/i.test(navigator.userAgent)
 }
 
-export function PaySheet({ open, onOpenChange, shopName, phone, merchantCode, network, estimate }: PaySheetProps) {
+export function PaySheet({ open, onOpenChange, shopName, phone, merchantCode, network, merchantName, estimate }: PaySheetProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
@@ -98,7 +105,9 @@ export function PaySheet({ open, onOpenChange, shopName, phone, merchantCode, ne
           </DialogTitle>
           <DialogDescription className="text-left">
             {merchantCode && network
-              ? copy.pay.nameCheck(shopName, network)
+              ? merchantName
+                ? copy.pay.nameCheck(network, merchantName)
+                : copy.pay.nameCheckUnnamed(network)
               : copy.pay.nameCheckPersonal(shopName)}
           </DialogDescription>
         </DialogHeader>
@@ -118,6 +127,18 @@ export function PaySheet({ open, onOpenChange, shopName, phone, merchantCode, ne
               <p className="mt-1 text-2xl font-bold tracking-[0.15em] text-primary tabular-nums">{merchantCode}</p>
               <p className="mt-0.5 text-xs text-muted-foreground">{copy.pay.codeNote}</p>
             </div>
+
+            {/* The name the code brings, right under the code so the buyer
+                reads one against the other. Only shown when the shop stated
+                it - an unnamed shop gets the honest description above, not
+                an implied promise that the shop name will appear. */}
+            {merchantName ? (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{copy.pay.confirmNameLabel}</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">{merchantName}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{copy.pay.confirmNameNote}</p>
+              </div>
+            ) : null}
 
             {dialString ? (
               <div className="rounded-md border px-3 py-2.5">

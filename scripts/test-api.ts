@@ -429,9 +429,10 @@ async function main() {
     }, alice)
     ok('profile rejects hostile photoUrl → 400', badPhotoProfile.status === 400)
 
-    // Mobile-money merchant identity round-trip: set, verify on the public
-    // shop page, reject the broken pairs, then clear - alice ends this
-    // section with no code attached, exactly like she started.
+    // Mobile-money merchant identity round-trip: set (with the name the
+    // code brings), verify on the public shop page, reject the broken
+    // pairs, then clear - alice ends this section with no code attached,
+    // exactly like she started.
     const momoBase = {
       businessName: `Alice Test Shop ${RUN_TAG}`,
       photoUrl: photoUrl ?? null,
@@ -443,11 +444,17 @@ async function main() {
       whatsapp: null,
       hours: null,
     }
-    const momoPut = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: '600200', momoNetwork: 'MTN' }, alice)
-    ok('profile PUT with merchant code (200)', momoPut.status === 200 && momoPut.json?.profile?.momoMerchantCode === '600200' && momoPut.json?.profile?.momoNetwork === 'MTN')
+    const momoPut = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: '600200', momoNetwork: 'MTN', momoMerchantName: 'Ssalongo Ssemakula' }, alice)
+    ok(
+      'profile PUT with merchant code + registered name (200)',
+      momoPut.status === 200 && momoPut.json?.profile?.momoMerchantCode === '600200' && momoPut.json?.profile?.momoNetwork === 'MTN' && momoPut.json?.profile?.momoMerchantName === 'Ssalongo Ssemakula',
+    )
 
     const momoShop = await call('GET', `/api/shops/${alice.user!.id}`)
-    ok('public shop page carries the merchant code and network', momoShop.status === 200 && momoShop.json?.shop?.momoMerchantCode === '600200' && momoShop.json?.shop?.momoNetwork === 'MTN')
+    ok(
+      'public shop page carries the code, network and the name the code brings',
+      momoShop.status === 200 && momoShop.json?.shop?.momoMerchantCode === '600200' && momoShop.json?.shop?.momoNetwork === 'MTN' && momoShop.json?.shop?.momoMerchantName === 'Ssalongo Ssemakula',
+    )
 
     const momoNoNetwork = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: '600200' }, alice)
     ok('merchant code without a network → 400', momoNoNetwork.status === 400)
@@ -455,8 +462,14 @@ async function main() {
     const momoBadCode = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: 'MD-4821', momoNetwork: 'MTN' }, alice)
     ok('merchant code must be digits only → 400', momoBadCode.status === 400)
 
-    const momoClear = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: null, momoNetwork: null }, alice)
-    ok('merchant code clears and the shop page stops offering it', momoClear.status === 200 && momoClear.json?.profile?.momoMerchantCode === null && momoClear.json?.profile?.momoNetwork === null)
+    const momoLoneName = await call('PUT', '/api/profile', { ...momoBase, momoMerchantName: 'Ssalongo Ssemakula' }, alice)
+    ok('a registered name cannot ride without a merchant code → 400', momoLoneName.status === 400)
+
+    const momoClear = await call('PUT', '/api/profile', { ...momoBase, momoMerchantCode: null, momoNetwork: null, momoMerchantName: null }, alice)
+    ok(
+      'merchant identity clears and the shop page stops offering it',
+      momoClear.status === 200 && momoClear.json?.profile?.momoMerchantCode === null && momoClear.json?.profile?.momoNetwork === null && momoClear.json?.profile?.momoMerchantName === null,
+    )
 
     await call('DELETE', `/api/listings/${withPhotos.json.listing.id}`, undefined, alice)
   }
@@ -2360,6 +2373,29 @@ async function main() {
       '21.4 the sheet knows exactly two rails: MTN and Airtel',
       MOMO_NETWORKS.length === 2 && MOMO_NETWORKS[0] === 'MTN' && MOMO_NETWORKS[1] === 'AIRTEL',
       MOMO_NETWORKS.join('/'),
+    )
+
+    // The name the code brings: the telco's confirm screen shows whatever
+    // the seller typed when registering, so the sheet states THAT name and
+    // never promises the shop name. Optional even with a code.
+    const named = parse({ momoMerchantCode: '200415', momoNetwork: 'AIRTEL', momoMerchantName: 'NTINDA HOME & KITCHEN' })
+    ok(
+      '21.5 the name the code brings rides with the code and may be absent',
+      named.success && named.data.momoMerchantName === 'NTINDA HOME & KITCHEN' && parse({ momoMerchantCode: '600200', momoNetwork: 'MTN' }).success,
+    )
+
+    const loneName = parse({ momoMerchantName: 'Ssalongo Ssemakula' })
+    ok(
+      '21.6 a name without a code is rejected: the sheet would show a name nothing vouches for',
+      !loneName.success,
+    )
+
+    const padded = parse({ momoMerchantCode: '600200', momoNetwork: 'MTN', momoMerchantName: '  Ssalongo Ssemakula  ' })
+    const nameTooShort = parse({ momoMerchantCode: '600200', momoNetwork: 'MTN', momoMerchantName: 'S' })
+    const nameTooLong = parse({ momoMerchantCode: '600200', momoNetwork: 'MTN', momoMerchantName: 'S'.repeat(61) })
+    ok(
+      '21.7 the registered name is trimmed text, 2 to 60 characters',
+      padded.success && padded.data.momoMerchantName === 'Ssalongo Ssemakula' && !nameTooShort.success && !nameTooLong.success,
     )
   }
 
