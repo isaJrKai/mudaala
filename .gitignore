@@ -78,3 +78,10 @@ server.log
 public/uploads/*
 !public/uploads/seed/
 !public/uploads/seed/**
+
+# Local tooling and staging sandboxes - the operators' own workbenches, never
+# part of the app: .pgtool holds the local Postgres tooling (and its data
+# directory), .t4stage was a staging scratch space for an old task. Both stay
+# on disk, both stay out of git.
+.pgtool/
+.t4stage/
