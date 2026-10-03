@@ -1282,3 +1282,22 @@ Stage Summary:
 - The multi-shop answer, in one line: the basket IS a queue of per-seller lists; sending stays one WhatsApp/call per seller (combining shops would promise what no single seller can honor); the UI's job is the queue overview, the done bookkeeping and the dock that follows the buyer.
 - Sandbox note: two backdated PriceSnapshot days were inserted for movers verification (dev-only derived data; today's row is the cron's own upsert).
 - Not done / open: nothing blocking. Optional future: trend rows linking to shop pages, movers on public browse for anonymous buyers.
+
+---
+Task ID: basket-line-remove-undo
+Agent: main (Super Z)
+Task: User asked for a way out of a single basket line ("what if i change my mind and i dont want to take a product in the basket. a delete button?").
+
+Work Log:
+- Gap confirmed: setLineQty(qty<=0) already removed lines at the store level, but both surfaces clamped the stepper at qty 1, so the only exit was Clear list, which deletes the whole shop. One wrong add cost the entire list.
+- Store (src/lib/basket.ts): readBasket() exported (non-React read of the cached state; useBasket now binds through it) so the suite can assert without a hook; restoreLine(shopId, shop, listingId, line) puts a removed line back EXACTLY (same key, qty, snapshot), revives the shop record if the removal emptied it, merges into a live shop without touching newer lines, and deliberately never re-marks the shop done (removal cleared the mark because the seller had not seen the edited list).
+- UI: shared useRemoveLine() hook in basket-view.tsx (exported; rail imports it like useLineStatuses). setLineQty(shopId, listingId, 0) + toast (6s) with a ToastAction Undo that calls restoreLine with the snapshot captured at click time. Trash button (ghost, muted, hover destructive) added after the plus stepper on every line in BOTH the full basket view and the xl dock panel; minus stays quantity-only so a mashed button can never empty a list.
+- Copy: removeLineAria(title) + undoAria(title) added; reused the pre-existing unwired removed(title)/undo keys. No em dashes, no banned words.
+- Suite: new section 20, six pure units (line removal keeps shop + sibling line and clears the done mark; undo restores the exact line; last-line removal drops the shop record; undo revives the emptied shop; no auto re-done; undo merges without wiping lines added since). Hermetic sweep renumbered 21 (21.1/21.2). New baseline 418/0.
+- Gate: tsc clean, eslint clean, suite 418/0 via bugprobe.sh.
+- Browser verified (agent-browser): dock panel trash removes the line, dock flips to the honest empty state, toast reads "COPPER SCRAP 99.5% clean removed" with Undo (tool-results/line-removed-toast.png); Undo restores qty 3 and the USh 60,000 estimate (not reset to 1); full basket view same flow: empty state then revival; mobile 390px row fits with title truncation, stepper and trash (tool-results/mobile-remove-row.png); two-shop panel: removing copper then undoing keeps both shop cards (tool-results/dock-two-shops-remove.png). Console + dev.log clean.
+
+Stage Summary:
+- Commit 960c9f3 on main. Suite baseline now 418/0.
+- The mental model stays: minus = how many, trash = none of this one, Clear list = drop the whole seller. Undo exists because the basket has no server copy; a mis-tap on a 28px target must not be permanent.
+- Not done / open: nothing blocking. Optional future: the same Undo pattern could cover Clear list (whole-shop remove) if mis-taps there ever show up.
