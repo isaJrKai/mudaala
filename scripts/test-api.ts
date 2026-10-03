@@ -1944,6 +1944,39 @@ async function main() {
     ok('16.12 an UPPERCASE query finds the lowercase title (case-insensitive ILIKE search)', upper.status === 200 && foundUpper === true)
   }
 
+  // ---- 16e. Browse ranking: photos rank slightly higher, inside the band ----
+  {
+    const ranker: Jar = { cookie: '' }
+    await register(ranker, uniquePhone(), 'Ranking Fixture', 'quiet-harbor-31')
+    const rankTag = `Zz-Rank-${RUN_TAG}`
+    // Publish the WITH-PHOTO ad first, the NO-PHOTO ad second (so it is
+    // FRESHER). Plain freshness order would put the no-photo ad on top;
+    // only the photo boost can flip them inside the shared recency band.
+    const withPhoto = await call('POST', '/api/listings', { ...validListing, title: `${rankTag} WITH-PHOTO`, photos: ['https://example.com/rank-photo.webp'] }, ranker)
+    const noPhoto = await call('POST', '/api/listings', { ...validListing, title: `${rankTag} NO-PHOTO`, photos: [] }, ranker)
+    ok('16.13 ranking fixtures published (with-photo first, fresher no-photo second)', noPhoto.status === 201 && withPhoto.status === 201)
+
+    const feed = await call('GET', `/api/listings?q=${encodeURIComponent(rankTag)}&sort=newest`)
+    const items = (feed.json?.items as any[] | undefined) ?? []
+    const photoIdx = items.findIndex((l) => l.title === `${rankTag} WITH-PHOTO`)
+    const noPhotoIdx = items.findIndex((l) => l.title === `${rankTag} NO-PHOTO`)
+    ok(
+      '16.14 an ad WITH a photo ranks above a fresher no-photo ad in the same recency band',
+      feed.status === 200 && photoIdx >= 0 && noPhotoIdx >= 0 && photoIdx < noPhotoIdx,
+      `order: ${items.map((l) => l.title).join(' | ')}`,
+    )
+
+    // Abuse case: a junk "photo" value must not survive sanitization, so the
+    // ad gets NO boost (and no junk URL ever reaches the feed).
+    const junk = await call('POST', '/api/listings', { ...validListing, title: `${rankTag} JUNK-PHOTO`, photos: ['javascript:alert(1)'] }, ranker)
+    ok('16.15 a junk photo value is sanitized away at publish', junk.status === 201)
+    const feed2 = await call('GET', `/api/listings?q=${encodeURIComponent(rankTag)}&sort=newest`)
+    const items2 = (feed2.json?.items as any[] | undefined) ?? []
+    const junkRow = items2.find((l) => l.title === `${rankTag} JUNK-PHOTO`)
+    ok('16.16 the junk-photo ad stores no photos and ranks as photo-less', Array.isArray(junkRow?.photos) && junkRow.photos.length === 0)
+    ok('16.17 no junk URL is ever returned in the feed', !JSON.stringify(items2).includes('javascript:'))
+  }
+
   // ===============================================================
   // == 17. PLACEHOLDER RULE — seed flag, sitemap/OG exclusions,   ==
   // ==    neutral tile, one-step seed-removal dry-run             ==

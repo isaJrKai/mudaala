@@ -23,6 +23,7 @@ import { ListingGridSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
 import { MudaalaCurve } from './mudaala-curve'
 import { PlaceholderTile } from './placeholder-tile'
+import { copy } from '@/lib/copy'
 import QRCode from 'react-qr-code'
 import { TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -169,57 +170,35 @@ export function ListingsBrowse() {
 
   return (
     <div className="space-y-3">
-      {/* The front door — the poster, translated into the app. One green
-          ribbon that rises out of the page through the curve on top and
-          flows back in below: the same stroke, twice, framing the words.
-          On desktop a real market photo sits in the right half, its bottom
-          edge carried away by the sweep — the curve masks the photo, the
-          way the mockup poster wraps its image. Mobile keeps it compact
-          (~150px): no photo, no chips, the search one glance away. */}
+      {/* The front door — one green ribbon and the words that matter:
+          what this place is and what to do first. No eyebrow labels, no
+          slogan chips; the grey tile on the right carries no photo until a
+          real shop's real photo takes the slot. */}
       <section aria-labelledby="browse-heading">
         <MudaalaCurve className="block h-6 w-full text-primary sm:h-9" />
         <div className="bg-primary text-primary-foreground">
           <div className="sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,42%)]">
             <div className="px-5 py-5 sm:px-8 sm:py-9">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/70">
-                Karibu · Uganda
-              </p>
-              <h1 id="browse-heading" className="mt-1 font-display text-[22px] font-semibold leading-tight tracking-tight sm:text-3xl">
-                The market, on your phone.
+              <h1 id="browse-heading" className="text-[22px] font-bold leading-tight tracking-tight sm:text-3xl">
+                {copy.browse.heading}
               </h1>
               <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-primary-foreground/85 sm:text-sm">
                 {/* One line on the phone keeps the whole ribbon ~150px tall;
                     the full sentence earns its space where there's room. */}
-                <span className="sm:hidden">Real shops, direct calls — no middleman.</span>
-                <span className="hidden sm:inline">Real shops post what they sell and what they need — you call or message them direct, no middleman.</span>
+                <span className="sm:hidden">Shops post what they sell. You call them direct.</span>
+                <span className="hidden sm:inline">{copy.browse.sub}</span>
               </p>
-              {/* Only claims the app can back: the shops are real (every
-                  listing carries a phone line), contact is direct, and the
-                  platform takes no cut and sits in no middle of anything. */}
-              <div className="mt-3.5 hidden flex-wrap gap-1.5 sm:flex" aria-label="What Mudaala stands for">
-                {['Real shops', 'Call direct', 'No middleman'].map((chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-primary-foreground/30 px-2.5 py-0.5 text-[11px] font-medium text-primary-foreground/90"
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
             </div>
             <div className="relative hidden sm:block">
               {/* PLACEHOLDER RULE — the hero carries no photo until a real
                   shop's real photo takes this slot. No seed image, no stock,
                   no illustration: the neutral tile makes no claim. */}
               <PlaceholderTile
-                label="Real shop photo — coming soon"
+                label={copy.hero.tileLabel}
                 iconClassName="size-7"
                 className="absolute inset-0 h-full w-full"
               />
-              {/* The sweep that ties the tile into the ribbon: wider than
-                  the column so its low end emerges out of the green field,
-                  then rises across the tile's bottom edge — the same stroke,
-                  same direction, just given room to breathe. */}
+              {/* The sweep that ties the tile into the ribbon. */}
               <MudaalaCurve className="absolute -left-24 bottom-0 block h-10 w-[calc(100%+6rem)] text-primary sm:h-14" />
             </div>
           </div>
@@ -232,11 +211,11 @@ export function ListingsBrowse() {
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             type="search"
-            placeholder="Search copper, flour, maize…"
+            placeholder={copy.browse.searchPlaceholder}
             className="pl-9"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            aria-label="Search listings"
+            aria-label={copy.browse.searchLabel}
           />
         </div>
         <Button
@@ -244,10 +223,10 @@ export function ListingsBrowse() {
           variant="outline"
           onClick={() => setShowFilters(true)}
           className="shrink-0 gap-1.5 px-3"
-          aria-label="Open filters"
+          aria-label={copy.browse.openFiltersAria}
         >
           <SlidersHorizontal className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Filters</span>
+          <span className="hidden sm:inline">{copy.browse.filters}</span>
           {activeFilterCount > 0 ? (
             <span className="flex size-4.5 min-w-4.5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {activeFilterCount}
@@ -285,14 +264,14 @@ export function ListingsBrowse() {
       {/* Active filter chips + sort */}
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-slim pb-0.5">
         <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v as typeof filters.sort })}>
-          <SelectTrigger size="sm" className="shrink-0 border-dashed text-muted-foreground" aria-label="Sort results">
+          <SelectTrigger size="sm" className="shrink-0 border-dashed text-muted-foreground" aria-label={copy.browse.sortLabel}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">Newest first</SelectItem>
-            {nearOn ? <SelectItem value="nearest">Nearest first</SelectItem> : null}
-            <SelectItem value="price_asc">Price: low to high</SelectItem>
-            <SelectItem value="price_desc">Price: high to low</SelectItem>
+            <SelectItem value="newest">{copy.browse.sortNewest}</SelectItem>
+            {nearOn ? <SelectItem value="nearest">{copy.browse.sortNearest}</SelectItem> : null}
+            <SelectItem value="price_asc">{copy.browse.sortPriceAsc}</SelectItem>
+            <SelectItem value="price_desc">{copy.browse.sortPriceDesc}</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -305,7 +284,7 @@ export function ListingsBrowse() {
           aria-pressed={nearOn}
         >
           <MapPin className="size-3.5" aria-hidden />
-          {nearMe.status === 'locating' ? 'Finding you…' : nearOn ? 'Near me ✓' : 'Near me'}
+          {nearMe.status === 'locating' ? copy.browse.nearMeLocating : copy.browse.nearMe}
         </Button>
         <SaveSearchButton />
         {/* Loved — the buyer's shortlist. Same family as Near me: an explicit
@@ -317,10 +296,10 @@ export function ListingsBrowse() {
           className="shrink-0 gap-1.5"
           onClick={() => setLovedOnly((v) => !v)}
           aria-pressed={lovedOnly}
-          aria-label={lovedOnly ? 'Showing your loved items' : `Show your loved items${lovedIds.length > 0 ? ` (${lovedIds.length})` : ''}`}
+          aria-label={lovedOnly ? copy.browse.lovedAriaOn : copy.browse.lovedAriaOff(lovedIds.length)}
         >
           <Heart className={cn('size-3.5', lovedOnly && 'fill-current')} aria-hidden />
-          Loved
+          {copy.browse.loved}
           {lovedIds.length > 0 ? (
             <span
               className={cn(
@@ -334,7 +313,7 @@ export function ListingsBrowse() {
         </Button>
         {activeFilterCount > 0 ? (
           <Button type="button" variant="ghost" size="sm" className="shrink-0 gap-1 text-muted-foreground" onClick={resetFilters}>
-            <X className="size-3.5" aria-hidden /> Clear all
+            <X className="size-3.5" aria-hidden /> {copy.common.clearAll}
           </Button>
         ) : null}
       </div>
@@ -345,7 +324,7 @@ export function ListingsBrowse() {
           className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
         >
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>Location is off — allow it when the browser asks and shops closest to you come first. You can still browse everything.</span>
+          <span>Location is off. Allow it when the browser asks and shops closest to you come first. You can still browse everything.</span>
         </p>
       ) : null}
 
@@ -364,7 +343,7 @@ export function ListingsBrowse() {
       ) : codeQuery !== '' ? (
         codeLookup.isLoading ? (
           <p className="text-sm text-muted-foreground" role="status">
-            Finding the shop for {codeQuery}…
+            {copy.browse.codeFinding(codeQuery)}
           </p>
         ) : codeLookup.isError ? (
           <p
@@ -375,13 +354,13 @@ export function ListingsBrowse() {
             <span>
               {codeLookup.error instanceof Error
                 ? codeLookup.error.message
-                : 'Could not check that code — check the number with the shop.'}
+                : copy.browse.codeError}
             </span>
           </p>
         ) : codeShop ? (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground" role="status">
-              Shop for code {codeQuery}
+              {copy.browse.codeShopLabel(codeQuery)}
             </p>
             <ShopCodeCard shop={codeShop} onOpen={() => navigate({ name: 'shop', id: codeShop.id })} />
           </div>
@@ -392,20 +371,17 @@ export function ListingsBrowse() {
         <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
       ) : data && data.items.length === 0 ? (
         <EmptyState
-          icon={<Search />}
-          title="No listings found"
+          title={activeFilterCount > 0 || filters.q ? copy.browse.emptyFilteredTitle : copy.browse.emptyTitle}
           description={
-            activeFilterCount > 0 || filters.q
-              ? 'Nothing matches your current search and filters. Try fewer filters or a different word.'
-              : 'There are no listings yet. Be the first to post what you sell or need.'
+            activeFilterCount > 0 || filters.q ? copy.browse.emptyFilteredSub : copy.browse.emptySub
           }
           action={
             activeFilterCount > 0 || filters.q ? (
               <Button variant="outline" onClick={resetFilters}>
-                Clear search & filters
+                {copy.browse.clearSearchFilters}
               </Button>
             ) : (
-              <Button onClick={() => navigate({ name: 'publish' })}>Post a listing</Button>
+              <Button onClick={() => navigate({ name: 'publish' })}>{copy.common.postAnAd}</Button>
             )
           }
         />
@@ -413,12 +389,11 @@ export function ListingsBrowse() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-4">
           <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
             <p className="text-sm text-muted-foreground" role="status">
-              {data.total} {data.total === 1 ? 'listing' : 'listings'} found
-              {data.pageCount > 1 ? ` · page ${data.page} of ${data.pageCount}` : ''}
+              {copy.browse.resultsFound(data.total, data.pageCount > 1 ? { page: data.page, pageCount: data.pageCount } : undefined)}
             </p>
-            {/* Blocks, not rows: photo-first cards in a grid are how a market
-                feed should scan — four pictures beat four paragraphs. */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-3">
+            {/* Rows on the phone (small photo on the side), compact blocks in
+                a grid on desktop — the same card flips at sm. */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
               {data.items.map((listing) => (
                 <ListingBlock
                   key={listing.id}
@@ -479,16 +454,12 @@ function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
           {shop.photoUrl ? (
             <img src={shop.photoUrl} alt="" loading="lazy" className="h-32 w-full object-cover" />
           ) : (
-            <div className="flex h-32 items-center justify-center bg-primary">
-              <span className="font-display text-4xl font-semibold text-primary-foreground">
-                {shop.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
+            // PLACEHOLDER RULE — no shop photo yet: the neutral grey tile
+            // with the shop's name, never a stock or generated image.
+            <PlaceholderTile title={shop.name} label={copy.shop.coverTileAria(shop.name)} className="h-32 w-full" />
           )}
           <div className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Featured shop · from your results
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">{copy.browse.featuredShop}</p>
             <h2 className="mt-1 font-display text-lg font-semibold leading-tight tracking-tight text-primary">
               {shop.name}
             </h2>
@@ -501,16 +472,16 @@ function FeaturedShopPanel({ items }: { items: ListingsPage['items'] }) {
               </div>
               <div className="min-w-0">
                 {shop.shopCode ? (
-                  <p className="font-mono text-sm font-bold tracking-widest text-foreground">{shop.shopCode}</p>
+                  <p className="text-sm font-bold tracking-widest text-foreground tabular-nums">{shop.shopCode}</p>
                 ) : null}
-                <p className="text-[11px] leading-snug text-muted-foreground">Scan, or type the code in search, to see the whole shop.</p>
+                <p className="text-[11px] leading-snug text-muted-foreground">{copy.browse.featuredCodeHint}</p>
               </div>
             </div>
             <a
               href={telLink(shop.phone)}
               className="press mt-3 flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
             >
-              <Phone className="size-4" aria-hidden /> Call the shop
+              <Phone className="size-4" aria-hidden /> {copy.common.call}
             </a>
           </div>
         </div>
@@ -569,10 +540,9 @@ function LovedShelf({
   if (lovedIds.length === 0) {
     return (
       <EmptyState
-        icon={<Heart />}
-        title="Nothing loved yet"
-        description="Tap the heart on any item and it waits here for later — like a name scribbled on a price list. It lives on this phone, just like the basket."
-        action={<Button onClick={onBrowse}>Browse listings</Button>}
+        title={copy.browse.lovedEmptyTitle}
+        description={copy.browse.lovedEmptySub}
+        action={<Button onClick={onBrowse}>{copy.common.browseListings}</Button>}
       />
     )
   }
@@ -592,11 +562,11 @@ function LovedShelf({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground" role="status">
-        Your shortlist · {items.length} {items.length === 1 ? 'item' : 'items'}, newest first — lives on this phone
+        {copy.browse.lovedShelfCount(items.length)}
       </p>
 
       {available.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
           {available.map((listing) => (
             <ListingBlock
               key={listing.id}
@@ -616,8 +586,8 @@ function LovedShelf({
           <p className="flex items-start gap-1.5 text-xs font-medium text-amber-800">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             {unavailable.length === 1
-              ? '1 loved item is no longer available:'
-              : `${unavailable.length} loved items are no longer available:`}
+              ? copy.browse.lovedUnavailable(1)
+              : copy.browse.lovedUnavailable(unavailable.length)}
           </p>
           <ul className="mt-1.5 space-y-1">
             {unavailable.map((listing) => (
@@ -630,7 +600,7 @@ function LovedShelf({
                   {listing.title}
                 </button>
                 <HeartButton listingId={listing.id} title={listing.title} className="size-7 shrink-0 border-0 bg-transparent hover:bg-transparent" />
-                <span className="shrink-0 text-xs text-amber-800">tap the heart to forget it</span>
+                <span className="shrink-0 text-xs text-amber-800">{copy.browse.lovedForget}</span>
               </li>
             ))}
           </ul>
@@ -664,8 +634,8 @@ function ShopCodeCard({ shop, onOpen }: { shop: ShopLookupResponse['shop']; onOp
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           {[shop.area, shop.county].filter(Boolean).join(', ') || 'Shop on Mudaala'}
         </span>
-        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
-          <Hash className="size-3" aria-hidden /> <span className="font-mono tracking-wide">{shop.shopCode}</span>
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20">
+          <Hash className="size-3" aria-hidden /> <span className="tracking-wide tabular-nums">{shop.shopCode}</span>
         </span>
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -677,13 +647,13 @@ function Pagination({ page, pageCount, onPage }: { page: number; pageCount: numb
   return (
     <nav className="flex items-center justify-center gap-2 pt-2" aria-label="Pagination">
       <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-        <ChevronLeft className="size-4" aria-hidden /> Prev
+        <ChevronLeft className="size-4" aria-hidden /> {copy.common.prev}
       </Button>
-      <span className="px-2 text-sm text-muted-foreground">
+      <span className="px-2 text-sm text-muted-foreground tabular-nums">
         {page} / {pageCount}
       </span>
       <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
-        Next <ChevronRight className="size-4" aria-hidden />
+        {copy.common.next} <ChevronRight className="size-4" aria-hidden />
       </Button>
     </nav>
   )
@@ -696,12 +666,12 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Filters</DialogTitle>
-          <DialogDescription>Narrow results by type, category, location and price.</DialogDescription>
+          <DialogTitle>{copy.browse.filterHeading}</DialogTitle>
+          <DialogDescription>{copy.browse.filterSub}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Type</Label>
+            <Label>{copy.browse.type}</Label>
             <div className="grid grid-cols-3 gap-2" role="group" aria-label="Listing type">
               {(['any', 'OFFER', 'REQUEST'] as const).map((t) => (
                 <Button
@@ -712,20 +682,20 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                   onClick={() => setFilters({ type: t })}
                   aria-pressed={filters.type === t}
                 >
-                  {t === 'any' ? 'All' : t}
+                  {t === 'any' ? copy.common.all : t}
                 </Button>
               ))}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="f-category">Category</Label>
+            <Label htmlFor="f-category">{copy.browse.category}</Label>
             <Select value={filters.category} onValueChange={(v) => setFilters({ category: v })}>
               <SelectTrigger id="f-category">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                <SelectItem value="any">All categories</SelectItem>
+                <SelectItem value="any">{copy.common.anyCategory}</SelectItem>
                 {CATEGORIES.map((c) => (
                   <SelectItem key={c.key} value={c.key}>
                     {c.label}
@@ -736,13 +706,13 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="f-county">District / Region</Label>
+            <Label htmlFor="f-county">{copy.browse.district}</Label>
             <Select value={filters.county} onValueChange={(v) => setFilters({ county: v })}>
               <SelectTrigger id="f-county">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                <SelectItem value="any">All districts</SelectItem>
+                <SelectItem value="any">{copy.common.anyDistrict}</SelectItem>
                 {COUNTIES.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
@@ -754,7 +724,7 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="f-min">Min price</Label>
+              <Label htmlFor="f-min">{copy.browse.minPrice}</Label>
               <Input
                 id="f-min"
                 type="number"
@@ -766,7 +736,7 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="f-max">Max price</Label>
+              <Label htmlFor="f-max">{copy.browse.maxPrice}</Label>
               <Input
                 id="f-max"
                 type="number"
@@ -780,13 +750,13 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="f-unit">Price unit</Label>
+            <Label htmlFor="f-unit">{copy.browse.priceUnit}</Label>
             <Select value={filters.unit} onValueChange={(v) => setFilters({ unit: v })}>
               <SelectTrigger id="f-unit">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any unit</SelectItem>
+                <SelectItem value="any">{copy.common.anyUnit}</SelectItem>
                 {UNITS.map((u) => (
                   <SelectItem key={u.key} value={u.key}>
                     per {u.label}
@@ -804,10 +774,10 @@ function FilterDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
               setFilters({ ...DEFAULT_FILTERS, q: filters.q, sort: filters.sort })
             }}
           >
-            Reset
+            {copy.browse.reset}
           </Button>
           <Button type="button" onClick={() => onOpenChange(false)}>
-            Show results
+            {copy.browse.showResults}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -869,12 +839,12 @@ function SaveSearchButton() {
   return (
     <>
       <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={openDialog}>
-        <Bookmark className="size-3.5" aria-hidden /> Save this search
+        <Bookmark className="size-3.5" aria-hidden /> {copy.browse.saveSearch}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Save this search</DialogTitle>
+            <DialogTitle>{copy.browse.saveSearch}</DialogTitle>
             <DialogDescription>We will alert you when new listings match these filters.</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -883,7 +853,7 @@ function SaveSearchButton() {
           </div>
           <DialogFooter>
             <Button type="button" onClick={save} disabled={busy || !name.trim()}>
-              {busy ? 'Saving…' : 'Save search'}
+              {busy ? 'Saving…' : copy.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>

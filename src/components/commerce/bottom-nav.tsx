@@ -7,6 +7,7 @@ import { useBellShake } from '@/hooks/use-bell-shake'
 import { apiGet } from '@/lib/client'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 
 // Mobile bottom navigation — the primary nav on affordable Android phones.
 export function BottomNav() {
@@ -26,11 +27,11 @@ export function BottomNav() {
   const bellRef = useBellShake(unread)
 
   const items: Array<{ name: ViewName; label: string; icon: React.ReactNode; badge?: number }> = [
-    { name: 'home', label: 'Home', icon: <Home aria-hidden /> },
-    { name: 'browse', label: 'Browse', icon: <Search aria-hidden /> },
-    { name: 'publish', label: 'Post', icon: <PlusCircle aria-hidden /> },
-    { name: 'my-listings', label: 'Listings', icon: <Tag aria-hidden /> },
-    { name: 'notifications', label: 'Alerts', icon: <Bell aria-hidden />, badge: unread },
+    { name: 'home', label: copy.nav.home, icon: <Home aria-hidden /> },
+    { name: 'browse', label: copy.nav.browse, icon: <Search aria-hidden /> },
+    { name: 'publish', label: copy.nav.post, icon: <PlusCircle aria-hidden /> },
+    { name: 'my-listings', label: copy.nav.myListings, icon: <Tag aria-hidden /> },
+    { name: 'notifications', label: copy.nav.notifications, icon: <Bell aria-hidden />, badge: unread },
   ]
 
   return (

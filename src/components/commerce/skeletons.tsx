@@ -2,19 +2,18 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Restrained skeletons mirroring the listing card layout.
+// Grey skeletons mirroring the real cards, so loading never shifts layout.
+// No illustrations, no spinners — flat grey blocks.
 function ListingCardSkeleton() {
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-5 w-16" />
-        <Skeleton className="h-4 w-24" />
-      </div>
-      <Skeleton className="mt-3 h-5 w-3/4" />
-      <Skeleton className="mt-2 h-4 w-1/2" />
-      <div className="mt-3 flex items-center gap-3">
-        <Skeleton className="h-4 w-28" />
-        <Skeleton className="h-4 w-20" />
+    <div className="rounded-lg border bg-card p-2.5">
+      <div className="flex gap-3">
+        <Skeleton className="size-24 rounded-lg sm:size-28" />
+        <div className="min-w-0 flex-1 py-0.5">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="mt-2 h-5 w-24" />
+          <Skeleton className="mt-2 h-3 w-2/3" />
+        </div>
       </div>
     </div>
   )
@@ -30,8 +29,8 @@ export function ListingListSkeleton({ count = 5 }: { count?: number }) {
   )
 }
 
-// Block skeleton mirrors the grid card: photo area on top, three text lines
-// under it — same proportions so loading never shifts the layout.
+// Block skeleton mirrors the desktop grid card: photo area on top, three
+// text lines under it — same proportions as the loaded blocks.
 function ListingBlockSkeleton() {
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
@@ -45,11 +44,11 @@ function ListingBlockSkeleton() {
   )
 }
 
-// Same columns as the real grid (2 / 3 / 4) so the skeleton occupies exactly
+// Same columns as the real grid (2 / 3) so the skeleton occupies exactly
 // the space the loaded blocks will.
 export function ListingGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4" aria-hidden>
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3" aria-hidden>
       {Array.from({ length: count }).map((_, i) => (
         <ListingBlockSkeleton key={i} />
       ))}

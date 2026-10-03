@@ -168,6 +168,43 @@ export async function searchListings({ query, includeStatuses = ['ACTIVE'] }: Se
   const orderBy: Prisma.ListingOrderByWithRelationInput =
     query.sort === 'price_asc' ? { price: 'asc' } : query.sort === 'price_desc' ? { price: 'desc' } : { refreshedAt: 'desc' }
 
+  // "Photos sell": within the same recency band (ads refreshed on the same
+  // day), ads WITH a photo rank slightly higher than ads without. Recency
+  // stays the primary order — a 2-day-old ad never jumps a 5-hour-old one;
+  // the boost only decides inside the band. Implemented like the 'nearest'
+  // sort: fetch a capped window in freshness order, re-rank in memory, slice
+  // the page — so pagination stays honest (nearest-shop-on-page-1 logic,
+  // same trade-off, same cap).
+  if (query.sort === 'newest' || query.sort === undefined) {
+    const PHOTO_BOOST_SCAN_CAP = 500
+    const BAND_MS = 24 * 60 * 60 * 1000
+    const now = Date.now()
+    const [all, total] = await Promise.all([
+      db.listing.findMany({
+        where,
+        orderBy: [orderBy],
+        take: PHOTO_BOOST_SCAN_CAP,
+        include: SHOP_OWNER_INCLUDE,
+      }),
+      db.listing.count({ where }),
+    ])
+    const ranked = all.map((row, index) => ({
+      row,
+      index,
+      band: Math.floor((now - row.refreshedAt.getTime()) / BAND_MS),
+      hasPhoto: parsePhotos(row.photos).length > 0,
+    }))
+    ranked.sort((a, b) => a.band - b.band || (a.hasPhoto === b.hasPhoto ? a.index - b.index : a.hasPhoto ? -1 : 1))
+    const pageRows = ranked.slice((page - 1) * pageSize, page * pageSize).map((entry) => entry.row)
+    return {
+      items: pageRows.map(serializeListing),
+      total,
+      page,
+      pageSize,
+      pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    }
+  }
+
   // "Near me": order by real walking-sense distance to the buyer. SQLite has
   // no geo index, so we scan the matching rows (capped), compute haversine
   // from the buyer's position to each SHOP's blurred spot, and paginate in

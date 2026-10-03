@@ -10,7 +10,7 @@ export default function Forbidden() {
       <ShieldX className="size-10 text-muted-foreground" aria-hidden />
       <h1 className="mt-4 text-lg font-semibold">This area is for the Mudaala team</h1>
       <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-        You do not have access to this page. If you believe you should — for example you moderate ads for Mudaala — sign in with the team account and try again.
+        You do not have access to this page. If you believe you should (for example you moderate ads for Mudaala), sign in with the team account and try again.
       </p>
       <div className="mt-5 flex gap-2">
         <Link

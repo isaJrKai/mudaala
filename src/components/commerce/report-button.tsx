@@ -46,7 +46,7 @@ export function ReportButton({ targetType, targetId, noun = 'ad' }: ReportButton
       setError(json?.error ?? 'Something went wrong. Please try again in a moment.')
       setPhase('open')
     } catch {
-      setError('No connection — please try again in a moment.')
+      setError('No connection. Please try again in a moment.')
       setPhase('open')
     }
   }
@@ -55,7 +55,7 @@ export function ReportButton({ targetType, targetId, noun = 'ad' }: ReportButton
     return (
       <div className="flex items-start gap-1.5 text-[13px] leading-snug text-emerald-800" role="status">
         <Check className="mt-0.5 size-4 shrink-0 text-emerald-700" aria-hidden />
-        <span>Thank you — our team will review this {noun}. Reports like yours keep Mudaala safe.</span>
+        <span>Thank you. Our team will review this {noun}. Reports like yours keep Mudaala safe.</span>
       </div>
     )
   }

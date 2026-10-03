@@ -61,7 +61,6 @@ export function SettingsView() {
   if (!user) {
     return (
       <EmptyState
-        icon={<ShieldCheck />}
         title="Sign in to manage settings"
         description="Advanced settings contain deployment configuration and are only available to signed-in users."
         action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>Sign in</Button>}
@@ -195,7 +194,7 @@ function PostgresSection() {
         </span>
         <div>
           <h2 id="pg-heading" className="text-base font-semibold">
-            Advanced settings — PostgreSQL connection
+            Advanced settings: PostgreSQL connection
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Everything that needs a Postgres link is configured here. Saved server-side; passwords are never sent back to the browser.

@@ -47,7 +47,7 @@ export async function LegalPage({ file, title, description }: LegalDoc) {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
-        <h1 className="font-display mb-2 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+        <h1 className="mb-2 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
         <p className="mb-8 text-muted-foreground">{description}</p>
         {body === null ? (
           <div className="rounded-xl border border-dashed p-6 text-muted-foreground">

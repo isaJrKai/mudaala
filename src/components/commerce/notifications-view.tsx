@@ -23,6 +23,7 @@ import { EmptyState } from './empty-state'
 import { ErrorState } from './listings-browse'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { copy } from '@/lib/copy'
 
 // Notifications — real events only: new matches for saved searches,
 // expiry warnings and expiry confirmations for the user's own listings.
@@ -61,10 +62,9 @@ export function NotificationsView() {
   if (!user) {
     return (
       <EmptyState
-        icon={<Bell />}
-        title="Sign in to see alerts"
-        description="Alerts appear here when new listings match your saved searches, and when your own listings are expiring or expired."
-        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>Sign in</Button>}
+        title={copy.alerts.signInTitle}
+        description={copy.alerts.signInSub}
+        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>{copy.nav.signIn}</Button>}
       />
     )
   }
@@ -87,7 +87,7 @@ export function NotificationsView() {
           <Button variant="ghost" size="sm" className="-ml-2 gap-1 press lg:hidden" onClick={() => navigate({ name: 'browse' })}>
             <ArrowLeft className="size-4" aria-hidden /> Back
           </Button>
-          <h1 className="text-xl font-semibold tracking-tight">Alerts</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{copy.nav.notifications}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {unreadCount > 0 ? (
@@ -114,10 +114,9 @@ export function NotificationsView() {
 
       {notifications.length === 0 ? (
         <EmptyState
-          icon={<Bell />}
-          title="No alerts yet"
-          description="Save a search on Browse and you will be alerted here when a matching listing is posted."
-          action={<Button onClick={() => navigate({ name: 'saved' })}>Go to saved searches</Button>}
+          title={copy.alerts.emptyTitle}
+          description={copy.alerts.emptySub}
+          action={<Button onClick={() => navigate({ name: 'saved' })}>{copy.alerts.goSaved}</Button>}
         />
       ) : (
         <ul className="space-y-2">
@@ -154,10 +153,8 @@ export function NotificationsView() {
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear all alerts?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Every alert — read and unread — is removed for good. Marking them read keeps the history; clearing does not.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{copy.alerts.clearTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{copy.alerts.clearBody}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep them</AlertDialogCancel>
@@ -168,7 +165,7 @@ export function NotificationsView() {
                 clearAll.mutate()
               }}
             >
-              {clearAll.isPending ? 'Clearing…' : 'Clear alerts'}
+              {clearAll.isPending ? copy.alerts.clearing : copy.alerts.clearGo}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

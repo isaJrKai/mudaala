@@ -29,7 +29,7 @@ export function ShareAdRow({ title, url, priceLabel, label = 'Share this ad', no
     if (timer.current) clearTimeout(timer.current)
   }, [])
 
-  const shareText = `Check this ${noun} on Mudaala: ${title}${priceLabel ? ` — ${priceLabel}` : ''}`
+  const shareText = `Check this ${noun} on Mudaala: ${title}${priceLabel ? ` (${priceLabel})` : ''}`
   const waHref = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${url}`)}`
 
   async function copyLink() {

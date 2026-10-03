@@ -258,7 +258,7 @@ export default async function AdPage({ params }: Params) {
             <span className="text-xs text-muted-foreground">{categoryLabel(listing.category)}</span>
           </div>
 
-          <h1 className="mt-2.5 font-display text-2xl font-semibold tracking-tight">{listing.title}</h1>
+          <h1 className="mt-2.5 text-2xl font-bold tracking-tight">{listing.title}</h1>
 
           <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <p className="text-2xl font-bold text-primary">{priceLabel ?? 'Ask seller'}</p>

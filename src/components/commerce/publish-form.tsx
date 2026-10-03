@@ -20,6 +20,7 @@ import { ErrorState } from './listings-browse'
 import { ListingListSkeleton } from './skeletons'
 import { PhotoPicker } from './photo-picker'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 
 interface FormState {
   type: 'OFFER' | 'REQUEST'
@@ -88,14 +89,12 @@ export function PublishForm() {
   if (!user) {
     return (
       <div className="rounded-lg border bg-card p-6 text-center">
-        <h1 className="text-lg font-semibold">Sign in to post a listing</h1>
-        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-          An account keeps your listings, saved searches and alerts in one place. It takes less than a minute.
-        </p>
+        <h1 className="text-lg font-semibold">{copy.publish.signInTitle}</h1>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{copy.publish.signInSub}</p>
         <div className="mt-4 flex justify-center gap-2">
-          <Button onClick={() => setAuthOpen(true)}>Sign in or create account</Button>
+          <Button onClick={() => setAuthOpen(true)}>{copy.publish.signInCta}</Button>
           <Button variant="outline" onClick={() => navigate({ name: 'browse' })}>
-            Keep browsing
+            {copy.publish.keepBrowsing}
           </Button>
         </div>
       </div>
@@ -152,14 +151,14 @@ export function PublishForm() {
       const { listing } = await apiPost<{ listing: Listing }>('/api/listings', parsed.data)
       await queryClient.invalidateQueries({ queryKey: ['listings'] })
       await queryClient.invalidateQueries({ queryKey: ['my-listings'] })
-      toast({ title: 'Listing published', description: 'Buyers and sellers can now find it in search.' })
+      toast({ title: copy.publish.publishedToast, description: copy.publish.publishedToastSub })
       navigate({ name: 'listing', id: listing.id })
     } catch (err) {
       const withFields = err as Error & { fields?: Record<string, string> }
       if (withFields.fields) setErrors(withFields.fields)
       else
         toast({
-          title: 'Could not publish listing',
+          title: copy.publish.failedToast,
           description: withFields.message,
           variant: 'destructive',
         })
@@ -175,12 +174,12 @@ export function PublishForm() {
       </Button>
 
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Post a listing</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">Say clearly what you offer or what you need.</p>
+        <h1 className="text-xl font-semibold tracking-tight">{copy.publish.title}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{copy.publish.sub}</p>
       </div>
 
       <div className="space-y-1.5" role="group" aria-label="Listing type">
-        <Label>I want to…</Label>
+        <Label>{copy.publish.iWantTo}</Label>
         <div className="grid grid-cols-2 gap-2">
           {(['OFFER', 'REQUEST'] as const).map((t) => (
             <button
@@ -198,7 +197,7 @@ export function PublishForm() {
                 form.type === t ? 'border-primary bg-accent text-accent-foreground' : 'bg-card text-muted-foreground hover:bg-secondary',
               )}
             >
-              {t === 'OFFER' ? 'Sell something (OFFER)' : 'Ask for something (REQUEST)'}
+              {t === 'OFFER' ? copy.publish.sell : copy.publish.buy}
             </button>
           ))}
         </div>
@@ -209,7 +208,7 @@ export function PublishForm() {
           id="p-title"
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
-          placeholder={form.type === 'OFFER' ? 'e.g. Copper scrap 99% clean' : 'e.g. Need wheat flour, 50 bags weekly'}
+          placeholder={form.type === 'OFFER' ? copy.publish.titlePlaceholderOffer : copy.publish.titlePlaceholderRequest}
           maxLength={120}
           required
         />
@@ -240,20 +239,20 @@ export function PublishForm() {
           maxLength={2000}
           placeholder={
             form.type === 'OFFER'
-              ? 'Condition, packaging, collection or delivery, who should buy…'
-              : 'Specification, how much, how often, who should contact you…'
+              ? copy.publish.descPlaceholderOffer
+              : copy.publish.descPlaceholderRequest
           }
           required
         />
       </Field>
 
-      <Field label="Photos" htmlFor="p-photos" hint="Real photos get more calls — buyers trust what they can see">
+      <Field label={copy.publish.photos} htmlFor="p-photos" hint={copy.publish.photosHint}>
         <PhotoPicker value={form.photos} onChange={(photos) => set('photos', photos)} max={4} />
       </Field>
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label={form.type === 'OFFER' ? 'Price' : 'Budget'} htmlFor="p-price" error={errors.price}>
+          <Field label={form.type === 'OFFER' ? copy.common.price : copy.common.budget} htmlFor="p-price" error={errors.price}>
             <div className="flex gap-2">
               <Input
                 id="p-price"
@@ -271,7 +270,7 @@ export function PublishForm() {
                 aria-label="Currency"
                 value={form.currency}
                 onChange={(e) => set('currency', e.target.value)}
-                className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c.key} value={c.key}>
@@ -282,10 +281,10 @@ export function PublishForm() {
             </div>
           </Field>
           <Field
-            label="Old price (optional)"
+            label={copy.publish.oldPrice}
             htmlFor="p-compare"
             error={errors.compareAtPrice}
-            hint={form.type === 'OFFER' ? 'shows as a discount' : undefined}
+            hint={form.type === 'OFFER' ? copy.publish.oldPriceHint : undefined}
           >
             <Input
               id="p-compare"
@@ -299,10 +298,10 @@ export function PublishForm() {
               disabled={form.type === 'REQUEST'}
             />
           </Field>
-          <Field label="Per" htmlFor="p-unit" error={errors.unit}>
+          <Field label={copy.publish.per} htmlFor="p-unit" error={errors.unit}>
             <Select value={form.unit} onValueChange={(v) => set('unit', v)}>
               <SelectTrigger id="p-unit" aria-invalid={Boolean(errors.unit)}>
-                <SelectValue placeholder="Unit" />
+                <SelectValue placeholder={copy.publish.unitPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {UNITS.map((u) => (
@@ -316,12 +315,12 @@ export function PublishForm() {
         </div>
         <label className="mt-3 flex items-center gap-2 text-sm">
           <Checkbox checked={form.priceNegotiable} onCheckedChange={(v) => set('priceNegotiable', v === true)} />
-          Price is negotiable
+          {copy.publish.priceNegotiable}
         </label>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Quantity available" htmlFor="p-qty" error={errors.quantity}>
+        <Field label={copy.publish.quantity} htmlFor="p-qty" error={errors.quantity}>
           <Input
             id="p-qty"
             type="number"
@@ -333,7 +332,7 @@ export function PublishForm() {
             placeholder="e.g. 500"
           />
         </Field>
-        <Field label="District / Region" htmlFor="p-county" error={errors.county}>
+        <Field label={copy.browse.district} htmlFor="p-county" error={errors.county}>
           <Select value={form.county} onValueChange={(v) => set('county', v)}>
             <SelectTrigger id="p-county" aria-invalid={Boolean(errors.county)}>
               <SelectValue placeholder="Choose district" />
@@ -349,13 +348,13 @@ export function PublishForm() {
         </Field>
       </div>
 
-      <Field label="Area / town (optional)" htmlFor="p-area" error={errors.area}>
+      <Field label={copy.publish.area} htmlFor="p-area" error={errors.area}>
         <Input id="p-area" value={form.area} onChange={(e) => set('area', e.target.value)} maxLength={80} placeholder="e.g. Kisenyi" />
       </Field>
 
       <div className="rounded-lg border bg-secondary/30 p-3.5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Contact phone" htmlFor="p-phone" error={errors.contactPhone}>
+          <Field label={copy.publish.contactPhone} htmlFor="p-phone" error={errors.contactPhone}>
             <Input
               id="p-phone"
               type="tel"
@@ -366,7 +365,7 @@ export function PublishForm() {
               required
             />
           </Field>
-          <Field label="WhatsApp (optional)" htmlFor="p-wa" error={errors.contactWhatsapp} hint="Leave empty if same as phone">
+          <Field label={copy.publish.whatsapp} htmlFor="p-wa" error={errors.contactWhatsapp} hint={copy.publish.whatsappHint}>
             <Input
               id="p-wa"
               type="tel"
@@ -387,10 +386,10 @@ export function PublishForm() {
 
       <div className="flex gap-2 pb-2">
         <Button type="submit" disabled={busy} className="press flex-1 sm:flex-none sm:px-8">
-          {busy ? 'Publishing…' : 'Publish listing'}
+          {busy ? copy.publish.submitting : copy.publish.submit}
         </Button>
         <Button type="button" variant="outline" onClick={() => navigate({ name: 'browse' })} disabled={busy} className="press">
-          Cancel
+          {copy.common.cancel}
         </Button>
       </div>
     </form>
@@ -546,7 +545,7 @@ export function EditListingForm({ id }: { id: string }) {
       <Button type="button" variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'listing', id })}>
         <ArrowLeft className="size-4" aria-hidden /> Back to listing
       </Button>
-      <h1 className="text-xl font-semibold tracking-tight">Edit listing</h1>
+      <h1 className="text-xl font-semibold tracking-tight">{copy.publish.editTitle}</h1>
 
       <Field label="Title" htmlFor="e-title" error={errors.title} hint={`${form.title.length}/120`}>
         <Input id="e-title" value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={120} required />
@@ -592,7 +591,7 @@ export function EditListingForm({ id }: { id: string }) {
               aria-label="Currency"
               value={form.currency}
               onChange={(e) => set('currency', e.target.value)}
-              className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-9 shrink-0 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               {CURRENCIES.map((c) => (
                 <option key={c.key} value={c.key}>

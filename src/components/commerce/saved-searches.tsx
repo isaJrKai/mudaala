@@ -15,6 +15,7 @@ import { ListingListSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
 import { ErrorState } from './listings-browse'
 import { useState } from 'react'
+import { copy } from '@/lib/copy'
 
 // Saved searches — persisted filters with honest, recomputed match counts.
 export function SavedSearches() {
@@ -53,10 +54,9 @@ export function SavedSearches() {
   if (!user) {
     return (
       <EmptyState
-        icon={<Bookmark />}
-        title="Sign in to save searches"
-        description="Save the filters you use often and get an alert when a new listing matches."
-        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>Sign in</Button>}
+        title={copy.saved.signInTitle}
+        description={copy.saved.signInSub}
+        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>{copy.nav.signIn}</Button>}
       />
     )
   }
@@ -68,10 +68,9 @@ export function SavedSearches() {
   if (searches.length === 0) {
     return (
       <EmptyState
-        icon={<Bookmark />}
-        title="No saved searches yet"
-        description="Set filters on Browse and tap “Save this search” — we will alert you when new listings match."
-        action={<Button onClick={() => navigate({ name: 'browse' })}>Browse listings</Button>}
+        title={copy.saved.emptyTitle}
+        description={copy.saved.emptySub}
+        action={<Button onClick={() => navigate({ name: 'browse' })}>{copy.common.browseListings}</Button>}
       />
     )
   }
@@ -93,15 +92,15 @@ export function SavedSearches() {
       applyQuery(patch)
       navigate({ name: 'browse' })
     } catch {
-      toast({ title: 'This saved search is corrupted. Delete and recreate it.', variant: 'destructive' })
+      toast({ title: copy.home.savedCorrupt, variant: 'destructive' })
     }
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Saved searches</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">You get an alert on every new listing that matches.</p>
+        <h1 className="text-xl font-semibold tracking-tight">{copy.nav.savedSearches}</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">{copy.saved.sub}</p>
       </div>
 
       <div className="space-y-3">
@@ -112,14 +111,14 @@ export function SavedSearches() {
                 <h3 className="truncate font-medium">{search.name}</h3>
                 <p className="mt-0.5 truncate text-sm text-muted-foreground">{describeQuery(safeParse(search.queryJson))}</p>
               </div>
-              <p className="shrink-0 text-right text-sm font-medium">
-                {search.lastMatchCount} {search.lastMatchCount === 1 ? 'match' : 'matches'}
-                <span className="block text-xs font-normal text-muted-foreground">checked {timeAgo(search.lastCheckedAt)}</span>
+              <p className="shrink-0 text-right text-sm font-medium tabular-nums">
+                {copy.home.matches(search.lastMatchCount)}
+                <span className="block text-xs font-normal text-muted-foreground">{copy.saved.checked(timeAgo(search.lastCheckedAt))}</span>
               </p>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <Button size="sm" className="h-8 gap-1.5 press" onClick={() => apply(search)}>
-                Apply <ArrowRight className="size-3.5" aria-hidden />
+                {copy.saved.apply} <ArrowRight className="size-3.5" aria-hidden />
               </Button>
               <Button
                 size="sm"
@@ -128,7 +127,7 @@ export function SavedSearches() {
                 onClick={() => checkMutation.mutate(search.id)}
                 disabled={checkingId === search.id}
               >
-                <RefreshCw className={cn('size-3.5', checkingId === search.id && 'animate-spin')} aria-hidden /> Check now
+                <RefreshCw className={cn('size-3.5', checkingId === search.id && 'animate-spin')} aria-hidden /> {copy.saved.checkNow}
               </Button>
               <Button
                 size="sm"
@@ -137,7 +136,7 @@ export function SavedSearches() {
                 onClick={() => deleteMutation.mutate(search.id)}
                 disabled={deleteMutation.isPending}
               >
-                <Trash2 className="size-3.5" aria-hidden /> Remove
+                <Trash2 className="size-3.5" aria-hidden /> {copy.saved.remove}
               </Button>
             </div>
           </div>

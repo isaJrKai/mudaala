@@ -269,12 +269,12 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           <Store className="size-4" aria-hidden /> My Shop
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          This is your space on Mudaala — give it the name of your shop. Buyers see it on every listing you post.
+          This is your space on Mudaala. Give it the name of your shop. Buyers see it on every listing you post.
         </p>
         {shopCode && shopUrl ? (
           <div className="mt-1.5 rounded-md border bg-secondary/30 p-2.5">
             <p className="text-xs text-muted-foreground">
-              Your shop code is <span className="font-mono font-semibold text-foreground">{shopCode}</span> — it never changes, so buyers and old posters can always find you.
+              Your shop code is <span className="font-semibold tracking-widest text-foreground tabular-nums">{shopCode}</span>. It never changes, so buyers and old posters can always find you.
             </p>
             <div className="mt-2 flex items-center gap-2">
               <a
@@ -302,7 +302,7 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
               </button>
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Anyone with this link lands straight on your public shop page — put it on WhatsApp, posters, business cards.
+              Anyone with this link lands straight on your public shop page. Put it on WhatsApp, posters, business cards.
             </p>
           </div>
         ) : null}
@@ -331,8 +331,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
           >
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
-              Another shop already uses this name{clashPlace ? ` in ${clashPlace}` : ''}. You can still use it — buyers tell
-              shops apart by area and shop code — so add your <strong>Area / town</strong> below to make yours easy to recognise.
+              Another shop already uses this name{clashPlace ? ` in ${clashPlace}` : ''}. You can still use it. Buyers tell
+              shops apart by area and shop code. Add your <strong>Area / town</strong> below to make yours easy to recognise.
             </span>
           </p>
         ) : null}
@@ -468,8 +468,8 @@ function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {saved
-              ? 'Saved ✓ — buyers nearby see your shop first. Your exact spot is never shown; distances stay approximate.'
-              : 'Stand at your shop, then tap. The browser asks for permission once — say yes and we save the spot. Nothing is tracked.'}
+              ? 'Saved. Buyers nearby see your shop first. Your exact spot is never shown; distances stay approximate.'
+              : 'Stand at your shop, then tap. The browser asks for permission once. Say yes and we save the spot. Nothing is tracked.'}
           </p>
         </div>
         {saved ? (
@@ -494,7 +494,7 @@ function ShopLocationBlock({ profile }: { profile: BusinessProfileT | null }) {
           className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-sm text-amber-800 ring-1 ring-inset ring-amber-600/20"
         >
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>We could not get your location. You can try again later — your Area / town still helps buyers find you.</span>
+          <span>We could not get your location. You can try again later. Your Area / town still helps buyers find you.</span>
         </p>
       ) : null}
     </div>
@@ -535,8 +535,8 @@ function ShopChecklist({ form }: { form: ProfileFormState }) {
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {complete
-          ? 'Buyers see the ✓ Complete badge on your shop page.'
-          : 'Shops with complete details look real — buyers call them with confidence.'}
+          ? 'Buyers see the Complete badge on your shop page.'
+          : 'Shops with complete details look real. Buyers call them with confidence.'}
       </p>
       <div
         className="mt-2 h-1.5 overflow-hidden rounded-full bg-border"

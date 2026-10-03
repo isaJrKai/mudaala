@@ -151,10 +151,10 @@ export default async function ShopPage({ params }: Params) {
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
             Shop code{' '}
-            <span className="rounded border bg-secondary px-1.5 py-0.5 font-mono text-[13px] font-semibold text-foreground">
+            <span className="rounded border bg-secondary px-1.5 py-0.5 text-[13px] font-semibold tracking-widest text-foreground tabular-nums">
               {shop.shopCode}
             </span>{' '}
-            — type it into Mudaala search to find this shop again.
+            Type it into Mudaala search to find this shop again.
           </p>
           {shop.description ? <p className="mt-2 text-sm leading-relaxed text-foreground/90">{shop.description}</p> : null}
           {shop.hours ? (
@@ -222,7 +222,7 @@ export default async function ShopPage({ params }: Params) {
 
       <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
         <p>
-          Mudaala — trade locally, discover more.{' '}
+          Mudaala: buy and sell near you.{' '}
           <a href="/#/browse" className="font-medium text-primary underline-offset-2 hover:underline">
             Browse the market
           </a>

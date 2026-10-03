@@ -25,6 +25,8 @@ import { ListingBlock } from './listing-card'
 import { ListingGridSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
 import { EmptyState } from './empty-state'
+import { PlaceholderTile } from './placeholder-tile'
+import { copy } from '@/lib/copy'
 
 export function ShopView({ id }: { id: string }) {
   const { navigate } = useAppStore()
@@ -101,8 +103,8 @@ export function ShopView({ id }: { id: string }) {
     shopUrl && shop.shopCode
       ? `https://wa.me/?text=${encodeURIComponent(
           isOwner
-            ? `Find ${shop.name} on Mudaala — our code is ${shop.shopCode} — ${shopUrl}`
-            : `Found ${shop.name} on Mudaala — shop code ${shop.shopCode} — ${shopUrl}`,
+            ? copy.shop.shareTextOwner(shop.name, shop.shopCode, shopUrl)
+            : copy.shop.shareTextBuyer(shop.name, shop.shopCode, shopUrl),
         )}`
       : null
 
@@ -124,8 +126,7 @@ export function ShopView({ id }: { id: string }) {
         >
           <Eye className="size-3.5 shrink-0 text-primary" aria-hidden />
           <p className="min-w-0 flex-1 text-xs leading-snug">
-            <span className="font-semibold text-primary">This is your shop</span>
-            <span className="text-foreground/75"> — exactly what buyers see.</span>
+            <span className="font-semibold text-primary">{copy.shop.ownerStrip}</span>
           </p>
           <Button
             variant="outline"
@@ -133,19 +134,16 @@ export function ShopView({ id }: { id: string }) {
             className="press h-7 gap-1 border-primary/30 px-2.5 text-xs text-primary hover:bg-accent"
             onClick={() => navigate({ name: 'account' })}
           >
-            <Pencil className="size-3" aria-hidden /> Edit shop
+            <Pencil className="size-3" aria-hidden /> {copy.shop.editShop}
           </Button>
         </section>
       ) : null}
 
-      {/* Shop identity — the seller's own space, named by them. The photo is
-          the cover and the name is the signboard: serif, in the brand green,
-          the way a market shop paints its name, with the painter's stroke
-          under it. Guests are greeted the way East Africa greets — Karibu.
-          The photo meets the signboard through the Mudaala curve — the brand's
-          sweeping edge. Text never overlays the photo — we do not control
-          what sellers upload, so the name sits on our card where contrast is
-          always ours to keep; the curve shapes the seam, it carries no text. */}
+      {/* Shop identity — the seller's own space, named by them. The name is
+          the signboard: serif, in the brand green, the way a market shop
+          paints its name. The cover carries no photo until the seller uploads
+          one: the flat grey tile (shop name + camera) stands in — no stock,
+          no seed, no generated images anywhere. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
         {shop.photoUrl ? (
           <div className="relative">
@@ -155,9 +153,6 @@ export function ShopView({ id }: { id: string }) {
               className="h-36 w-full object-cover object-center sm:h-48"
             />
             <MudaalaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
-            {/* The shop's face: a square avatar riding the seam, bottom-left
-                — the way a market stall's photo hangs over the counter edge.
-                Same image as the cover, so it lazy-loads from cache. */}
             <img
               src={shop.photoUrl}
               alt=""
@@ -166,29 +161,21 @@ export function ShopView({ id }: { id: string }) {
             />
           </div>
         ) : (
-          // No photo yet: a flat green signboard with the shop's initial —
-          // a designed, honest placeholder, not a broken-looking gap. Same
-          // curve at the seam, so the doorway keeps its shape either way.
-          <div className="relative flex h-36 w-full items-center justify-center bg-primary sm:h-44" aria-hidden>
-            <span className="font-display text-6xl font-semibold text-primary-foreground sm:text-7xl">
-              {shop.name.charAt(0).toUpperCase()}
-            </span>
+          // PLACEHOLDER RULE — no photo yet: the neutral grey tile with the
+          // shop's name and a small camera icon. Never a stock image.
+          <div className="relative">
+            <PlaceholderTile
+              title={shop.name}
+              label={copy.shop.coverTileAria(shop.name)}
+              iconClassName="size-7"
+              className="h-36 w-full sm:h-44"
+            />
             <MudaalaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
           </div>
         )}
         <div className="p-4 sm:p-5">
-          {/* With an avatar overlapping the seam, the signboard block is
-              indented to clear it — the name starts where the photo ends. */}
           <div className={shop.photoUrl ? 'pl-[4.5rem] sm:pl-[5.5rem]' : undefined}>
-            {/* A buyer entering someone's shop is a guest, and the greeting is
-                in the word East Africa actually uses. The owner doesn't greet
-                themselves — they get the mirror strip above instead. */}
-            {!isOwner ? (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/75">
-                Karibu · welcome
-              </p>
-            ) : null}
-            <h1 className="mt-0.5 font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
+            <h1 className="font-display text-[1.65rem] font-semibold leading-tight tracking-tight text-primary sm:text-3xl">
               {shop.name}
             </h1>
             {/* The painter's stroke under a market signboard — drawn once on
@@ -217,11 +204,11 @@ export function ShopView({ id }: { id: string }) {
                 <Clock className="size-3.5" aria-hidden /> {shop.hours}
               </span>
             ) : null}
-            <span>
+            <span className="tabular-nums">
               On Mudaala since {new Date(shop.memberSince).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
             </span>
             {shop.shopCode ? (
-              <span className="font-mono text-[13px] font-semibold tracking-widest text-foreground/70">{shop.shopCode}</span>
+              <span className="text-[13px] font-semibold tracking-widest text-foreground/70 tabular-nums">{shop.shopCode}</span>
             ) : null}
           </p>
 
@@ -250,20 +237,20 @@ export function ShopView({ id }: { id: string }) {
             // The empty slot works FOR the seller: it names what belongs here
             // and hands them the pen. Not a blank gap, not a lorem ipsum.
             <p className="mt-3 max-w-prose rounded-md border border-dashed border-primary/30 bg-accent/40 px-3 py-2 text-sm leading-relaxed text-foreground/80">
-              Add a few words about your shop — buyers read them right here.{' '}
+              {copy.shop.writeAboutPrompt}{' '}
               <button
                 type="button"
                 className="press inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
                 onClick={() => navigate({ name: 'account' })}
               >
-                <Pencil className="size-3" aria-hidden /> Write it
+                <Pencil className="size-3" aria-hidden /> {copy.shop.writeAbout}
               </button>
             </p>
           ) : (
             // And no invented copy for buyers either — the honest line beats
             // a template's polished filler.
-            <p className="mt-3 max-w-prose text-sm italic leading-relaxed text-muted-foreground/85">
-              The shop hasn't written its story yet — the listings and the phone line speak for it.
+            <p className="mt-3 max-w-prose text-sm leading-relaxed text-muted-foreground/85">
+              {copy.listing.noStory}
             </p>
           )}
         </div>
@@ -274,14 +261,12 @@ export function ShopView({ id }: { id: string }) {
             these are their incoming lines. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
           <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
-            {isOwner
-              ? 'Buyers tap these — the call or message lands straight on your phone.'
-              : 'Straight to the shop, no middleman — your call or message rings their phone.'}
+            {isOwner ? copy.shop.contactOwnerNote : copy.shop.contactBuyerNote}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(shop.phone)} aria-label={`Call ${shop.name}`}>
-                <Phone className="size-4" aria-hidden /> Call shop
+                <Phone className="size-4" aria-hidden /> {copy.common.call}
               </a>
             </Button>
             {whatsappNumber ? (
@@ -315,11 +300,9 @@ export function ShopView({ id }: { id: string }) {
               {shopUrl ? <QRCode value={shopUrl} size={48} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold">Find this shop again</h2>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Scan the code, or type it into Mudaala search like a till number.
-              </p>
-              <p className="mt-1 font-mono text-lg font-bold tracking-widest text-primary">{shop.shopCode}</p>
+              <h2 className="text-sm font-semibold">{copy.shop.findAgain}</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{copy.shop.findAgainHint}</p>
+              <p className="mt-1 text-lg font-bold tracking-widest text-primary tabular-nums">{shop.shopCode}</p>
             </div>
             <div className="flex shrink-0 flex-col gap-1.5">
               <Button variant="outline" size="sm" className="press h-8 gap-1 px-2.5 text-xs" onClick={copyShopCode}>
@@ -365,17 +348,13 @@ export function ShopView({ id }: { id: string }) {
               {shopUrl ? <QRCode value={shopUrl} size={64} role="img" aria-label={`QR code for ${shop.name}'s shop`} /> : null}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold">Your shop QR poster</h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Print it and put it where customers stand. Anyone who scans lands right here — no typing, no searching.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Your code is <span className="font-mono font-semibold text-foreground">{shop.shopCode}</span> — it never changes, so old posters keep working. Customers can type it into the Mudaala search, too.
-              </p>
+              <h2 className="text-base font-semibold">{copy.shop.posterTitle}</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">{copy.shop.posterSub}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{copy.shop.posterCodeNote(shop.shopCode)}</p>
             </div>
             <div className="flex shrink-0 flex-col gap-2">
               <Button variant="outline" className="gap-1.5" onClick={() => setPosterOpen(true)}>
-                <QrCode className="size-4" aria-hidden /> Show poster &amp; print
+                <QrCode className="size-4" aria-hidden /> {copy.shop.posterShow}
               </Button>
               {shareHref ? (
                 <Button asChild variant="outline" className="gap-1.5 border-emerald-600 text-emerald-800 hover:bg-emerald-50">
@@ -397,40 +376,33 @@ export function ShopView({ id }: { id: string }) {
       {/* The catalogue — every active listing this shop runs */}
       <section aria-label="Shop catalogue" className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold">
-            In this shop <span className="font-normal text-muted-foreground">({shop.activeCount})</span>
-          </h2>
+          <h2 className="text-base font-semibold">{copy.shop.catalogue(shop.activeCount)}</h2>
           {/* The platform's position, in one line: we host, we never set the
-              price. It reads as trust in the seller, which is what makes a
-              buyer trust the seller. */}
-          <p className="mt-0.5 text-xs text-muted-foreground">Posted by the shop — prices are theirs, not ours.</p>
+              price. It reads as trust in the seller. */}
+          <p className="mt-0.5 text-xs text-muted-foreground">{copy.shop.catalogueNote}</p>
         </div>
 
         {listings.length === 0 ? (
           <EmptyState
-            icon={<Store />}
-            title="Nothing on the shelf right now"
-            description={
-              isOwner
-                ? 'Buyers are landing on this page — post a listing and the shelf fills up.'
-                : "The shop hasn't posted anything yet — the stall may still have stock. Call or WhatsApp above, or browse other shops."
-            }
+            title={copy.shop.emptyOwnerTitle}
+            description={isOwner ? copy.shop.emptyOwnerSub : copy.shop.emptyBuyerSub}
             action={
               isOwner ? (
                 <Button className="press" onClick={() => navigate({ name: 'publish' })}>
-                  Post a listing
+                  {copy.common.postAnAd}
                 </Button>
               ) : (
                 <Button variant="outline" className="press" onClick={() => navigate({ name: 'browse' })}>
-                  Browse all listings
+                  {copy.common.browseAll}
                 </Button>
               )
             }
           />
         ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-            {/* Same blocks as the browse feed — a shop's catalogue should feel
-                like a market table: every item's face visible at once. */}
+          // Rows on the phone, compact blocks in a grid on desktop — the
+          // same card as the browse feed, so a shop feels like its own
+          // corner of the same market.
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
             {listings.map((listing) => (
               <ListingBlock
                 key={listing.id}
@@ -448,9 +420,9 @@ export function ShopView({ id }: { id: string }) {
       {posterOpen ? (
         <div className="shop-poster fixed inset-0 z-50 overflow-y-auto bg-white p-5" role="dialog" aria-modal="true" aria-label={`QR poster for ${shop.name}`}>
           <div className="no-print mx-auto flex max-w-md items-center justify-between pb-4">
-            <p className="text-sm font-medium text-neutral-500">Poster preview — print and stick it up</p>
+            <p className="text-sm font-medium text-neutral-500">{copy.shop.posterHint}</p>
             <Button variant="ghost" size="sm" className="gap-1" onClick={() => setPosterOpen(false)}>
-              <X className="size-4" aria-hidden /> Close
+              <X className="size-4" aria-hidden /> {copy.common.close}
             </Button>
           </div>
           <div className="mx-auto max-w-md overflow-hidden rounded-lg border-2 border-neutral-900 bg-white text-center">
@@ -467,18 +439,19 @@ export function ShopView({ id }: { id: string }) {
                 <Leaf className="size-5 fill-primary/15 text-primary" aria-hidden />
                 <span className="font-display text-xl font-bold lowercase tracking-tight text-primary">mudaala</span>
               </span>
-              <span className="text-right text-[9px] font-semibold uppercase leading-relaxed tracking-[0.16em] text-neutral-500">
-                Local shops.
-                <br />
-                Real opportunities.
+              <span className="text-right text-[10px] font-medium leading-relaxed text-neutral-500">
+                {copy.app.tagline}
               </span>
             </div>
             <div className="px-8 pb-7 pt-4">
               {shop.photoUrl ? (
-                <img src={shop.photoUrl} alt="" className="mx-auto size-28 rounded-xl border border-neutral-300 object-cover" />
+                <img src={shop.photoUrl} alt="" className="mx-auto size-28 rounded-lg border border-neutral-300 object-cover" />
               ) : (
-                <span className="mx-auto flex size-28 items-center justify-center rounded-xl border border-neutral-300 text-4xl font-bold text-neutral-800">
-                  {shop.name.charAt(0).toUpperCase()}
+                // PLACEHOLDER RULE — the printed poster gets the same neutral
+                // grey tile the app shows. No stock or generated images.
+                <span className="mx-auto flex size-28 flex-col items-center justify-center gap-1 rounded-lg border border-neutral-300 bg-neutral-100 text-neutral-500">
+                  <Leaf className="size-6" aria-hidden />
+                  <span className="px-2 text-center text-[10px] font-medium leading-tight">{shop.name}</span>
                 </span>
               )}
               <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-neutral-900">{shop.name}</h2>
@@ -500,17 +473,16 @@ export function ShopView({ id }: { id: string }) {
                   <Leaf className="size-6 fill-primary/15 text-primary" aria-hidden />
                 </span>
               </div>
-              <p className="mt-3 text-sm font-semibold text-neutral-900">Scan to shop on Mudaala</p>
-              <p className="mt-2 font-display text-4xl font-bold tracking-[0.12em] text-neutral-900">{shop.shopCode}</p>
-              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral-500">Shop code</p>
-              <p className="mt-2 text-xs text-neutral-600">Can't scan? Type the code in Mudaala search.</p>
+              <p className="mt-3 text-sm font-semibold text-neutral-900">{copy.shop.posterScan}</p>
+              <p className="mt-2 text-4xl font-bold tracking-[0.12em] text-neutral-900 tabular-nums">{shop.shopCode}</p>
+              <p className="mt-0.5 text-[11px] font-medium text-neutral-500">{copy.shop.posterCodeCaption}</p>
+              <p className="mt-2 text-xs text-neutral-600">{copy.shop.posterRescan}</p>
             </div>
             <MudaalaCurve className="block h-6 w-full text-primary" />
             <div className="bg-primary px-8 pb-8 pt-3 text-primary-foreground">
-              <p className="flex items-center justify-center gap-2 text-base font-semibold">
-                <Phone className="size-4" aria-hidden /> Call us: {formatPhonePretty(shop.phone)}
+              <p className="flex items-center justify-center gap-2 text-base font-semibold tabular-nums">
+                <Phone className="size-4" aria-hidden /> {copy.shop.posterCallUs(formatPhonePretty(shop.phone))}
               </p>
-              <p className="mt-1.5 font-display text-lg italic text-primary-foreground/85">Real shops, direct calls</p>
             </div>
           </div>
           <div className="no-print mx-auto max-w-md pt-4">

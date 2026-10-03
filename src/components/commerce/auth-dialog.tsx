@@ -24,9 +24,8 @@ export function AuthDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          {/* The one brand moment in the dialog: the shop-serif welcome. */}
-          <DialogTitle className="font-display text-xl tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
-          <DialogDescription>One account for everything — buy, sell, save searches and get alerts.</DialogDescription>
+          <DialogTitle className="text-xl font-bold tracking-tight text-primary">Welcome to Mudaala</DialogTitle>
+          <DialogDescription>One account for everything. Buy, sell, save searches and get alerts.</DialogDescription>
         </DialogHeader>
         {/* 'forgot' is a reachable tab value with no trigger — the Sign in form's
             "Forgot password?" link switches to it, so the TabsList stays two
@@ -210,7 +209,7 @@ function RegisterForm({ onDone, onSwitch }: { onDone: () => void; onSwitch: () =
       const res = await apiPost<{ user: SessionUser; sessionToken: string }>('/api/auth/register', parsed.data)
       if (res.sessionToken) storeSessionToken(res.sessionToken)
       await queryClient.invalidateQueries()
-      toast({ title: `Account created — welcome, ${res.user.name}` })
+      toast({ title: `Account created. Welcome, ${res.user.name}` })
       onDone()
     } catch (err) {
       const withFields = err as Error & { fields?: Record<string, string> }
@@ -434,7 +433,7 @@ function ForgotPasswordForm({ onDone, onBack }: { onDone: () => void; onBack: ()
           onChange={(e) => setNewPassword(e.target.value)}
           required
         />
-        <p className="text-xs text-muted-foreground">At least 8 characters — and not your phone number.</p>
+        <p className="text-xs text-muted-foreground">At least 8 characters, and not your phone number.</p>
       </div>
       {error ? (
         <p role="alert" className="text-sm text-destructive">

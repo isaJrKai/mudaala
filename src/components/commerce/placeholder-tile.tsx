@@ -15,12 +15,15 @@ import { categoryLabel } from '@/lib/constants'
  */
 export function PlaceholderTile({
   category,
+  title,
   note,
   className,
   iconClassName,
   label = 'Photo coming from the seller',
 }: {
   category?: string
+  /** Non-category tiles (shop covers, hero): a plain name line instead. */
+  title?: string
   note?: string
   className?: string
   iconClassName?: string
@@ -38,7 +41,10 @@ export function PlaceholderTile({
       )}
     >
       <Camera aria-hidden className={cn('size-5 text-muted-foreground/70', iconClassName)} />
-      {category ? (
+      {title ? (
+        <span className="px-3 text-xs font-medium text-muted-foreground">{title}</span>
+      ) : null}
+      {category && !title ? (
         <span className="px-3 text-xs font-medium text-muted-foreground">{categoryLabel(category)}</span>
       ) : null}
       {note ? <span className="px-3 text-[11px] text-muted-foreground/80">{note}</span> : null}

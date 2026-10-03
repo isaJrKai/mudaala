@@ -27,6 +27,7 @@ import { apiGet } from '@/lib/client'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 
 // The WhatsApp support number is deployment configuration (SUPPORT_WHATSAPP,
 // international digits without "+"). It arrives through NEXT_PUBLIC_ inlining;
@@ -36,7 +37,7 @@ const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? ''
 
 function supportLink(phone: string): string {
   const digits = phone.replace(/\D/g, '')
-  const text = 'Hi Mudaala, I need some help.'
+  const text = copy.nav.helpPrompt
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`
 }
 
@@ -55,14 +56,14 @@ export function AppSidebar() {
   const bellRef = useBellShake(unread)
 
   const items: Array<{ name: ViewName; label: string; icon: React.ReactNode; badge?: number }> = [
-    { name: 'home', label: 'Home', icon: <Home aria-hidden /> },
-    { name: 'browse', label: 'Browse', icon: <Search aria-hidden /> },
-    { name: 'publish', label: 'Post', icon: <PlusCircle aria-hidden /> },
-    { name: 'my-listings', label: 'My Listings', icon: <Tag aria-hidden /> },
-    { name: 'saved', label: 'Saved Searches', icon: <Bookmark aria-hidden /> },
+    { name: 'home', label: copy.nav.home, icon: <Home aria-hidden /> },
+    { name: 'browse', label: copy.nav.browse, icon: <Search aria-hidden /> },
+    { name: 'publish', label: copy.nav.post, icon: <PlusCircle aria-hidden /> },
+    { name: 'my-listings', label: copy.nav.myListings, icon: <Tag aria-hidden /> },
+    { name: 'saved', label: copy.nav.savedSearches, icon: <Bookmark aria-hidden /> },
     {
       name: 'notifications',
-      label: 'Notifications',
+      label: copy.nav.notifications,
       icon: (
         <span ref={bellRef} className="inline-flex" style={{ transformOrigin: '50% 18%' }}>
           <Bell aria-hidden />
@@ -70,8 +71,8 @@ export function AppSidebar() {
       ),
       badge: unread,
     },
-    { name: 'account', label: 'My Business', icon: <Store aria-hidden /> },
-    { name: 'settings', label: 'Settings', icon: <Settings aria-hidden /> },
+    { name: 'account', label: copy.nav.account, icon: <Store aria-hidden /> },
+    { name: 'settings', label: copy.nav.settings, icon: <Settings aria-hidden /> },
   ]
 
   return (
@@ -132,7 +133,7 @@ export function AppSidebar() {
           onClick={() => navigate({ name: 'publish' })}
         >
           <PlusCircle className="size-4" aria-hidden />
-          Post what you need / have
+          {copy.nav.postAd}
         </Button>
 
         {SUPPORT_WHATSAPP ? (
@@ -146,7 +147,8 @@ export function AppSidebar() {
           >
             <WhatsAppIcon className="size-4 shrink-0 text-primary" aria-hidden />
             <span>
-              Need help? <span className="font-medium text-foreground">Chat on WhatsApp</span>
+              {copy.nav.helpNeed}{' '}
+              <span className="font-medium text-foreground">{copy.nav.helpWhatsApp}</span>
             </span>
           </a>
         ) : null}

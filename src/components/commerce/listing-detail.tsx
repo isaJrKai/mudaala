@@ -34,7 +34,10 @@ import { TypeBadge, StatusBadge } from './badges'
 import { ListingListSkeleton } from './skeletons'
 import { ErrorState } from './listings-browse'
 import { EmptyState } from './empty-state'
+import { copy } from '@/lib/copy'
 import { cn } from '@/lib/utils'
+import { useSession } from '@/hooks/use-session'
+import { Camera } from 'lucide-react'
 
 function PhotoGallery({ listing }: { listing: ListingDetailT }) {
   if (listing.photos.length === 0) {
@@ -54,24 +57,22 @@ function PhotoGallery({ listing }: { listing: ListingDetailT }) {
     <div className="relative">
       <div
         className="flex snap-x snap-mandatory gap-2 overflow-x-auto scrollbar-slim p-2"
-        aria-label={`Photos of ${listing.title}`}
+        aria-label={copy.listing.photosOfAria(listing.title)}
       >
         {listing.photos.map((photo, i) => (
-          // Each photo clips its own zoom so the lean-in never spills onto
-          // its neighbors in the rail.
-          <div key={photo} className="relative h-56 w-[88%] shrink-0 snap-center overflow-hidden rounded-md border sm:h-80">
+          <div key={photo} className="relative h-56 w-[88%] shrink-0 snap-center overflow-hidden rounded-lg border sm:h-80">
             <img
               src={photo}
-              alt={`${listing.title} — photo ${i + 1} of ${listing.photos.length}`}
+              alt={copy.listing.photoAlt(listing.title, i, listing.photos.length)}
               loading={i === 0 ? 'eager' : 'lazy'}
-              className="size-full object-cover transition-transform duration-300 ease-out hover:scale-[1.03] motion-reduce:transition-none motion-reduce:transform-none"
+              className="size-full object-cover"
             />
           </div>
         ))}
       </div>
       {listing.photos.length > 1 ? (
-        <span className="absolute right-3 top-3 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
-          {listing.photos.length} photos · swipe
+        <span className="absolute right-3 top-3 rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+          {copy.listing.photoSwipe(listing.photos.length)}
         </span>
       ) : null}
     </div>
@@ -82,6 +83,7 @@ export function ListingDetail({ id }: { id: string }) {
   const { navigate } = useAppStore()
   const addToBasket = useAddToBasket()
   const [added, flashAdded] = useAddedFlash()
+  const { user } = useSession()
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['listing', id],
@@ -99,7 +101,7 @@ export function ListingDetail({ id }: { id: string }) {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
-          <ArrowLeft className="size-4" aria-hidden /> Back to browse
+          <ArrowLeft className="size-4" aria-hidden /> {copy.listing.backToBrowse}
         </Button>
         <ListingListSkeleton count={2} />
       </div>
@@ -110,9 +112,9 @@ export function ListingDetail({ id }: { id: string }) {
     return (
       <div className="space-y-3">
         <Button variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
-          <ArrowLeft className="size-4" aria-hidden /> Back to browse
+          <ArrowLeft className="size-4" aria-hidden /> {copy.listing.backToBrowse}
         </Button>
-        <ErrorState message={error instanceof Error ? error.message : 'Could not load this listing'} onRetry={() => refetch()} />
+        <ErrorState message={error instanceof Error ? error.message : copy.listing.loadError} onRetry={() => refetch()} />
       </div>
     )
   }
@@ -131,7 +133,7 @@ export function ListingDetail({ id }: { id: string }) {
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" className="-ml-2 gap-1" onClick={() => navigate({ name: 'browse' })}>
-        <ArrowLeft className="size-4" aria-hidden /> Back to browse
+        <ArrowLeft className="size-4" aria-hidden /> {copy.listing.backToBrowse}
       </Button>
 
       <article className="overflow-hidden rounded-lg border bg-card">
@@ -144,10 +146,10 @@ export function ListingDetail({ id }: { id: string }) {
             <span className="text-xs text-muted-foreground">{categoryLabel(listing.category)}</span>
           </div>
 
-          <h1 className="mt-2.5 text-xl font-semibold tracking-tight">{listing.title}</h1>
+          <h1 className="mt-2.5 text-xl font-bold tracking-tight">{listing.title}</h1>
 
           <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <p className="text-2xl font-bold text-primary">
+            <p className="text-2xl font-bold text-primary tabular-nums">
               {formatPrice(listing.price, listing.unit ? unitLabel(listing.unit) : null, listing.currency)}
             </p>
             {/* A real discount: the struck-through "was" price says exactly what
@@ -155,15 +157,15 @@ export function ListingDetail({ id }: { id: string }) {
                 API rejects old prices that are not higher than the current one. */}
             {listing.price !== null && listing.compareAtPrice !== null && listing.compareAtPrice > listing.price ? (
               <>
-                <span className="text-sm text-muted-foreground line-through">
-                  was {formatPrice(listing.compareAtPrice, null, listing.currency)}
+                <span className="text-sm text-muted-foreground line-through tabular-nums">
+                  {copy.common.was} {formatPrice(listing.compareAtPrice, null, listing.currency)}
                 </span>
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20">
+                <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-800 ring-1 ring-inset ring-emerald-600/20 tabular-nums">
                   −{Math.round(((listing.compareAtPrice - listing.price) / listing.compareAtPrice) * 100)}%
                 </span>
               </>
             ) : null}
-            {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">Negotiable</span> : null}
+            {listing.priceNegotiable ? <span className="text-sm text-muted-foreground">{copy.common.negotiable}</span> : null}
             {/* The heart lives with the price: "come back to this one" sits
                 right next to "this is what it costs". OFFERs only, like the
                 basket — a shortlist of things you can actually take. */}
@@ -193,11 +195,11 @@ export function ListingDetail({ id }: { id: string }) {
                     style={{ animationDuration: '150ms' }}
                     aria-hidden
                   />
-                  Added to basket
+                  {copy.listing.addedToBasket}
                 </>
               ) : (
                 <>
-                  <Plus className="size-4" aria-hidden /> Add to basket
+                  <Plus className="size-4" aria-hidden /> {copy.listing.addToBasket}
                 </>
               )}
             </Button>
@@ -215,7 +217,7 @@ export function ListingDetail({ id }: { id: string }) {
             )}
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">
-                {listing.type === 'OFFER' ? 'You would be buying from' : 'You would be selling to'}
+                {listing.type === 'OFFER' ? copy.listing.buyFrom : copy.listing.sellTo}
               </p>
               <p className="flex items-center gap-1.5 truncate text-[15px] font-semibold">
                 <Store className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -227,46 +229,60 @@ export function ListingDetail({ id }: { id: string }) {
           {listing.status !== 'ACTIVE' ? (
             <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {listing.status === 'FULFILLED'
-                ? 'This listing has been marked as fulfilled by the owner.'
+                ? copy.listing.fulfilledNote
                 : listing.status === 'EXPIRED'
-                  ? 'This listing has expired and may no longer be available.'
-                  : 'This listing was archived by the owner.'}
+                  ? copy.listing.expiredNote
+                  : copy.listing.archivedNote}
             </p>
+          ) : null}
+
+          {/* The seller's own photo-less ad: the one nudge that helps. Photos
+              get more calls, and the upload button is right here. */}
+          {user?.id === listing.userId && listing.photos.length === 0 ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-primary/30 bg-accent/40 px-3 py-2.5">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground/85">
+                <Camera className="size-4 shrink-0 text-primary" aria-hidden />
+                {copy.listing.addPhotoTitle}
+              </p>
+              <Button size="sm" className="press h-8" onClick={() => navigate({ name: 'edit', id: listing.id })}>
+                {copy.listing.addPhotoCta}
+              </Button>
+            </div>
           ) : null}
 
           <Separator className="my-4" />
 
-          <h2 className="text-sm font-semibold">Description</h2>
+          <h2 className="text-sm font-semibold">{copy.listing.description}</h2>
           <p className="mt-1.5 whitespace-pre-line text-[15px] leading-relaxed text-foreground/90">{listing.description}</p>
 
           <Separator className="my-4" />
 
-          <h2 className="text-sm font-semibold">Details</h2>
+          <h2 className="text-sm font-semibold">{copy.listing.details}</h2>
           <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
             {quantity ? (
               <div className="flex items-center gap-2">
                 <Package className="size-4 text-muted-foreground" aria-hidden />
-                <dt className="text-muted-foreground">Quantity:</dt>
-                <dd className="font-medium">{quantity}</dd>
+                <dt className="text-muted-foreground">{copy.listing.quantity}:</dt>
+                <dd className="font-medium tabular-nums">{quantity}</dd>
               </div>
             ) : null}
             <div className="flex items-center gap-2">
               <MapPin className="size-4 text-muted-foreground" aria-hidden />
-              <dt className="text-muted-foreground">Location:</dt>
+              <dt className="text-muted-foreground">{copy.listing.location}:</dt>
               <dd className="font-medium">{[listing.area, listing.county].filter(Boolean).join(', ')}</dd>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Updated:</span>
+              <span className="text-muted-foreground">{copy.listing.updated}:</span>
               <dd className="flex items-center gap-1.5 font-medium">
                 {timeAgo(listing.refreshedAt)}
               </dd>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Views:</span>
-              <dd className="font-medium">{listing.viewCount}</dd>
+              <span className="text-muted-foreground">{copy.listing.views}:</span>
+              <dd className="font-medium tabular-nums">{listing.viewCount}</dd>
             </div>
-            <div className="text-muted-foreground sm:col-span-2">
-              Posted {formatDateTime(listing.publishedAt)} · {expiryLabel(listing.expiresAt)}
+            <div className="text-muted-foreground sm:col-span-2 tabular-nums">
+              {copy.listing.posted(formatDateTime(listing.publishedAt), expiryLabel(listing.expiresAt))}
             </div>
           </dl>
         </div>
@@ -275,15 +291,15 @@ export function ListingDetail({ id }: { id: string }) {
             card comes FIRST: read before contact happens. Plus directions
             for the "can I pick it up myself?" decision. */}
         <div className="border-t bg-secondary/40 p-4 sm:p-5">
-          <h2 className="text-sm font-semibold">Contact {shopDisplayName}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{formatPhonePretty(listing.contactPhone)}</p>
+          <h2 className="text-sm font-semibold">{copy.listing.contact(shopDisplayName)}</h2>
+          <p className="mt-1 text-sm text-muted-foreground tabular-nums">{formatPhonePretty(listing.contactPhone)}</p>
           <div className="mt-3">
             <SafetyCard />
           </div>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Button asChild className="press h-11 flex-1 text-[15px]">
               <a href={telLink(listing.contactPhone)} aria-label={`Call ${formatPhonePretty(listing.contactPhone)}`}>
-                <Phone className="size-4" aria-hidden /> Call seller
+                <Phone className="size-4" aria-hidden /> {copy.common.call}
               </a>
             </Button>
             {whatsapp ? (
@@ -293,7 +309,7 @@ export function ListingDetail({ id }: { id: string }) {
                 className="press h-11 flex-1 border-emerald-600 text-[15px] text-emerald-800 hover:bg-emerald-50"
               >
                 <a href={whatsappLink(whatsapp, listing.title, listing.type)} target="_blank" rel="noopener noreferrer">
-                  <WhatsAppIcon className="size-4" aria-hidden /> WhatsApp
+                  <WhatsAppIcon className="size-4" aria-hidden /> {copy.common.whatsapp}
                 </a>
               </Button>
             ) : null}
@@ -303,10 +319,10 @@ export function ListingDetail({ id }: { id: string }) {
               href={directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`Get directions to ${[listing.area, listing.county].filter(Boolean).join(', ')}`}
+              aria-label={copy.listing.directionsAria([listing.area, listing.county].filter(Boolean).join(', '))}
             >
-              <Navigation className="size-4" aria-hidden /> Get directions
-              <span className="text-xs font-normal text-muted-foreground">(Google Maps — for pickup)</span>
+              <Navigation className="size-4" aria-hidden /> {copy.listing.directions}
+              <span className="text-xs font-normal text-muted-foreground">{copy.listing.directionsHint}</span>
             </a>
           </Button>
           <div className="mt-3">
@@ -326,18 +342,19 @@ export function ListingDetail({ id }: { id: string }) {
 
       {/* Seller — real account info; no verification claims are made. */}
       <section className="rounded-lg border bg-card p-4 sm:p-5" aria-label="About the seller">
-        <h2 className="text-sm font-semibold">About the seller</h2>
+        <h2 className="text-sm font-semibold">{copy.listing.aboutSeller}</h2>
         <div className="mt-2 flex items-center gap-3">
           {shopPhoto ? (
-            <img src={shopPhoto} alt="" className="size-11 shrink-0 rounded-full border object-cover" />
+            <img src={shopPhoto} alt="" className="size-11 shrink-0 rounded-md border object-cover" />
           ) : (
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
               {shopDisplayName.charAt(0).toUpperCase()}
             </span>
           )}
           <div className="min-w-0">
-            {/* The shop name the seller chose — this is their space, named by them. */}
-            <p className="flex items-center gap-1.5 truncate text-[15px] font-semibold">
+            {/* The shop name the seller chose — this is their space, named by them.
+                Serif is reserved for exactly this: the shop's name. */}
+            <p className="flex items-center gap-1.5 truncate font-display text-[17px] font-semibold">
               {shopDisplayName}
               <Store className="size-3.5 text-muted-foreground" aria-hidden />
             </p>
@@ -345,7 +362,7 @@ export function ListingDetail({ id }: { id: string }) {
               {listing.user.profile?.area || listing.user.profile?.county
                 ? [listing.user.profile?.area, listing.user.profile?.county].filter(Boolean).join(', ') + ' · '
                 : ''}
-              Member since {new Date(listing.user.createdAt).toLocaleDateString('en', { month: 'short', year: 'numeric' })}
+              {copy.listing.memberSince(new Date(listing.user.createdAt).toLocaleDateString('en', { month: 'short', year: 'numeric' }))}
             </p>
           </div>
         </div>
@@ -353,14 +370,14 @@ export function ListingDetail({ id }: { id: string }) {
           variant="outline"
           className="press mt-3 w-full gap-1.5"
           onClick={() => navigate({ name: 'shop', id: listing.userId })}
-          aria-label={`Visit ${shopDisplayName}'s shop`}
+          aria-label={copy.listing.visitShopAria(shopDisplayName)}
         >
-          <Store className="size-4" aria-hidden /> Visit {shopDisplayName}'s shop
+          <Store className="size-4" aria-hidden /> {copy.listing.visitShop(shopDisplayName)}
         </Button>
         {listing.user.profile?.description ? (
           <p className="mt-2.5 text-sm text-muted-foreground">{listing.user.profile.description}</p>
         ) : null}
-        {listing.user.profile?.hours ? <p className="mt-1 text-sm text-muted-foreground">Hours: {listing.user.profile.hours}</p> : null}
+        {listing.user.profile?.hours ? <p className="mt-1 text-sm text-muted-foreground">{copy.listing.hours(listing.user.profile.hours)}</p> : null}
       </section>
     </div>
   )

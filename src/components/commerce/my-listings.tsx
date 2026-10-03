@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Tag, RefreshCw, Pencil, CheckCircle2, RotateCcw, Archive, Trash2 } from 'lucide-react'
+import { RefreshCw, Pencil, CheckCircle2, RotateCcw, Archive, Trash2, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -21,6 +21,7 @@ import { expiryLabel, timeAgo } from '@/lib/format'
 import { useAppStore } from '@/lib/store'
 import { useSession } from '@/hooks/use-session'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 import { ListingCard } from './listing-card'
 import { ListingListSkeleton } from './skeletons'
 import { EmptyState } from './empty-state'
@@ -60,9 +61,9 @@ export function MyListings() {
     onSuccess: (_data, id: string) => {
       void invalidate()
       setExpiryFlash({ id, tick: Date.now() })
-      toast({ title: 'Listing refreshed', description: `It now appears as fresh and expires in ${LISTING_ACTIVE_DAYS} days.` })
+      toast({ title: copy.mySales.refreshedToast, description: copy.mySales.refreshedToastSub(LISTING_ACTIVE_DAYS) })
     },
-    onError: (err: Error) => toast({ title: 'Could not refresh', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: copy.mySales.couldNotRefresh, description: err.message, variant: 'destructive' }),
     onSettled: () => setActiveAction(null),
   })
 
@@ -71,9 +72,9 @@ export function MyListings() {
     onMutate: ({ id, status }) => setActiveAction({ id, key: `status:${status}` }),
     onSuccess: (_data, vars) => {
       void invalidate()
-      toast({ title: vars.status === 'FULFILLED' ? 'Marked as fulfilled' : vars.status === 'ACTIVE' ? 'Listing is active again' : 'Listing archived' })
+      toast({ title: vars.status === 'FULFILLED' ? copy.mySales.statusFulfilled : vars.status === 'ACTIVE' ? copy.mySales.statusActive : copy.mySales.statusArchived })
     },
-    onError: (err: Error) => toast({ title: 'Could not update listing', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: copy.mySales.couldNotUpdate, description: err.message, variant: 'destructive' }),
     onSettled: () => setActiveAction(null),
   })
 
@@ -83,9 +84,9 @@ export function MyListings() {
     onSuccess: () => {
       void invalidate()
       setDeleteTarget(null)
-      toast({ title: 'Listing deleted' })
+      toast({ title: copy.mySales.deletedToast })
     },
-    onError: (err: Error) => toast({ title: 'Could not delete', description: err.message, variant: 'destructive' }),
+    onError: (err: Error) => toast({ title: copy.mySales.couldNotDelete, description: err.message, variant: 'destructive' }),
     onSettled: () => setActiveAction(null),
   })
 
@@ -94,10 +95,9 @@ export function MyListings() {
   if (!user) {
     return (
       <EmptyState
-        icon={<Tag />}
-        title="Sign in to manage your listings"
-        description="Your listings, their status and expiry all live here once you sign in."
-        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>Sign in</Button>}
+        title={copy.mySales.signInTitle}
+        description={copy.mySales.signInSub}
+        action={<Button onClick={() => useAppStore.getState().setAuthOpen(true)}>{copy.nav.signIn}</Button>}
       />
     )
   }
@@ -109,10 +109,9 @@ export function MyListings() {
   if (listings.length === 0) {
     return (
       <EmptyState
-        icon={<Tag />}
-        title="You have no listings yet"
-        description="Post what you sell or what you need — it takes about a minute and buyers can find you right away."
-        action={<Button onClick={() => navigate({ name: 'publish' })}>Post your first listing</Button>}
+        title={copy.mySales.emptyTitle}
+        description={copy.mySales.emptySub}
+        action={<Button onClick={() => navigate({ name: 'publish' })}>{copy.mySales.postFirst}</Button>}
       />
     )
   }
@@ -120,9 +119,9 @@ export function MyListings() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">My Listings</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{copy.mySales.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          {listings.length} {listings.length === 1 ? 'listing' : 'listings'} · refresh to stay visible, mark fulfilled when done.
+          {copy.mySales.count(listings.length)} · {copy.mySales.sub}
         </p>
       </div>
 
@@ -142,7 +141,26 @@ export function MyListings() {
               onOpen={(id) => navigate({ name: 'listing', id })}
               showStatus
               actions={
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="space-y-2">
+                  {/* The seller's own photo-less ad: the honest nudge, with
+                      the upload one tap away. Photos get more calls. */}
+                  {listing.photos.length === 0 ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-primary/30 bg-accent/40 px-2.5 py-2">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-foreground/85">
+                        <Camera className="size-3.5 shrink-0 text-primary" aria-hidden />
+                        {copy.listing.addPhotoTitle}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="press h-7 gap-1 px-2.5 text-xs"
+                        onClick={() => navigate({ name: 'edit', id: listing.id })}
+                      >
+                        {copy.listing.addPhotoCta}
+                      </Button>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-1.5">
                   <span
                     key={expiryFlash?.id === listing.id ? `flash-${expiryFlash.tick}` : 'static'}
                     className={cn('mr-auto text-xs text-muted-foreground', expiryFlash?.id === listing.id && 'flash-good')}
@@ -157,16 +175,16 @@ export function MyListings() {
                       className="h-8 gap-1.5 press"
                       disabled={rowBusy || !canRefresh}
                       onClick={() => refreshMutation.mutate(listing.id)}
-                      title={canRefresh ? 'Refresh now' : `Available in ${hours}h (24h cooldown)`}
+                      title={canRefresh ? copy.mySales.refresh : copy.mySales.refreshCooldown(hours)}
                     >
                       <RefreshCw className={cn('size-3.5', refreshing && 'animate-spin')} aria-hidden />
-                      {canRefresh ? 'Refresh' : `Refresh in ${hours}h`}
+                      {canRefresh ? copy.mySales.refresh : copy.mySales.refreshIn(hours)}
                     </Button>
                   ) : null}
 
                   {listing.status === 'ACTIVE' ? (
                     <Button size="sm" variant="outline" className="h-8 gap-1.5 press" disabled={rowBusy} onClick={() => navigate({ name: 'edit', id: listing.id })}>
-                      <Pencil className="size-3.5" aria-hidden /> Edit
+                      <Pencil className="size-3.5" aria-hidden /> {copy.mySales.edit}
                     </Button>
                   ) : null}
 
@@ -178,7 +196,7 @@ export function MyListings() {
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'FULFILLED' })}
                       disabled={rowBusy}
                     >
-                      <CheckCircle2 className="size-3.5" aria-hidden /> Mark fulfilled
+                      <CheckCircle2 className="size-3.5" aria-hidden /> {copy.mySales.markFulfilled}
                     </Button>
                   ) : null}
 
@@ -189,9 +207,9 @@ export function MyListings() {
                       className="h-8 gap-1.5 press"
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'ACTIVE' })}
                       disabled={rowBusy}
-                      title="Repost: restarts freshness and expiry"
+                      title={copy.mySales.repostHint}
                     >
-                      <RotateCcw className="size-3.5" aria-hidden /> Repost
+                      <RotateCcw className="size-3.5" aria-hidden /> {copy.mySales.repost}
                     </Button>
                   ) : null}
 
@@ -203,7 +221,7 @@ export function MyListings() {
                       onClick={() => statusMutation.mutate({ id: listing.id, status: 'ARCHIVED' })}
                       disabled={rowBusy}
                     >
-                      <Archive className="size-3.5" aria-hidden /> Archive
+                      <Archive className="size-3.5" aria-hidden /> {copy.mySales.archive}
                     </Button>
                   ) : null}
 
@@ -214,8 +232,9 @@ export function MyListings() {
                     onClick={() => setDeleteTarget(listing)}
                     disabled={rowBusy}
                   >
-                    <Trash2 className="size-3.5" aria-hidden /> Delete
+                    <Trash2 className="size-3.5" aria-hidden /> {copy.mySales.delete}
                   </Button>
+                  </div>
                 </div>
               }
             />
@@ -226,13 +245,13 @@ export function MyListings() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
+            <AlertDialogTitle>{copy.mySales.deleteConfirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              &quot;{deleteTarget?.title}&quot; will be removed permanently. This cannot be undone.
+              {copy.mySales.deleteConfirmBody(deleteTarget?.title ?? '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogCancel>{copy.mySales.deleteKeep}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
               onClick={(e) => {
@@ -240,7 +259,7 @@ export function MyListings() {
                 if (deleteTarget) deleteMutation.mutate(deleteTarget.id)
               }}
             >
-              {deleteMutation.isPending ? 'Deleting…' : 'Delete listing'}
+              {deleteMutation.isPending ? copy.mySales.deleting : copy.mySales.deleteGo}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

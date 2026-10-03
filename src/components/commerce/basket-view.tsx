@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Minus, Phone, Plus, ShoppingBasket, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { Minus, Phone, Plus, Store, Trash2, TriangleAlert } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { apiGet } from '@/lib/client'
@@ -34,6 +34,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { EmptyState } from './empty-state'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 
 // Shared add handler for every surface that sells (blocks, detail page):
 // one honest toast either way — never a silent no-op, never a fake success.
@@ -109,10 +110,9 @@ export function BasketView() {
   if (shopIds.length === 0) {
     return (
       <EmptyState
-        icon={<ShoppingBasket />}
-        title="Your basket is empty"
-        description="Collect what you want as you browse — then send the whole list to the shop as one WhatsApp message. No account needed: the basket lives on this phone."
-        action={<Button onClick={() => navigate({ name: 'browse' })}>Browse listings</Button>}
+        title={copy.basket.emptyTitle}
+        description={copy.basket.emptySub}
+        action={<Button onClick={() => navigate({ name: 'browse' })}>{copy.basket.browse}</Button>}
       />
     )
   }
@@ -120,9 +120,9 @@ export function BasketView() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Basket</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{copy.basket.title}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Your list lives on this phone. {shopIds.length > 1 ? 'One message per shop — sellers only see their own list.' : 'Send it and the seller confirms what is available.'}
+          Your list lives on this phone. {shopIds.length > 1 ? 'One message per shop. Sellers only see their own list.' : 'Send it and the seller confirms what is available.'}
         </p>
       </div>
 
@@ -238,7 +238,7 @@ function BasketShopSection({
           <span className="flex items-center gap-1.5 truncate text-[15px] font-semibold">
             <Store className="size-3.5 shrink-0 text-muted-foreground" aria-hidden /> {shop.name}
           </span>
-          <span className="block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-xs text-muted-foreground tabular-nums">
             {entries.length} {entries.length === 1 ? 'item' : 'items'} on your list
           </span>
         </span>
@@ -259,14 +259,14 @@ function BasketShopSection({
                 >
                   {line.title}
                 </button>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
                   {line.price !== null ? formatPrice(line.price, null, line.currency) : 'Price on asking'}
                   {line.unit ? ` · per ${line.unit}` : ''}
                 </p>
                 {gone ? (
                   <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-800">
                     <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
-                    {status === 'GONE' ? 'Removed from Mudaala — take it off your list.' : 'No longer available — the seller may have sold out.'}
+                    {status === 'GONE' ? 'Removed from Mudaala. Take it off your list.' : 'No longer available. The seller may have sold out.'}
                   </p>
                 ) : null}
               </div>
@@ -306,15 +306,15 @@ function BasketShopSection({
           <p className="flex items-start gap-1.5 text-xs text-amber-800">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             {sendable.length === 0
-              ? 'Nothing on this list is available right now — remove the items or check the shop later.'
-              : `${stale.length} of ${entries.length} items will NOT be included — they are no longer available.`}
+              ? 'Nothing on this list is available right now. Remove the items or check the shop later.'
+              : `${stale.length} of ${entries.length} items will NOT be included. They are no longer available.`}
           </p>
         ) : null}
 
         {subtotal ? (
-          <p className="text-sm">
+          <p className="text-sm tabular-nums">
             <span ref={subtotalRef} className="inline-block font-semibold">{formatPrice(subtotal.amount, null, subtotal.currency)}</span>{' '}
-            <span className="text-xs text-muted-foreground">estimate — the seller confirms the final total</span>
+            <span className="text-xs text-muted-foreground">estimate. The seller confirms the final total.</span>
           </p>
         ) : null}
 
@@ -338,7 +338,7 @@ function BasketShopSection({
           ) : null}
           {!shop.whatsapp && sendable.length > 0 ? (
             <p className="flex-1 self-center text-xs text-muted-foreground">
-              This shop has no WhatsApp on the listing — call with your list instead.
+              This shop has no WhatsApp on the listing. Call with your list instead.
             </p>
           ) : null}
           <Button asChild variant="outline" className="press h-10 flex-1" disabled={sendable.length === 0}>

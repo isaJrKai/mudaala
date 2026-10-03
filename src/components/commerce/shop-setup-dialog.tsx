@@ -100,7 +100,7 @@ export function ShopSetupDialog() {
             Welcome to Mudaala, {firstName}
           </DialogTitle>
           <DialogDescription className="text-left">
-            Your shop space is ready — a place where buyers see everything you sell. Three quick things make buyers trust it:
+            Your shop space is ready. Buyers see everything you sell here. Three quick things make buyers trust it:
           </DialogDescription>
         </DialogHeader>
 

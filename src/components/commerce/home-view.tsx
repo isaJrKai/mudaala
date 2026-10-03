@@ -6,21 +6,19 @@
 // searches, a freshness nudge for listings going stale, and the market's
 // price trends where enough real listings exist to speak.
 //
-// Style: cream paper, forest green, serif voice for the greeting. Rectangles
-// stay rectangles — this is a functional surface, no curves.
+// Style: cream paper, forest green. One sans everywhere; rectangles stay
+// rectangles — this is a functional surface, no curves.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Bell,
   Bookmark,
   CalendarClock,
-  Home as HomeIcon,
-  Leaf,
   MapPin,
   Phone,
   RefreshCw,
   Search,
-  Sparkles,
   Tag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -44,8 +42,9 @@ import { useAppStore, type BrowseFilters } from '@/lib/store'
 import type { ListingQuery } from '@/lib/validation'
 import { useSession } from '@/hooks/use-session'
 import { useToast } from '@/hooks/use-toast'
-import { CategoryGlyph, categoryTint } from './category-icons'
+import { PlaceholderTile } from './placeholder-tile'
 import { cn } from '@/lib/utils'
+import { copy } from '@/lib/copy'
 
 // The chosen "near" location persists between visits; the profile default is
 // what the server suggests when nothing is stored.
@@ -72,9 +71,9 @@ function storeCounty(county: string | null): void {
 
 function dayGreeting(): string {
   const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
+  if (hour < 12) return copy.home.greetingMorning
+  if (hour < 17) return copy.home.greetingAfternoon
+  return copy.home.greetingEvening
 }
 
 // Short axis label "25 Sep" from an ISO date string.
@@ -106,21 +105,13 @@ export function HomeDashboard() {
   if (!user) {
     return (
       <div className="mx-auto max-w-xl py-10 text-center">
-        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10">
-          <Leaf className="size-6 fill-primary/20 text-primary" aria-hidden />
-        </span>
-        <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-primary">
-          Welcome to Mudaala
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Sign in to see your saved searches, new matches, the offers around you and how prices
-          are moving — everything you post and follow, on one page.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">{copy.home.welcomeTitle}</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy.home.welcomeSub}</p>
         <div className="mt-5 flex items-center justify-center gap-2">
-          <Button onClick={() => setAuthOpen(true)}>Sign in</Button>
+          <Button onClick={() => setAuthOpen(true)}>{copy.home.signIn}</Button>
           <Button variant="outline" onClick={() => useAppStore.getState().navigate({ name: 'browse' })}>
             <Search className="size-4" aria-hidden />
-            Browse the market
+            {copy.home.browseMarket}
           </Button>
         </div>
       </div>
@@ -164,34 +155,32 @@ function SignedInHome() {
 
   if (homeQuery.isError) {
     return (
-      <div className="py-10 text-center text-sm text-muted-foreground">
-        Your dashboard could not load. Check your connection and try again.
-      </div>
+      <div className="py-10 text-center text-sm text-muted-foreground">{copy.home.loadError}</div>
     )
   }
   if (!data) return null
 
   const stats = [
     {
-      label: 'Saved searches',
+      label: copy.home.statSavedSearches,
       value: String(data.stats.savedSearches),
       icon: <Bookmark aria-hidden />,
       go: { name: 'saved' } as const,
     },
     {
-      label: 'Active listings',
+      label: copy.home.statActiveListings,
       value: String(data.stats.activeListings),
       icon: <Tag aria-hidden />,
       go: { name: 'my-listings' } as const,
     },
     {
-      label: 'New matches',
+      label: copy.home.statNewMatches,
       value: String(data.stats.newMatches),
-      icon: <Sparkles aria-hidden />,
+      icon: <Bell aria-hidden />,
       go: { name: 'notifications' } as const,
     },
     {
-      label: 'Last updated',
+      label: copy.home.statLastUpdated,
       value: data.stats.lastUpdatedAt ? timeAgo(data.stats.lastUpdatedAt) : '—',
       icon: <CalendarClock aria-hidden />,
       go: { name: 'my-listings' } as const,
@@ -201,10 +190,10 @@ function SignedInHome() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {dayGreeting()}, {data.user.firstName}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your market, at a glance.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{copy.home.dashSub}</p>
       </header>
 
       {data.staleListings.length > 0 ? (
@@ -227,7 +216,7 @@ function SignedInHome() {
             <span className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary [&_svg]:size-4">
               {stat.icon}
             </span>
-            <span className="mt-2 block font-display text-2xl font-bold leading-none tracking-tight">
+            <span className="mt-2 block text-2xl font-bold leading-none tracking-tight tabular-nums">
               {stat.value}
             </span>
             <span className="mt-1 block text-xs text-muted-foreground">{stat.label}</span>
@@ -268,14 +257,9 @@ function FreshnessTip({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <RefreshCw className="size-4 text-amber-700" aria-hidden />
-          Freshness tip
+          {copy.home.freshnessTitle}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {staleCount === 1
-            ? 'One of your listings has not been refreshed in over a week.'
-            : `${staleCount} of your listings have not been refreshed in over a week.`}{' '}
-          Refreshing moves them back to the top of Browse.
-        </p>
+        <p className="text-sm text-muted-foreground">{copy.home.freshnessBody(staleCount)}</p>
       </CardHeader>
       <CardContent className="space-y-2 pt-0">
         {stale.map((listing) => (
@@ -285,9 +269,7 @@ function FreshnessTip({
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{listing.title}</p>
-              <p className="text-xs text-muted-foreground">
-                Last refreshed {listing.ageDays === 1 ? '1 day' : `${listing.ageDays} days`} ago
-              </p>
+              <p className="text-xs text-muted-foreground">{copy.home.freshnessItemAge(listing.ageDays)}</p>
             </div>
             <Button
               size="sm"
@@ -296,16 +278,16 @@ function FreshnessTip({
               disabled={renewingId !== undefined}
               onClick={() => {
                 onRenew(listing.id)
-                toast({ title: 'Refreshing…' })
+                toast({ title: copy.home.renewing })
               }}
             >
               <RefreshCw className={cn('size-3.5', renewingId === listing.id && 'animate-spin')} aria-hidden />
-              Renew
+              {copy.home.renew}
             </Button>
           </div>
         ))}
         {staleCount > stale.length ? (
-          <p className="text-xs text-muted-foreground">+{staleCount - stale.length} more in My Listings</p>
+          <p className="text-xs text-muted-foreground">{copy.home.moreInListings(staleCount - stale.length)}</p>
         ) : null}
       </CardContent>
     </Card>
@@ -358,12 +340,12 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
     ? chosen.isDefault && location.area
       ? `${location.area}, ${location.county}`
       : chosen.county
-    : 'Anywhere'
+    : copy.common.anywhere
 
   return (
     <section aria-label="Best offers near you" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-bold tracking-tight">Best offers near you</h2>
+        <h2 className="text-lg font-bold tracking-tight">{copy.home.bestOffers}</h2>
         <button
           type="button"
           onClick={() => setPickOpen(true)}
@@ -371,13 +353,13 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
         >
           <MapPin className="size-3.5 text-primary" aria-hidden />
           {locationLabel}
-          <span className="text-muted-foreground">– Change</span>
+          <span className="text-muted-foreground">· {copy.home.change}</span>
         </button>
       </div>
 
       {/* Category chips — the same aisle-sign row as Browse. */}
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
-        {[{ key: 'any', label: 'All' }, ...CATEGORIES.map((c) => ({ key: c.key, label: c.label }))].map(
+        {[{ key: 'any', label: copy.common.all }, ...CATEGORIES.map((c) => ({ key: c.key, label: c.label }))].map(
           (chip) => {
             const active = category === chip.key
             return (
@@ -408,12 +390,10 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
         </div>
       ) : (offersQuery.data?.items.length ?? 0) === 0 ? (
         <div className="rounded-lg border bg-card px-4 py-10 text-center">
-          <p className="text-sm font-medium">No offers here yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {chosen.county ? `Nothing active in ${chosen.county} right now.` : 'Nothing active right now.'}
-          </p>
+          <p className="text-sm font-medium">{copy.home.noOffersTitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{copy.home.noOffersIn(chosen.county)}</p>
           <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate({ name: 'browse' })}>
-            Browse everything
+            {copy.common.browseEverything}
           </Button>
         </div>
       ) : (
@@ -481,11 +461,9 @@ function OfferRow({
         {photo ? (
           <img src={photo} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
-          <span
-            className={cn('flex size-full items-center justify-center [&_svg]:size-6', categoryTint(listing.category))}
-          >
-            <CategoryGlyph category={listing.category} />
-          </span>
+          // PLACEHOLDER RULE — flat grey tile with the category name and a
+          // small camera icon, never a stock or illustrated stand-in.
+          <PlaceholderTile category={listing.category} className="size-full" />
         )}
       </button>
 
@@ -494,13 +472,13 @@ function OfferRow({
         <button
           type="button"
           onClick={() => onOpen(listing.id)}
-          className="block w-full truncate text-left text-sm font-medium hover:underline"
+          className="block w-full truncate text-left text-sm font-bold hover:underline"
         >
           {listing.title}
         </button>
-        <p className="truncate text-sm font-semibold text-primary">{formatPrice(listing.price, listing.unit, listing.currency)}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {[quantity, distance, place, `Updated ${timeAgo(listing.refreshedAt)}`].filter(Boolean).join(' · ')}
+        <p className="truncate text-sm font-bold text-primary tabular-nums">{formatPrice(listing.price, listing.unit, listing.currency)}</p>
+        <p className="truncate text-xs text-muted-foreground tabular-nums">
+          {[quantity, distance, place, copy.home.updated(timeAgo(listing.refreshedAt))].filter(Boolean).join(' · ')}
         </p>
       </div>
 
@@ -508,7 +486,7 @@ function OfferRow({
         <Button asChild size="sm" variant="outline" className="h-8 gap-1.5 px-2.5 text-xs">
           <a href={telLink(listing.contactPhone)} aria-label={`Call ${shopDisplayName}`}>
             <Phone className="size-3.5" aria-hidden />
-            Call
+            {copy.common.call}
           </a>
         </Button>
         {whatsappNumber ? (
@@ -520,7 +498,7 @@ function OfferRow({
               aria-label={`WhatsApp ${shopDisplayName}`}
             >
               <WhatsAppIcon className="size-3.5" aria-hidden />
-              Chat
+              {copy.common.whatsapp}
             </a>
           </Button>
         ) : null}
@@ -552,20 +530,18 @@ function LocationPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Choose a location</DialogTitle>
-          <DialogDescription>
-            Offers are ranked around this place. Your shop area is the default.
-          </DialogDescription>
+          <DialogTitle>{copy.home.chooseLocation}</DialogTitle>
+          <DialogDescription>{copy.home.chooseLocationSub}</DialogDescription>
         </DialogHeader>
         <Select value={value} onValueChange={setValue}>
           <SelectTrigger aria-label="Location">
-            <SelectValue placeholder="Pick a district" />
+            <SelectValue placeholder={copy.home.pickDistrict} />
           </SelectTrigger>
           <SelectContent className="max-h-72">
-            <SelectItem value="any">Anywhere</SelectItem>
+            <SelectItem value="any">{copy.common.anywhere}</SelectItem>
             {defaultCounty ? (
               <SelectItem value={defaultCounty}>
-                {defaultCounty} (my shop area)
+                {copy.home.myShopArea(defaultCounty)}
               </SelectItem>
             ) : null}
             {COUNTRIES.map((country) => (
@@ -584,10 +560,10 @@ function LocationPickerDialog({
         </Select>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="ghost" size="sm" onClick={onReset}>
-            Use my shop area
+            {copy.home.useMyShopArea}
           </Button>
           <Button size="sm" onClick={() => onPick(value === 'any' ? null : value)}>
-            Show offers
+            {copy.home.showOffers}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -626,7 +602,7 @@ function SavedSearchesCard({
       applyQuery(patch)
       navigate({ name: 'browse' })
     } catch {
-      toast({ title: 'This saved search is corrupted. Delete and recreate it.', variant: 'destructive' })
+      toast({ title: copy.home.savedCorrupt, variant: 'destructive' })
     }
   }
 
@@ -636,20 +612,18 @@ function SavedSearchesCard({
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
             <Bookmark className="size-4 text-primary" aria-hidden />
-            Saved searches
+            {copy.home.savedSearchesTitle}
           </span>
-          <span className="text-xs font-normal text-muted-foreground">{total} total</span>
+          <span className="text-xs font-normal text-muted-foreground tabular-nums">{copy.home.savedSearchesTotal(total)}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {searches.length === 0 ? (
           <div className="rounded-md border border-dashed px-3 py-6 text-center">
-            <p className="text-sm font-medium">No saved searches yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Save a search on Browse and new matches will reach you here.
-            </p>
+            <p className="text-sm font-medium">{copy.home.noSavedTitle}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{copy.home.noSavedSub}</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate({ name: 'browse' })}>
-              Browse listings
+              {copy.common.browseListings}
             </Button>
           </div>
         ) : (
@@ -663,9 +637,7 @@ function SavedSearchesCard({
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="truncate text-sm font-medium">{search.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {search.lastMatchCount} {search.lastMatchCount === 1 ? 'match' : 'matches'}
-                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{copy.home.matches(search.lastMatchCount)}</span>
                   </span>
                 </button>
               </li>
@@ -674,7 +646,7 @@ function SavedSearchesCard({
         )}
         {total > searches.length ? (
           <Button variant="ghost" size="sm" className="mt-2 w-full" onClick={() => navigate({ name: 'saved' })}>
-            View all {total} saved searches
+            {copy.home.viewAllSaved(total)}
           </Button>
         ) : null}
       </CardContent>
@@ -715,19 +687,16 @@ function PriceTrendsCard({ className }: { className?: string }) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Tag className="size-4 text-primary" aria-hidden />
-          Price trends
+          {copy.home.trendsTitle}
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Median asking price, last 7 days, in the categories you post or save most.
-        </p>
+        <p className="text-sm text-muted-foreground">{copy.home.trendsSub}</p>
       </CardHeader>
       <CardContent className="pt-0">
         {chartable.length === 0 ? (
           <div className="rounded-md border border-dashed px-3 py-10 text-center">
-            <p className="font-display text-base font-semibold">Not enough listings yet</p>
+            <p className="text-base font-semibold">{copy.home.trendsNotEnoughTitle}</p>
             <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-              Price lines appear once {trendsQuery.data.minSample}+ active listings share a category
-              and unit. The market builds them up a little every day.
+              {copy.home.trendsNotEnoughSub(trendsQuery.data.minSample)}
             </p>
           </div>
         ) : (
@@ -766,9 +735,7 @@ function PriceTrendsCard({ className }: { className?: string }) {
             </ChartContainer>
             <p className="mt-2 text-[11px] text-muted-foreground">
               {trendsQuery.data.source}
-              {series.length > chartable.length
-                ? ` · ${series.length - chartable.length} of your categories need more data before a line can be drawn.`
-                : ''}
+              {series.length > chartable.length ? copy.home.trendsMoreData(series.length - chartable.length) : ''}
             </p>
           </>
         )}
