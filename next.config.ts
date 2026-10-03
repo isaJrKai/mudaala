@@ -9,11 +9,19 @@ const frameAncestors = process.env.FRAME_ANCESTORS ?? "'self'"
 const xFrameOptions =
   frameAncestors.trim() === "'none'" ? "DENY" : frameAncestors.trim() === "'self'" ? "SAMEORIGIN" : undefined
 
+// 'unsafe-eval' is dev-only: Next.js dev tooling (HMR / react-refresh)
+// eval-compiles in development, while production output is precompiled and
+// must not carry it. next.config.ts is evaluated by the Next.js CLI with
+// NODE_ENV "development" under next dev and "production" under next build,
+// so the check below resolves correctly per mode. 'unsafe-inline' stays for
+// now: Next.js injects inline bootstrap scripts, and a nonce-based CSP is
+// the future hardening step.
+const scriptSrc = ["'self'", "'unsafe-inline'"]
+if (process.env.NODE_ENV !== "production") scriptSrc.push("'unsafe-eval'")
+
 const contentSecurityPolicy = [
   "default-src 'self'",
-  // Next.js ships inline bootstrap scripts and (in dev) eval-based HMR; a
-  // nonce-based CSP is the future hardening step.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  `script-src ${scriptSrc.join(" ")}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
