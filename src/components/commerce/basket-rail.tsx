@@ -19,10 +19,13 @@
 // Same basket state, same honesty rules as the full basket view:
 //
 //   - Lines are re-checked against the public API before anything can be
-//     sent (the SAME query the basket view runs, so one fetch serves both).
+//     paid (the SAME query the basket view runs, so one fetch serves both).
 //   - A gone or unavailable line can ride in the list but never in the
-//     message, and the panel says so.
+//     estimate, and the panel says so.
 //   - The subtotal is labelled an estimate. The seller confirms.
+//
+// Like the full basket view, the panel collects and pays - no WhatsApp, no
+// call buttons. Comms live on the shop and listing pages.
 //
 // RailShell also owns the shell column: on the buying views it reserves the
 // strip's width (xl:pr-16) so the resting dock never covers content, and on
@@ -30,10 +33,12 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, Phone, ShoppingBasket, Trash2 } from 'lucide-react'
-import { WhatsAppIcon } from '@/components/commerce/brand-icons'
+import { useQuery } from '@tanstack/react-query'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, ShoppingBasket, Smartphone, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { formatPrice, telLink } from '@/lib/format'
+import { PaySheet } from '@/components/commerce/pay-sheet'
+import { apiGet, type ShopPage } from '@/lib/client'
+import { formatPrice } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
 import {
   basketCount,
@@ -42,7 +47,6 @@ import {
   basketUnits,
   isShopDone,
   markShopDone,
-  orderWhatsAppHref,
   setLineQty,
   useBasket,
   type BasketShopInfo,
@@ -252,9 +256,22 @@ function RailShop({
   const basket = useBasket()
   const done = isShopDone(basket, shopId)
   const removeLine = useRemoveLine()
+  const [payOpen, setPayOpen] = useState(false)
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
+
+  // Same fresh-shop rule as the full basket view: the pay sheet opens on
+  // the shop's data as it is NOW, never the basket's snapshot. Same query
+  // key the shop page uses, so one fetch warms every surface. If the fetch
+  // fails, the sheet still opens on the P2P path with the phone the basket
+  // already holds - the number cannot go stale, it is the shop's own line.
+  const payQuery = useQuery({
+    queryKey: ['shop', shopId],
+    queryFn: () => apiGet<ShopPage>(`/api/shops/${shopId}`),
+    enabled: payOpen,
+    staleTime: 60_000,
+  })
 
   const fresh = entries.filter(([id]) => !statuses.data || statuses.data[id] === 'ACTIVE')
   const stale = entries.filter(([id]) => statuses.data && statuses.data[id] !== 'ACTIVE')
@@ -373,29 +390,34 @@ function RailShop({
           </p>
         ) : null}
 
-        {shop.whatsapp && sendable.length > 0 ? (
-          <Button asChild size="sm" className="press h-8 w-full bg-emerald-700 text-[13px] text-white hover:bg-emerald-800">
-            <a
-              href={orderWhatsAppHref(shop, sendableLines)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={copy.basket.sendListAria(sendable.length, shop.name)}
-            >
-              <WhatsAppIcon className="size-3.5" aria-hidden /> {copy.basket.sendList}
-            </a>
+        {sendable.length > 0 ? (
+          <Button
+            type="button"
+            size="sm"
+            className="press h-8 w-full text-[13px]"
+            onClick={() => setPayOpen(true)}
+            aria-label={copy.pay.openAria(shop.name)}
+          >
+            <Smartphone className="size-3.5" aria-hidden /> {copy.pay.open}
           </Button>
         ) : null}
         {sendable.length === 0 && !statuses.isLoading ? (
           <Button size="sm" className="h-8 w-full text-[13px]" disabled>
-            <WhatsAppIcon className="size-3.5" aria-hidden /> {copy.basket.nothingToSend}
+            <Smartphone className="size-3.5" aria-hidden /> {copy.basket.nothingReadyToPay}
           </Button>
         ) : null}
-        {!shop.whatsapp && sendable.length > 0 ? (
-          <Button asChild size="sm" className="press h-8 w-full text-[13px]">
-            <a href={telLink(shop.phone)} aria-label={copy.basket.callWithListAria(shop.name)}>
-              <Phone className="size-3.5" aria-hidden /> {copy.basket.callWithList}
-            </a>
-          </Button>
+
+        {payOpen && !payQuery.isLoading ? (
+          <PaySheet
+            open={payOpen}
+            onOpenChange={setPayOpen}
+            shopName={shop.name}
+            phone={payQuery.data?.shop.phone ?? shop.phone}
+            merchantCode={payQuery.data?.shop.momoMerchantCode ?? null}
+            network={payQuery.data?.shop.momoNetwork ?? null}
+            merchantName={payQuery.data?.shop.momoMerchantName ?? null}
+            estimate={subtotal}
+          />
         ) : null}
 
         <button

@@ -28,6 +28,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Mobile-first, and phones have curves: viewport-fit=cover lets the page
+  // paint edge to edge, and the sticky header pads itself with the safe-area
+  // inset so a notch or a curved corner never eats the brand bar. In normal
+  // browsers the inset is 0, so this is invisible there - it only earns its
+  // keep where the hardware actually curves (standalone webviews, PWA).
+  viewportFit: "cover",
   themeColor: "#1d4a35",
 };
 

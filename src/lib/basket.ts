@@ -1,7 +1,8 @@
-// Mudaala - the buyer's basket: per-shop lists that end as ONE WhatsApp
-// message per seller. Not a supermarket cart: there is no checkout, no
-// payment, no delivery - the message IS the order request, exactly like
-// texting a market seller your list.
+// Mudaala - the buyer's basket: per-shop lists that collect what the buyer
+// picks while shopping, and end as ONE mobile-money payment per seller.
+// Not a supermarket cart: there is no order tracking, no delivery - the
+// basket holds the list and the running estimate, the pay sheet hands over
+// the seller's own code or number, and the telco moves the money.
 //
 //   • Baskets are keyed BY SHOP (one seller fulfills one list; mixing shops
 //     in one "order" would promise things no single seller can honor).
@@ -10,7 +11,7 @@
 //     the UI says so honestly.
 //   • Lines snapshot what the buyer saw (title, unit price). The basket view
 //     re-checks each listing against the public API and flags what is gone,
-//     expired or fulfilled before the buyer sends anything.
+//     expired or fulfilled before the buyer pays anything.
 //
 // Store shape is hand-rolled localStorage + useSyncExternalStore with an
 // empty server snapshot - hydration-safe by construction (SSR renders the
@@ -18,7 +19,7 @@
 // no mismatch warning, no hydration flash logic needed).
 
 import { useSyncExternalStore } from 'react'
-import { formatPrice, formatQuantity } from './format'
+import { formatPrice } from './format'
 
 const STORAGE_KEY = 'mudaala.basket.v1'
 const MAX_LINES_PER_SHOP = 20
@@ -43,7 +44,7 @@ interface StoredBasket {
   shops: Record<string, BasketShopInfo>
   lines: Record<string, Record<string, BasketLineInfo>>
   // Buyer bookkeeping, NOT basket content: shops whose list the buyer says
-  // is handled (sent on WhatsApp, called, or walked in). It resets the moment
+  // is handled (paid, called, or walked in). It resets the moment
   // that shop's lines change - the seller has not seen the new version, so
   // the queue must not claim it is done.
   doneShops?: Record<string, true>
@@ -241,7 +242,7 @@ export function restoreLine(shopId: string, shop: BasketShopInfo, listingId: str
 
 // The buyer's own bookkeeping: "this seller has my list". One tap on, one
 // tap off - the app never marks a list done by itself, because only the
-// buyer knows whether the WhatsApp message actually went.
+// buyer knows whether the payment actually went.
 export function isShopDone(basket: StoredBasket, shopId: string): boolean {
   return basket.doneShops?.[shopId] === true
 }
@@ -254,22 +255,6 @@ export function markShopDone(shopId: string, done: boolean): void {
     delete doneShops[shopId]
   }
   commit({ ...state, doneShops })
-}
-
-// ---- The order message: the actual "checkout". -----------------------------
-
-function orderMessage(shopName: string, lines: BasketLineInfo[]): string {
-  const rows = lines.map((line) => {
-    const qty = formatQuantity(line.qty, line.unit) ?? `${line.qty}`
-    const price = line.price !== null ? formatPrice(line.price, null, line.currency) : 'price on asking'
-    return `• ${line.title}: ${qty} @ ${price}`
-  })
-  return `Hi ${shopName}! I'd like to order from your Mudaala shop:\n${rows.join('\n')}\nIs everything available?`
-}
-
-export function orderWhatsAppHref(shop: BasketShopInfo, lines: BasketLineInfo[]): string {
-  const digits = (shop.whatsapp ?? shop.phone).replace(/\D/g, '')
-  return `https://wa.me/${digits}?text=${encodeURIComponent(orderMessage(shop.name, lines))}`
 }
 
 // Estimated subtotal - only when every priced line shares one currency (the

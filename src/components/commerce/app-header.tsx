@@ -71,7 +71,7 @@ export function AppHeader() {
   }, [units])
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card">
+    <header className="sticky top-0 z-40 border-b bg-card pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
         <button type="button" onClick={() => navigate({ name: 'home' })} className="flex items-center gap-1.5" aria-label="Mudaala home">
           {/* The wordmark is the signboard: lowercase serif in the brand
@@ -84,8 +84,10 @@ export function AppHeader() {
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* The basket - buyer-side, always visible, signed in or not. Green
-              badge: items waiting, not an alarm like unread alerts. */}
+          {/* The basket - buyer-side, always visible, signed in or not, and
+              the way in to paying: the basket icon opens the basket, and the
+              basket is where a seller gets paid. Green badge: items waiting,
+              not an alarm like unread alerts. */}
           <button
             type="button"
             onClick={() => navigate({ name: 'basket' })}
