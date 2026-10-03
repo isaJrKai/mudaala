@@ -1061,3 +1061,20 @@ Work Log:
 Stage Summary:
 - Photo-less ads now share a proper preview: cream card, wordmark, category — seed photos excluded end to end, junk input can't poison the image, first real photo still wins when present.
 - 396/391 suite green; files: src/app/api/og/listing/route.tsx (new), src/app/l/[id]/page.tsx, scripts/test-api.ts.
+
+---
+Task ID: og-card-verify-and-recover
+Agent: main (Super Z)
+Task: User asked to proceed and verify the OG share-image fallback requirement ("go but also check out this — the Open Graph image falls back to a neutral Mudaala placeholder card (plain cream background, 'mudaala' wordmark, category name) when a listing has no real photo. Never use seed photos as the share image.").
+
+Work Log:
+- Verified the OG feature shipped in fa8fa1f is correct end to end: ad-page filters /uploads/seed/ before choosing firstPhoto, shareImage falls back to /api/og/listing?category={slug}, card route is allowlist-only (CATEGORY_KEYS, junk/traversal -> generic wordmark card), tests 17.11-17.15 exist. Fetching the card confirmed 1200x630 PNG, cream background, dark-green lowercase wordmark, category line; junk category renders the generic card with nothing reflected.
+- FOUND collateral damage inside fa8fa1f: the commit also DELETED src/app/api/upload/route.ts (the only photo upload endpoint, still called by photo-picker.tsx and ~8 suite tests) plus the .t4stage/.t5stage scratch copies, and flipped 276 tracked files 644->755. Proven: section 3b failed and the suite crashed at Sharp.metadata (404 instead of an image).
+- Fixed in 7e78887: restored the three upload routes byte-identical from fa8fa1f~1, normalized the 276 modes back to 644 (the 151 files already 755 before fa8fa1f left untouched), nothing else.
+- RECOVERED the sandbox (platform reset had wiped the running Postgres on 5433 and the non-DATABASE_URL keys of .env): re-provisioned from .pgtool per the worklog recipe (bun install; libicu 60 soname symlinks inside the embedded-postgres package lib dir; initdb -U mudaala --auth=trust, cluster on 127.0.0.1:5433; CREATE DATABASE mudaala via prisma db execute against the postgres db — the minimal package ships no createdb; prisma migrate deploy with EXPLICIT DATABASE_URL because the shell exports file:...custom.db which overrides .env; scripts/seed.ts -> 8 users/16 listings/2 saved searches, matching the deep-clean baseline). Rebuilt .env from .env.example dev shapes + CI env block: ALLOW_BEARER_AUTH=1, ADMIN_PHONES=+256712000001 (seeded admin, Gulu Agri Supplies), CRON_SECRET, SETTINGS_ENCRYPTION_KEY (gitignored, never committed).
+- Gate: tsc clean, eslint clean, suite 396/0 via bash scripts/bugprobe.sh npx tsx scripts/test-api.ts (uploads, OG 17.11-17.15, admin/settings/sweep sections, hermetic sweep 19 all green).
+
+Stage Summary:
+- The OG requirement is verified working: photo-less ads share the neutral cream Mudaala card; seed photos can never be the share image (filtered pre-firstPhoto; the card route takes no photo input at all); junk input can't poison the card.
+- The accidental /api/upload deletion from fa8fa1f is reverted (7e78887) — photo publishing works again; file modes restored.
+- Sandbox fully reprovisioned (Postgres 5433 + .env); documented again: prisma/CLI commands need the explicit postgres DATABASE_URL, bare tsx needs bugprobe.sh.
