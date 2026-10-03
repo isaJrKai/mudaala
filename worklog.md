@@ -1265,3 +1265,20 @@ Stage Summary:
 - Commit 15999e8 on main.
 - Squeeze math: at 1280 the listing area grows 720 -> 976px; at 1536 it grows 976 -> 1024px (full max-w-5xl), and the panel costs the grid nothing because it floats.
 - The empty basket shows the honest empty state inside the panel only when the buyer opens it; the resting strip is always there as the affordance.
+
+---
+Task ID: basket-queue-and-moving-week
+Agent: main (Super Z)
+Task: User approved "Moving this week" and raised the multi-shop basket gap: buyers browsing with a basket need it on every page, and nobody had answered "how does a buyer send more than one list?".
+
+Work Log:
+- Basket queue (7e1832f): the basket view opens with a stats card - Sellers, Items, one combined estimate (single-currency only; mixed currencies say "each list shows its own total" instead of inventing a number) - plus the waiting line ("2 sellers are waiting for their list", emerald "Every seller has their list." at zero). Per-shop done marks: Mark as done / Done toggle on every shop card in the basket view AND the dock panel, green Done pill on the card header. Stored as doneShops in the localStorage basket (backward-tolerant parse); the buyer marks it, never the app; ANY edit to a shop's lines auto-clears its mark (a sent list that changed is no longer sent) - verified in browser: marking both shops done flipped the line to "Every seller has their list.", bumping a Nakato qty instantly put 1 seller back to waiting while Kisenyi stayed done. Dock strip now also mounts on Saved searches and Alerts (RAIL_VIEWS extended), so the basket rides every buyer surface; seller views stay full-width. Copy: basket.statSellers/statItems/statTotal/totalMixed/waitingOne/Many/None/markDone(+Aria)/doneChip/doneUndoAria.
+- Moving this week (6864b1e): pickMovers in src/lib/price-movers.ts (pure, no db - suite-testable like env-flags): groups PriceSnapshot rows by (category, unit, currency), requires two recorded days with MOVER_MIN_SAMPLE=5 at BOTH ends, signed whole-percent change, MOVER_MIN_PCT=2 floor, sorted by magnitude, MOVER_LIMIT=6. The price-trends route feeds it the same 7-day window it already serves (TREND_DAYS now exported) and returns movers alongside series; client.ts gained PriceMover. MarketMoversCard on home (same React Query key as PriceTrendsCard - one fetch, two cards) between Offers near you and the saved/trends grid: label + per unit, current median, down emerald / up amber with trend icons, honest source line with the 5-listing bar, quiet market renders no card. Rows tap through to Browse pre-filtered (setFilters category + navigate), aria spells out "median USh 2,500, down 14 percent this week, from 6 listings".
+- Suite: new section 19 pins pickMovers logic + the honesty constants (hermetic sweep renumbered 20). New baseline 412/0.
+- Browser verified: basket queue screenshot (tool-results/basket-queue.png), dock on saved view, movers card with seeded sandbox snapshots (electronics -14%, scrap +9%; rows navigate to filtered Browse; tool-results/movers-visible.png). tsc + eslint clean before each commit.
+
+Stage Summary:
+- Commits 7e1832f (basket queue) and 6864b1e (moving this week) on main. Suite baseline now 412/0.
+- The multi-shop answer, in one line: the basket IS a queue of per-seller lists; sending stays one WhatsApp/call per seller (combining shops would promise what no single seller can honor); the UI's job is the queue overview, the done bookkeeping and the dock that follows the buyer.
+- Sandbox note: two backdated PriceSnapshot days were inserted for movers verification (dev-only derived data; today's row is the cron's own upsert).
+- Not done / open: nothing blocking. Optional future: trend rows linking to shop pages, movers on public browse for anonymous buyers.
