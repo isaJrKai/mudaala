@@ -176,6 +176,7 @@ Optional / recommended:
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_KEY`, `STORAGE_SECRET`, `STORAGE_PUBLIC_URL` | S3-compatible photo storage (Cloudflare R2, Supabase Storage, MinIO). Unset = local disk in development. |
 | `AT_API_KEY`, `AT_USERNAME`, `AT_SENDER_ID` | Africa's Talking credentials for password-reset SMS. Unset (non-production) = console provider. |
 | `FRAME_ANCESTORS` | CSP `frame-ancestors` value - set `'none'` in production unless you embed the app somewhere. |
+| `CSRF_TRUSTED_HOSTS` | Extra host names the CSRF Origin check accepts, comma-separated, e.g. `.preview-platform.example`. Only needed when an edge proxy rewrites Host so a genuine same-deployment login arrives looking foreign. A leading dot trusts a whole suffix. Unset = strict Host matching, nothing else passes. |
 | `ALLOW_BEARER_AUTH` | Leave UNSET in production (httpOnly cookie only). |
 
 ### 2. Run migrations
