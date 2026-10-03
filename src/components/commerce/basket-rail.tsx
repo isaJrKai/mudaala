@@ -30,7 +30,7 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, Phone, ShoppingBasket } from 'lucide-react'
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, Phone, ShoppingBasket, Trash2 } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
 import { formatPrice, telLink } from '@/lib/format'
@@ -48,7 +48,7 @@ import {
   type BasketShopInfo,
   type BasketLineInfo,
 } from '@/lib/basket'
-import { useLineStatuses } from '@/components/commerce/basket-view'
+import { useLineStatuses, useRemoveLine } from '@/components/commerce/basket-view'
 import { BasketGlyph } from './basket-icon'
 import { cn } from '@/lib/utils'
 import { copy } from '@/lib/copy'
@@ -251,6 +251,7 @@ function RailShop({
   const { navigate } = useAppStore()
   const basket = useBasket()
   const done = isShopDone(basket, shopId)
+  const removeLine = useRemoveLine()
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
@@ -326,6 +327,16 @@ function RailShop({
                     aria-label={copy.basket.oneMoreAria(line.title)}
                   >
                     <span className="text-sm leading-none">+</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="press size-6 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeLine(shopId, listingId, shop, line)}
+                    aria-label={copy.basket.removeLineAria(line.title)}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
                   </Button>
                 </div>
               </div>

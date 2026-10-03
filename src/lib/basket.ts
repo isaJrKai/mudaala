@@ -89,11 +89,18 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+// Non-React read of the current basket - the same cached reference the hook
+// hands out, for callers outside React (the test suite) and for one-off
+// checks that must not subscribe. Stable across calls, like the hook.
+export function readBasket(): StoredBasket {
+  return state
+}
+
 // React binding. The server snapshot is the EMPTY basket, so SSR and the
 // hydration pass always agree; the real basket appears immediately after.
-// readStored returns the cached module state - stable across calls.
+// readBasket returns the cached module state - stable across calls.
 export function useBasket(): StoredBasket {
-  return useSyncExternalStore(subscribe, () => state, () => EMPTY)
+  return useSyncExternalStore(subscribe, readBasket, () => EMPTY)
 }
 
 // Total item count across all shops - the header badge. Hydration-gated the
@@ -210,6 +217,26 @@ export function removeShop(shopId: string): void {
   delete shops[shopId]
   delete lines[shopId]
   commit(withoutDone({ shops, lines }, [shopId]))
+}
+
+// The undo side of a line removal: put the line back EXACTLY as it was
+// (same listing key, same snapshot, same quantity), reviving the shop
+// record too if the removal emptied it. Merges into an existing shop
+// without touching its other lines.
+//
+// Deliberately does NOT re-mark the shop done: removing a line cleared the
+// done mark because the seller had not seen the edited list, and the app
+// never marks a list done on the buyer's behalf. If the restored line
+// changes nothing for the seller, the buyer re-marks it in one tap.
+export function restoreLine(shopId: string, shop: BasketShopInfo, listingId: string, line: BasketLineInfo): void {
+  commit({
+    ...state,
+    shops: state.shops[shopId] ? state.shops : { ...state.shops, [shopId]: shop },
+    lines: {
+      ...state.lines,
+      [shopId]: { ...(state.lines[shopId] ?? {}), [listingId]: line },
+    },
+  })
 }
 
 // The buyer's own bookkeeping: "this seller has my list". One tap on, one

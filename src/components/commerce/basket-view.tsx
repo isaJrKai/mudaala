@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Check, CheckCircle2, Minus, Phone, Plus, Store, Trash2, TriangleAlert } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import { Button } from '@/components/ui/button'
+import { ToastAction } from '@/components/ui/toast'
 import { apiGet } from '@/lib/client'
 import type { ListingDetail } from '@/lib/client'
 import { formatPrice, telLink } from '@/lib/format'
@@ -28,6 +29,7 @@ import {
   markShopDone,
   orderWhatsAppHref,
   removeShop,
+  restoreLine,
   setLineQty,
   useBasket,
   type BasketAddListing,
@@ -106,6 +108,32 @@ export function useLineStatuses(shopId: string, ids: string[]) {
       return Object.fromEntries(entries) as Record<string, string>
     },
   })
+}
+
+// The exit for ONE item. The minus stepper changes quantity (it stops at 1
+// so a mashed button never empties a list); the trash removes exactly this
+// line. And because the basket exists only on this phone - there is no
+// server copy to fall back on - a mis-tap on a small target must not be
+// permanent: the toast hands the exact line back for a few seconds, same
+// quantity, same snapshot, shop card revived if it was the last line.
+// Exported because the rail panel removes lines through the same door.
+export function useRemoveLine() {
+  const { toast } = useToast()
+  return (shopId: string, listingId: string, shop: BasketShopInfo, line: BasketLineInfo) => {
+    setLineQty(shopId, listingId, 0)
+    toast({
+      title: copy.basket.removed(line.title),
+      duration: 6_000,
+      action: (
+        <ToastAction
+          altText={copy.basket.undoAria(line.title)}
+          onClick={() => restoreLine(shopId, shop, listingId, line)}
+        >
+          {copy.basket.undo}
+        </ToastAction>
+      ),
+    })
+  }
 }
 
 export function BasketView() {
@@ -228,6 +256,7 @@ function BasketShopSection({
   const { navigate } = useAppStore()
   const basket = useBasket()
   const done = isShopDone(basket, shopId)
+  const removeLine = useRemoveLine()
   const entries = Object.entries(lines)
   const ids = entries.map(([id]) => id)
   const statuses = useLineStatuses(shopId, ids)
@@ -345,6 +374,16 @@ function BasketShopSection({
                   aria-label={copy.basket.oneMoreAria(line.title)}
                 >
                   <Plus className="size-3.5" aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="press size-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => removeLine(shopId, listingId, shop, line)}
+                  aria-label={copy.basket.removeLineAria(line.title)}
+                >
+                  <Trash2 className="size-3.5" aria-hidden />
                 </Button>
               </div>
             </li>

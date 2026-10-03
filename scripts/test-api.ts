@@ -14,7 +14,8 @@
  * hide/restore/dismiss with audit trail, prohibited-items filter, safety
  * card, report control), password reset by SMS (anti-enumeration, code
  * lifecycle: wrong/expired/reused/killed, shared password rulebook, session
- * revocation, per-phone rate cap).
+ * revocation, per-phone rate cap), basket store line removal + undo
+ * (pure units, no db).
  */
 import { PrismaClient } from '@prisma/client'
 import sharp from 'sharp'
@@ -27,6 +28,7 @@ import { bearerAuthEnabled } from '../src/lib/env-flags'
 import { validateEnv } from '../src/lib/env'
 import { chooseStorage, readStorageEnv, S3Storage, signS3Put } from '../src/lib/storage'
 import { pickMovers, MOVER_MIN_SAMPLE, MOVER_MIN_PCT, MOVER_LIMIT } from '../src/lib/price-movers'
+import { addToBasket, setLineQty, restoreLine, markShopDone, isShopDone, readBasket, basketCount } from '../src/lib/basket'
 
 const BASE = 'http://localhost:3000'
 const db = new PrismaClient()
@@ -2204,7 +2206,93 @@ async function main() {
     )
   }
 
-  console.log(`\n== 20. Hermetic sweep - this run leaves no fixtures behind ==`)
+  console.log(`\n== 20. Basket store - removing one line and putting it back (pure, no db) ==`)
+  {
+    // The store persists to localStorage in the browser; in Node that write
+    // is a caught no-op and the in-memory state is the whole truth, which is
+    // exactly what these units exercise. The module state starts EMPTY.
+    const offer = (shopId: string, id: string, title: string, price: number | null) => ({
+      id,
+      title,
+      price,
+      currency: 'UGX',
+      unit: 'kg',
+      contactPhone: '+256700000000',
+      contactWhatsapp: null,
+      type: 'OFFER' as const,
+      user: { id: shopId, name: 'S', profile: { businessName: `Shop ${shopId}`, photoUrl: null } },
+    })
+
+    const shopA = 'basket-shop-a'
+    addToBasket(offer(shopA, 'b-line-1', 'Copper scrap', 2000))
+    addToBasket(offer(shopA, 'b-line-2', 'Brass scrap', 5000))
+    setLineQty(shopA, 'b-line-2', 3) // a real list carries quantities
+    // The exact snapshots the UI holds in hand at trash time.
+    const shopSnap = readBasket().shops[shopA]
+    const snap1 = readBasket().lines[shopA]['b-line-1']
+    const snap2 = readBasket().lines[shopA]['b-line-2']
+
+    markShopDone(shopA, true)
+    setLineQty(shopA, 'b-line-2', 0)
+    const afterRemove = readBasket()
+    ok(
+      '20.1 removing ONE line keeps the shop and the untouched line, and clears the done mark (an edited list is no longer sent)',
+      Boolean(afterRemove.shops[shopA]) &&
+        Object.keys(afterRemove.lines[shopA]).join(',') === 'b-line-1' &&
+        basketCount(afterRemove) === 1 &&
+        !isShopDone(afterRemove, shopA),
+      JSON.stringify(afterRemove.lines[shopA]),
+    )
+
+    restoreLine(shopA, shopSnap, 'b-line-2', snap2)
+    const afterUndo = readBasket()
+    ok(
+      '20.2 undo restores the EXACT line: same key, same qty (3), same snapshot',
+      afterUndo.lines[shopA]['b-line-2'].qty === 3 &&
+        afterUndo.lines[shopA]['b-line-2'].price === 5000 &&
+        afterUndo.lines[shopA]['b-line-2'].title === 'Brass scrap' &&
+        basketCount(afterUndo) === 2,
+      JSON.stringify(afterUndo.lines[shopA]),
+    )
+
+    markShopDone(shopA, true)
+    setLineQty(shopA, 'b-line-1', 0)
+    setLineQty(shopA, 'b-line-2', 0)
+    const emptied = readBasket()
+    ok(
+      '20.3 removing the last line drops the shop record with it',
+      !emptied.shops[shopA] && !emptied.lines[shopA] && !isShopDone(emptied, shopA),
+      JSON.stringify({ shops: Object.keys(emptied.shops), lines: Object.keys(emptied.lines) }),
+    )
+
+    restoreLine(shopA, shopSnap, 'b-line-2', snap2)
+    const revived = readBasket()
+    ok(
+      '20.4 undo after an emptying removal revives the shop card with its line',
+      revived.shops[shopA]?.name === shopSnap.name &&
+        Boolean(revived.shops[shopA]?.phone) &&
+        revived.lines[shopA]['b-line-2'].qty === 3,
+      JSON.stringify(revived.shops[shopA]),
+    )
+    ok(
+      '20.5 the app never re-marks a restored list done on the buyer\u2019s behalf',
+      isShopDone(revived, shopA) === false,
+    )
+
+    addToBasket(offer(shopA, 'b-line-4', 'Aluminium scrap', 1500))
+    restoreLine(shopA, shopSnap, 'b-line-1', snap1)
+    const merged = readBasket().lines[shopA]
+    ok(
+      '20.6 undo merges into a live shop without wiping lines added since',
+      basketCount(readBasket()) === 3 &&
+        merged['b-line-1'].qty === 1 &&
+        merged['b-line-2'].qty === 3 &&
+        merged['b-line-4'].qty === 1,
+      JSON.stringify(merged),
+    )
+  }
+
+  console.log(`\n== 21. Hermetic sweep - this run leaves no fixtures behind ==`)
   {
     const ids = [...createdUserIds]
     // Targets the fixtures own or were reported about: listings + shop
@@ -2245,14 +2333,14 @@ async function main() {
       where: { listingId: { not: null }, ...(liveIds.length ? { NOT: { listingId: { in: liveIds } } } : {}) },
     })
     ok(
-      '20.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
+      '21.1 every fixture still alive at sweep time was removed (users, reports, audits, alerts)',
       delUsers.count === aliveBefore,
     )
     console.log(
       `swept: ${delUsers.count} user(s), ${delReports.count} report(s), ${delAudits.count} audit row(s), ${delDangling.count} dangling notification(s)`,
     )
     const leftovers = ids.length ? await db.user.count({ where: { id: { in: ids } } }) : 0
-    ok('20.2 zero users from this run remain', leftovers === 0)
+    ok('21.2 zero users from this run remain', leftovers === 0)
   }
 
   console.log(`\n========================================`)

@@ -375,6 +375,8 @@ export const copy = {
     openLineAria: (title: string) => `Open listing: ${title}`,
     oneLessAria: (title: string) => `One less ${title}`,
     oneMoreAria: (title: string) => `One more ${title}`,
+    removeLineAria: (title: string) => `Remove ${title} from this list`,
+    undoAria: (title: string) => `Put ${title} back in the basket`,
     priceOnAsking: 'Price on asking',
     goneRemoved: 'Removed from Mudaala. Take it off your list.',
     goneUnavailable: 'No longer available. The seller may have sold out.',
