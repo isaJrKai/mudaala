@@ -1106,3 +1106,18 @@ Work Log:
 Stage Summary:
 - Preview embed unblocked: the app no longer refuses cross-origin embedding in the sandbox.
 - Lesson recorded: .env.example documents FRAME_ANCESTORS only as a production knob; the sandbox needs it set too. If the platform wipes .env again, restore ALL sandbox keys (DATABASE_URL, ALLOW_BEARER_AUTH, ADMIN_PHONES, CRON_SECRET, SETTINGS_ENCRYPTION_KEY, FRAME_ANCESTORS).
+
+---
+Task ID: preview-csrf-login-fix
+Agent: main (Super Z)
+Task: User reported "This request was blocked for your protection — it did not come from Mudaala why are errors like this happen on login".
+
+Work Log:
+- Identified the error as proxy.ts's CSRF Origin check. curl probes through :81 reproduced it exactly: POST /api/auth/login with Origin=https://preview-*.space-z.ai and the gateway-rewritten Host -> 403; Host preserved end to end -> 200; foreign origin -> 403. Root cause: the platform preview edge rewrites Host to an internal address and sends no x-forwarded-host (which proxy.ts already trusted), so genuine preview traffic looked foreign.
+- Fix: CSRF_TRUSTED_HOSTS env (comma-separated; dot-prefixed entry = suffix match, cookie-Domain style) consulted by proxy.ts after the x-forwarded-host/host comparison. Foreign origins, lookalike suffixes and unset-env behavior unchanged. Sandbox .env trusts .space-z.ai + the suite fixture suffix; CI env block and .env.example document the knob.
+- Tests +2: 15.27a preview-origin login passes CSRF under a rewritten Host (x-forwarded-host plays the internal address; 401 wrong password proves the CSRF pass), 15.27b lookalike origin outside the suffix stays blocked. Renamed to 15.27a/b because the EXIF photo tests already owned 15.33/15.34.
+- Gate: tsc clean, eslint clean, suite 398/0 via bugprobe.sh; live probes after restart: preview-origin login 200, evil.example still 403; post-run DB recon 0 non-seed listings.
+
+Stage Summary:
+- Preview logins (and every other state-changing action from the preview) work again; CSRF protection intact.
+- The two preview-infrastructure env keys are now both understood and documented: FRAME_ANCESTORS (embed permission) and CSRF_TRUSTED_HOSTS (origin trust behind the rewriting edge). If the platform ever wipes .env again, both must be restored alongside the auth/cron keys.
