@@ -354,7 +354,10 @@ export function ListingsBrowse() {
       ) : isLoading ? (
         <ListingGridSkeleton />
       ) : isError ? (
-        <ErrorState message={error instanceof Error ? error.message : 'Could not load listings'} onRetry={() => refetch()} />
+        <ErrorState
+          message={error instanceof Error ? error.message : 'Could not load listings'}
+          onRetry={() => refetch()}
+        />
       ) : data && data.items.length === 0 ? (
         <EmptyState
           title={activeFilterCount > 0 || filters.q ? copy.browse.emptyFilteredTitle : copy.browse.emptyTitle}
@@ -852,7 +855,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-6 text-center">
       <p className="text-sm font-medium">{message}</p>
-      <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Try again in a moment. If the problem continues, the service may be having trouble.</p>
       {onRetry ? (
         <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
           Try again
