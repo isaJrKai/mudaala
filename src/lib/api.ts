@@ -36,9 +36,21 @@ export function route(handler: () => Promise<NextResponse>): Promise<NextRespons
     if (err instanceof ZodError) {
       return jsonError(400, 'Invalid request', fieldErrors(err))
     }
+    // Prisma connection/authentication failures are operational outages, not browser errors.
+    // Return 503 so clients can distinguish a server/database outage from a bad request,
+    // while keeping driver details and credentials out of the response.
+    const errorName = err instanceof Error ? err.name : ''
+    if (
+      errorName === 'PrismaClientInitializationError' ||
+      errorName === 'PrismaClientKnownRequestError' ||
+      errorName === 'PrismaClientUnknownRequestError'
+    ) {
+      console.error('[api] database error:', err)
+      return jsonError(503, 'The market database is temporarily unavailable. Please try again in a moment.')
+    }
     // Unexpected: log context server-side, never expose internals to the client.
     console.error('[api] unexpected error:', err)
-    return jsonError(500, 'Something went wrong. Please try again.')
+    return jsonError(500, 'Something went wrong. Please try again in a moment.')
   })
 }
 
