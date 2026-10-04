@@ -14,7 +14,7 @@
   "categories": ["shopping", "business"],
   "icons": [
     {
-      "src": "/logo.svg",
+      "src": "/mudaala-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
