@@ -7,6 +7,7 @@
 import {
   Beef,
   CookingPot,
+  Sparkles,
   Cpu,
   Hammer,
   HelpCircle,
@@ -29,6 +30,7 @@ const CATEGORY_GLYPHS: Record<string, React.ReactNode> = {
   electronics: <Cpu aria-hidden />,
   'transport-haulage': <Truck aria-hidden />,
   'home-kitchen': <CookingPot aria-hidden />,
+  'beauty-personal-care': <Sparkles aria-hidden />,
   services: <Wrench aria-hidden />,
   other: <Package aria-hidden />,
 }
@@ -45,6 +47,7 @@ const CATEGORY_TINTS: Record<string, string> = {
   electronics: 'bg-sky-50 text-sky-700',
   'transport-haulage': 'bg-indigo-50 text-indigo-700',
   'home-kitchen': 'bg-teal-50 text-teal-700',
+  'beauty-personal-care': 'bg-pink-50 text-pink-700',
   services: 'bg-violet-50 text-violet-700',
   other: 'bg-secondary text-muted-foreground',
 }

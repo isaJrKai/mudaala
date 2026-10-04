@@ -8,7 +8,7 @@
 //     and failures (never a fake success).
 // Used for listing photos (up to 4) and the shop photo (1).
 
-import { useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { Camera, ImagePlus, Loader2, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { apiFetch } from '@/lib/client'
@@ -25,19 +25,16 @@ interface PhotoPickerProps {
 
 export function PhotoPicker({ value, onChange, max = 4, single = false, label }: PhotoPickerProps) {
   const { toast } = useToast()
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const galleryRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const inputId = useId().replace(/:/g, '')
+  const cameraId = `${inputId}-camera`
+  const galleryId = `${inputId}-gallery`
 
   const full = value.length >= max
 
   async function upload(files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    // Reset the input so picking the same file again still fires onChange.
-    if (cameraRef.current) cameraRef.current.value = ''
-    if (galleryRef.current) galleryRef.current.value = ''
-
     setBusy(true)
     try {
       const body = new FormData()
@@ -62,22 +59,21 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
   return (
     <div>
       <input
-        ref={cameraRef}
+        id={cameraId}
         type="file"
         accept="image/*"
         capture="environment"
-        className="hidden"
-        aria-hidden
-        tabIndex={-1}
-        onChange={(e) => upload(e.target.files)}
+        className="sr-only"
+        onChange={(e) => {
+          upload(e.target.files)
+          e.currentTarget.value = ''
+        }}
       />
       <input
-        ref={galleryRef}
+        id={galleryId}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        aria-hidden
-        tabIndex={-1}
+        className="sr-only"
         onChange={(e) => upload(e.target.files)}
       />
 
@@ -100,15 +96,16 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => cameraRef.current?.click()}
-              disabled={busy}
-              className="flex size-16 items-center justify-center rounded-full border border-dashed bg-secondary/40 text-muted-foreground transition-colors hover:bg-accent"
+            <label
+              htmlFor={cameraId}
+              className={cn(
+                'flex size-16 items-center justify-center rounded-full border border-dashed bg-secondary/40 text-muted-foreground transition-colors hover:bg-accent',
+                busy && 'pointer-events-none opacity-60',
+              )}
               aria-label="Take a shop photo"
             >
               {busy ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Camera className="size-5" aria-hidden />}
-            </button>
+            </label>
           )}
           <div className="text-sm text-muted-foreground">
             {value[0] ? 'Looking good. Buyers see this next to your name.' : 'A real photo of your shop builds trust.'}
@@ -132,32 +129,31 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
             ))}
 
             {!full || value.length === 0 ? (
-              <button
-                type="button"
-                onClick={() => cameraRef.current?.click()}
-                disabled={busy}
+              <label
+                htmlFor={cameraId}
                 className={cn(
                   'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-secondary/30 text-muted-foreground transition-colors hover:bg-accent',
-                  busy && 'opacity-60',
+                  busy && 'pointer-events-none opacity-60',
                 )}
                 aria-label="Take a photo"
               >
                 {busy ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Camera className="size-5" aria-hidden />}
                 <span className="text-[11px] font-medium">{busy ? 'Uploading…' : 'Take photo'}</span>
-              </button>
+              </label>
             ) : null}
 
             {!full ? (
-              <button
-                type="button"
-                onClick={() => galleryRef.current?.click()}
-                disabled={busy}
-                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-secondary/30 text-muted-foreground transition-colors hover:bg-accent"
+              <label
+                htmlFor={galleryId}
+                className={cn(
+                  'flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-secondary/30 text-muted-foreground transition-colors hover:bg-accent',
+                  busy && 'pointer-events-none opacity-60',
+                )}
                 aria-label="Choose from gallery"
               >
                 <ImagePlus className="size-5" aria-hidden />
                 <span className="text-[11px] font-medium">Gallery</span>
-              </button>
+              </label>
             ) : null}
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground">
