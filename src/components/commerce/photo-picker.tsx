@@ -35,7 +35,6 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
   async function upload(files: FileList | null) {
     const file = files?.[0]
     if (!file) return
-    // Reset the input so picking the same file again still fires onChange.
     setBusy(true)
     try {
       const body = new FormData()
@@ -65,7 +64,10 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
         accept="image/*"
         capture="environment"
         className="sr-only"
-        onChange={(e) => upload(e.target.files)}
+        onChange={(e) => {
+          upload(e.target.files)
+          e.currentTarget.value = ''
+        }}
       />
       <input
         id={galleryId}
