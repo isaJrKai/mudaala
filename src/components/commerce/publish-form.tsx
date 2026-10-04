@@ -203,12 +203,25 @@ export function PublishForm() {
         </div>
       </div>
 
-      <Field label="What exactly?" htmlFor="p-title" error={errors.title} hint={`${form.title.length}/120`}>
+      <Field
+        label={form.category === 'other' ? 'What are you selling?' : 'What exactly?'}
+        htmlFor="p-title"
+        error={errors.title}
+        hint={`${form.title.length}/120`}
+      >
         <Input
           id="p-title"
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
-          placeholder={form.type === 'OFFER' ? copy.publish.titlePlaceholderOffer : copy.publish.titlePlaceholderRequest}
+          placeholder={
+            form.category === 'other'
+              ? form.type === 'OFFER'
+                ? 'e.g. perfume, spare parts, firewood'
+                : 'e.g. Need a specific item or material'
+              : form.type === 'OFFER'
+                ? copy.publish.titlePlaceholderOffer
+                : copy.publish.titlePlaceholderRequest
+          }
           maxLength={120}
           required
         />
