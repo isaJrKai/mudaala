@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { siteUrl } from "@/lib/site";
 import { copy } from "@/lib/copy";
 
@@ -20,8 +21,10 @@ export const metadata: Metadata = {
   title: copy.app.metaTitle,
   description: copy.app.metaDescription,
   keywords: ["Mudaala", "marketplace", "local commerce", "Uganda", "Kampala", "offer", "request"],
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
+    apple: "/logo.svg",
   },
 };
 
@@ -31,8 +34,8 @@ export const viewport: Viewport = {
   // Mobile-first, and phones have curves: viewport-fit=cover lets the page
   // paint edge to edge, and the sticky header pads itself with the safe-area
   // inset so a notch or a curved corner never eats the brand bar. In normal
-  // browsers the inset is 0, so this is invisible there - it only earns its
-  // keep where the hardware actually curves (standalone webviews, PWA).
+  // browsers the inset is 0, so this is invisible there - it only earns
+  // its keep where the hardware actually curves (standalone webviews, PWA).
   viewportFit: "cover",
   themeColor: "#1d4a35",
 };
@@ -46,6 +49,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fraunces.variable} antialiased bg-background text-foreground`}>
         {children}
+        <PwaInstallPrompt />
         <Toaster />
       </body>
     </html>
