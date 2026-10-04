@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 22
       - name: Install
-        run: npm ci
+        run: npm ci --include=dev
       - name: Generate Prisma client
         run: npx prisma generate
       - name: Create tables (migrate deploy)
