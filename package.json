@@ -7,12 +7,12 @@
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && (cp -r content .next/standalone/ 2>/dev/null || true)",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
-    "db:push": "prisma db push --accept-data-loss",
+    "db:push": "node scripts/guard-local-db.mjs && prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset",
+    "db:reset": "node scripts/guard-local-db.mjs && prisma migrate reset",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "bun scripts/seed.ts"
+    "db:seed": "node scripts/guard-local-db.mjs && bun scripts/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
