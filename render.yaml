@@ -8,7 +8,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    buildCommand: npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
+    buildCommand: npm ci --include=dev && npm install --no-save --no-package-lock @aws-sdk/client-s3 && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: node .next/standalone/server.js
     healthCheckPath: /api/health
     autoDeploy: true
