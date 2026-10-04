@@ -1,0 +1,57 @@
+# Manual database setup for the live (Supabase) database.
+#
+# Nothing runs by itself. In GitHub: Actions tab, "Database setup", Run workflow.
+#   status : read only. Shows which migrations are applied. Changes nothing.
+#   deploy : applies any missing migrations (prisma migrate deploy). It never
+#            resets, never seeds, and never drops data.
+#
+# Needs two repository secrets (Settings, Secrets and variables, Actions):
+#   DATABASE_URL : Supabase transaction pooler string (port 6543)
+#   DIRECT_URL   : Supabase SESSION pooler string (port 5432, IPv4 friendly)
+name: Database setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "status = look only, deploy = apply missing migrations"
+        type: choice
+        options:
+          - status
+          - deploy
+        default: status
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check secrets exist
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$DIRECT_URL" ]; then
+            echo "Missing secret: add DATABASE_URL and DIRECT_URL in Settings, Secrets and variables, Actions."
+            exit 1
+          fi
+
+      - name: Install
+        run: npm ci
+
+      - name: Migration status
+        run: npx prisma migrate status
+        continue-on-error: ${{ inputs.mode == 'deploy' }}
+
+      - name: Apply migrations
+        if: ${{ inputs.mode == 'deploy' }}
+        run: npx prisma migrate deploy
