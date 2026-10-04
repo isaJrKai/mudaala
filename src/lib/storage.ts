@@ -14,6 +14,7 @@
 // and MinIO alike.
 
 import { createHash, createHmac } from 'node:crypto'
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
@@ -131,33 +132,37 @@ export function signS3Put(
 
 export class S3Storage implements PhotoStorage {
   readonly name = 's3-compatible'
-  constructor(private readonly env: S3Env) {}
+  private readonly client: S3Client
+
+  constructor(private readonly env: S3Env) {
+    // Let the AWS SDK own SigV4 signing. Supabase's S3 gateway is AWS-S3
+    // compatible, and the SDK handles canonical URI/header rules reliably.
+    this.client = new S3Client({
+      region: env.region ?? 'auto',
+      endpoint: env.endpoint,
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: env.key,
+        secretAccessKey: env.secret,
+      },
+    })
+  }
 
   /** PUT one object; exported so the one-off URL-migration script reuses it. */
   async put(objectKey: string, data: Buffer, contentType = 'image/webp'): Promise<void> {
-    const { authorization, amzDate, payloadHash, host, path } = signS3Put(this.env, objectKey, data)
-    const res = await fetch(`${this.env.endpoint}${path}`, {
-      method: 'PUT',
-      headers: {
-        authorization,
-        host,
-        'content-type': contentType,
-        'x-amz-content-sha256': payloadHash,
-        'x-amz-date': amzDate,
-        'content-length': String(data.byteLength),
-      },
-      body: new Uint8Array(data),
-    })
-    if (!res.ok) {
-      // Keep the provider's diagnostic response in server logs. It is essential
-      // for distinguishing bad credentials, region/signature errors, and bucket
-      // permission failures while never returning the body to the browser.
-      const detail = (await res.text()).replace(/[\\r\\n]+/g, ' ').slice(0, 500)
-      console.error(`[photo-storage] Supabase S3 PUT rejected: HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
-      throw new Error(`S3 put failed with HTTP ${res.status}`)
+    try {
+      await this.client.send(new PutObjectCommand({
+        Bucket: this.env.bucket,
+        Key: objectKey,
+        Body: data,
+        ContentType: contentType,
+      }))
+    } catch (error) {
+      const detail = error instanceof Error ? error.message.replace(/[\r\n]+/g, ' ').slice(0, 500) : 'unknown S3 error'
+      console.error(`[photo-storage] Supabase S3 PUT rejected: ${detail}`)
+      throw new Error('S3 put failed')
     }
   }
-
   async save(data: Buffer, extension: string): Promise<string> {
     const key = `photos/${randomBytes(4).toString('hex')}-${randomBytes(8).toString('hex')}.${extension}`
     await this.put(key, data)
@@ -167,17 +172,17 @@ export class S3Storage implements PhotoStorage {
   async remove(url: string): Promise<void> {
     const key = this.objectKeyFor(url)
     if (!key) return
-    const { authorization, amzDate, payloadHash, host, path } = signS3Request(this.env, 'DELETE', key, EMPTY_PAYLOAD_HASH)
-    const res = await fetch(`${this.env.endpoint}${path}`, {
-      method: 'DELETE',
-      headers: { authorization, host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': amzDate },
-    })
-    // 404 counts as deleted: removal is idempotent.
-    if (!res.ok && res.status !== 404) {
-      throw new Error(`S3 delete failed with HTTP ${res.status}`)
+    try {
+      await this.client.send(new DeleteObjectCommand({
+        Bucket: this.env.bucket,
+        Key: key,
+      }))
+    } catch (error) {
+      const detail = error instanceof Error ? error.message.replace(/[\r\n]+/g, ' ').slice(0, 500) : 'unknown S3 error'
+      console.error(`[photo-storage] Supabase S3 DELETE rejected: ${detail}`)
+      throw new Error('S3 delete failed')
     }
   }
-
   /** The object key behind a public URL, or null when the URL is not ours. */
   objectKeyFor(url: string): string | null {
     const bases = [this.env.publicUrl, `${this.env.endpoint.replace(/\/$/, '')}/${this.env.bucket}`]
