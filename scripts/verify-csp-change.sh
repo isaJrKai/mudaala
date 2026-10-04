@@ -10,7 +10,10 @@ cd "$(dirname "$0")/.." || exit 1
 
 # Exact runtime env the sandbox dev server uses (mirrors .zscripts/dev.sh,
 # confirmed via /proc of the running next-server; NOT the .env values).
-export DATABASE_URL='postgresql://postgres:postgres@localhost:5432/mudaala'
+# DATABASE_URL_OVERRIDE lets a caller retarget the run (e.g. Supabase:
+#   DATABASE_URL_OVERRIDE="..." bash scripts/verify-csp-change.sh
+# step 0 then skips the embedded local Postgres entirely).
+export DATABASE_URL="${DATABASE_URL_OVERRIDE:-postgresql://postgres:postgres@localhost:5432/mudaala}"
 export AUTH_BEARER_FALLBACK='1'
 export CRON_SECRET='dev-cron-secret'
 export SETTINGS_ENC_KEY='dev-settings-enc-key'
@@ -24,7 +27,9 @@ FAIL=0
 step() { echo; echo "=== $1 ==="; }
 
 step "0. Postgres on 5432"
-if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
+if [ "${DATABASE_URL_OVERRIDE:-}" != "" ]; then
+  echo "remote DATABASE_URL override set - skipping embedded postgres"
+elif (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
   echo "postgres: up"
 else
   echo "postgres: down - starting embedded postgres (.pgtool)"
