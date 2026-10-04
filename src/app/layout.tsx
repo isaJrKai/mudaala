@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   keywords: ["Mudaala", "marketplace", "local commerce", "Uganda", "Kampala", "offer", "request"],
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/logo.svg",
-    apple: "/logo.svg",
+    icon: "/mudaala-icon.svg",
+    apple: "/mudaala-icon.svg",
   },
 };
 
