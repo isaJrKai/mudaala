@@ -12,7 +12,7 @@ datasource db {
   url       = env("DATABASE_URL")
   // Supabase: runtime connects through the transaction-mode pooler (PgBouncer,
   // ?pgbouncer=true), but the CLI (db push / migrate) needs a session-mode
-  // connection — directUrl routes schema work to the session pooler.
+  // connection - directUrl routes schema work to the session pooler.
   directUrl = env("DIRECT_URL")
 }
 
