@@ -8,7 +8,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: node .next/standalone/server.js
     healthCheckPath: /api/health
     autoDeploy: true
@@ -21,7 +21,7 @@ services:
         value: 0.0.0.0
       - key: FRAME_ANCESTORS
         value: "'none'"
-      # The two database addresses from Supabase (Connect button).
+      # Supabase connection strings from Connect. Render is IPv4-only, so use the shared\n      # Supavisor pooler. For this long-running web service, Session mode (port 5432)\n      # is the safest default. DATABASE_URL may use Transaction mode (6543) only with\n      # Prisma-compatible ?pgbouncer=true; DIRECT_URL should use Session mode (5432).
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL
