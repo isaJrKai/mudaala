@@ -19,14 +19,12 @@ name: CI
 
 on:
   push:
-    branches: [main, 'claude/fix-ci']
+    branches: [main]
   pull_request:
 
 jobs:
   verify:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
 
     services:
       postgres:
@@ -90,32 +88,7 @@ jobs:
           echo "server did not come up"; exit 1
 
       - name: API behavior suite
-        run: |
-          set -o pipefail
-          bunx tsx scripts/test-api.ts 2>&1 | tee suite.log
-
-      - name: Publish failure report (temporary diagnostic)
-        if: failure()
-        run: |
-          mkdir -p /tmp/rep
-          {
-            echo "run ${{ github.run_id }} sha ${{ github.sha }}"
-            echo "bun $(bun --version) node $(node --version)"
-            echo "--- RESULT/FAIL LINES ---"
-            grep -n -E "RESULT:|✗" suite.log | head -80 || true
-            echo "--- SUITE TAIL ---"
-            tail -150 suite.log || true
-            echo "--- DEV LOG TAIL ---"
-            tail -80 dev.log || true
-          } > /tmp/rep/report.txt
-          git config user.name ci-report
-          git config user.email ci-report@users.noreply.github.com
-          git checkout --orphan ci-report-tmp
-          git rm -rf . -q
-          cp /tmp/rep/report.txt report.txt
-          git add report.txt
-          git commit -q -m "ci report ${{ github.run_id }}"
-          git push -f origin ci-report-tmp:claude/ci-report
+        run: bunx tsx scripts/test-api.ts
 
       - name: Clean test data
         if: always()
