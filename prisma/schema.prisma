@@ -1,18 +1,17 @@
 // Commerce OS - data model
 // The database is the single source of truth for listings, ownership and status.
-// PostgreSQL is the runtime store (Task 5): local dev and production both
-// point DATABASE_URL at a real Postgres server.
+// PostgreSQL is the runtime store.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Supabase: runtime connects through the transaction-mode pooler (PgBouncer,
-  // ?pgbouncer=true), but the CLI (db push / migrate) needs a session-mode
-  // connection - directUrl routes schema work to the session pooler.
+  provider = "postgresql"
+  // Render is a long-running IPv4 backend. Use Supabase Session Pooler (5432)
+  // for Prisma runtime connections. Transaction mode (6543) is intended for
+  // short-lived/serverless workloads.
+  url       = env("DIRECT_URL")
   directUrl = env("DIRECT_URL")
 }
 
