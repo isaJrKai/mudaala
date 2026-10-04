@@ -1,0 +1,47 @@
+node v22.23.3 npm 10.9.9
+--- BUILD LOG TAIL ---
+
+> nextjs_tailwind_shadcn_ts@0.2.1 build
+> next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && (cp -r content .next/standalone/ 2>/dev/null || true)
+
+▲ Next.js 16.3.8 (Turbopack)
+✓ Running next.config.ts took 27ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+- Experiments (use with caution):
+  ✓ authInterrupts
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 error:
+./src/app/globals.css
+Error: Error evaluating Node.js code
+Error: Cannot find module '@tailwindcss/postcss'
+Require stack:
+- /home/runner/work/mudaala/mudaala/.next/build/chunks/[root-of-the-server]__1kki86f._.js
+- /home/runner/work/mudaala/mudaala/.next/build/chunks/[turbopack]_runtime.js
+- /home/runner/work/mudaala/mudaala/.next/build/chunks/pool_entry-[turbopack-node]_transforms_postcss_ts_0tp-k2v._.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)]
+    [at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)]
+    [at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)]
+    [at Function._load (node:internal/modules/cjs/loader:1216:25)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)]
+    [at Module.require (node:internal/modules/cjs/loader:1527:12)]
+    [at require (node:internal/modules/helpers:147:16)]
+    at require (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:49:25) [/home/runner/work/mudaala/mudaala/.next/build/chunks/[root-of-the-server]__1kki86f._.js:86:33]
+    [at <anonymous>]
+    at map (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:43:33) [/home/runner/work/mudaala/mudaala/.next/build/chunks/[root-of-the-server]__1kki86f._.js:81:35]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+    at require (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:49:25) [/home/runner/work/mudaala/mudaala/.next/build/chunks/[root-of-the-server]__1kki86f._.js:86:33])
+    at map (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:43:33) [/home/runner/work/mudaala/mudaala/.next/build/chunks/[root-of-the-server]__1kki86f._.js:81:35])
