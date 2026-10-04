@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "node scripts/guard-local-db.mjs && prisma migrate reset",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "node scripts/guard-local-db.mjs && bun scripts/seed.ts"
+    "db:seed": "node scripts/guard-local-db.mjs && bun scripts/seed.ts",
+    "prebuild": "npm install --no-save --no-package-lock @aws-sdk/client-s3"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
