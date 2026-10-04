@@ -159,6 +159,7 @@ export const CATEGORIES: CategoryDef[] = [
   { key: 'electronics', label: 'Electronics', examples: 'phones, radios, solar panels, spare parts' },
   { key: 'transport-haulage', label: 'Transport & Haulage', examples: 'delivery runs, hire, loading' },
   { key: 'home-kitchen', label: 'Home & Kitchen', examples: 'cookware, furniture, gas cylinders' },
+  { key: 'beauty-personal-care', label: 'Beauty & Personal Care', examples: 'perfume, cologne, cosmetics, hair products' },
   { key: 'services', label: 'Services', examples: 'repair, welding, tailoring, grinding' },
   { key: 'other', label: 'Other', examples: 'anything else traded locally' },
 ]
