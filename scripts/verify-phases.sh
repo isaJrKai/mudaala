@@ -92,6 +92,10 @@ build)
 
 prod)
   step "Launch production standalone server on :3000"
+  # The app's instrumentation hook refuses to boot in production without a
+  # canonical URL (NEXT_PUBLIC_APP_URL). Default to the local address here;
+  # an explicitly provided value always wins.
+  export NEXT_PUBLIC_APP_URL="${NEXT_PUBLIC_APP_URL:-http://localhost:3000}"
   pkill -f 'next-server' 2>/dev/null; pkill -f 'standalone' 2>/dev/null; sleep 1
   NODE_ENV=production nohup bun .next/standalone/server.js > server.log 2>&1 &
   ok=0

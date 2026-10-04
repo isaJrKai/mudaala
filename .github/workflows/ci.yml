@@ -42,6 +42,10 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mudaala
+      # schema.prisma's datasource declares directUrl = env("DIRECT_URL");
+      # Prisma CLI (db push / migrate) refuses to run without it. CI points it
+      # at the same postgres:16 service container — no production credentials.
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/mudaala
       AUTH_BEARER_FALLBACK: "1"
       CRON_SECRET: ci-cron-secret
       SETTINGS_ENC_KEY: ci-settings-enc-key
