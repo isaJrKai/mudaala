@@ -1,0 +1,34 @@
+# Daily housekeeping, free, no server needed.
+# Calls your live app once a day: expires old listings, sends notifications,
+# and keeps the Supabase project awake.
+# Needs two repository secrets: APP_URL (for example https://mudaala.onrender.com)
+# and CRON_SECRET (the same value Render generated for the app).
+name: Scheduled jobs
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  daily:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check secrets
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL and CRON_SECRET secrets are not set yet. Skipping."
+            exit 0
+          fi
+          echo "Health check"
+          curl -fsS "$APP_URL/api/health"
+          echo
+          echo "Daily sweep"
+          curl -fsS -X POST "$APP_URL/api/cron/sweep" -H "x-cron-secret: $CRON_SECRET"
+          echo

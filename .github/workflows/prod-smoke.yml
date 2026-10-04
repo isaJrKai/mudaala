@@ -1,0 +1,79 @@
+# Proves the app can be built and started the way a host (Render) does it:
+# production build, standalone server, real PostgreSQL, health check answers.
+# Runs on every pull request and every push to main.
+name: Production smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mudaala
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: mudaala
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mudaala"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://mudaala:secret@localhost:5432/mudaala
+      DIRECT_URL: postgresql://mudaala:secret@localhost:5432/mudaala
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: https://example.test
+      ADMIN_PHONES: "+256712000001"
+      CRON_SECRET: smoke-cron-secret
+      SETTINGS_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef
+      HOSTNAME: 127.0.0.1
+      PORT: "3100"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Create tables (migrate deploy)
+        run: npx prisma migrate deploy
+      - name: Production build
+        run: npm run build
+      - name: Start the standalone server
+        run: |
+          node .next/standalone/server.js > server.log 2>&1 &
+          echo $! > server.pid
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 40); do
+            code=$(curl -s -o health.json -w "%{http_code}" http://127.0.0.1:3100/api/health || true)
+            echo "try $i: $code"
+            if [ "$code" = "200" ]; then cat health.json; exit 0; fi
+            sleep 3
+          done
+          echo "Health check never returned 200. Server log:"
+          tail -80 server.log
+          exit 1
+      - name: Home page and a listing link respond
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3100/)
+          echo "home: $code"
+          [ "$code" = "200" ]
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3100/sitemap.xml)
+          echo "sitemap: $code"
+          [ "$code" = "200" ]
+      - name: Show server log if anything failed
+        if: failure()
+        run: tail -80 server.log || true

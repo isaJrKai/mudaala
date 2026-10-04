@@ -1,0 +1,50 @@
+# Render Blueprint for Mudaala.
+# In Render: New, Blueprint, pick this GitHub repo. Render reads this file,
+# creates the web service, and asks you to fill the values marked "sync: false".
+# Never put real secrets in this file. Type them in Render's page instead.
+services:
+  - type: web
+    name: mudaala
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: node .next/standalone/server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: FRAME_ANCESTORS
+        value: "'none'"
+      # The two database addresses from Supabase (Connect button).
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      # Your public address, for example https://mudaala.onrender.com until you add a domain.
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      # Admin phone numbers, format +256XXXXXXXXX, comma separated.
+      - key: ADMIN_PHONES
+        sync: false
+      # Render makes these two random secrets for you. Copy CRON_SECRET to GitHub later.
+      - key: CRON_SECRET
+        generateValue: true
+      - key: SETTINGS_ENCRYPTION_KEY
+        generateValue: true
+      # Photo storage. Leave empty at first to skip photo uploads to the cloud.
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_KEY
+        sync: false
+      - key: STORAGE_SECRET
+        sync: false
+      - key: STORAGE_PUBLIC_URL
+        sync: false
