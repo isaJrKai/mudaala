@@ -85,7 +85,10 @@ export function signS3Request(
   const service = 's3'
   const amzDate = `${now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}` // YYYYMMDDTHHMMSSZ
   const dateStamp = amzDate.slice(0, 8)
-  const path = `/${env.bucket}/${objectKey}`
+  // SigV4 signs the RFC3986-encoded URI path. Keep `/` separators but encode
+  // each path segment so the canonical request is identical to what fetch sends.
+  const encodePathSegment = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  const path = `/${encodePathSegment(env.bucket)}/${objectKey.split('/').map(encodePathSegment).join('/')}`
 
   const canonicalRequest = [
     method,
@@ -146,7 +149,11 @@ export class S3Storage implements PhotoStorage {
       body: new Uint8Array(data),
     })
     if (!res.ok) {
-      // Gateway bodies may contain account specifics - never echo them.
+      // Keep the provider's diagnostic response in server logs. It is essential
+      // for distinguishing bad credentials, region/signature errors, and bucket
+      // permission failures while never returning the body to the browser.
+      const detail = (await res.text()).replace(/[\\r\\n]+/g, ' ').slice(0, 500)
+      console.error(`[photo-storage] Supabase S3 PUT rejected: HTTP ${res.status}${detail ? ` — ${detail}` : ''}`)
       throw new Error(`S3 put failed with HTTP ${res.status}`)
     }
   }
