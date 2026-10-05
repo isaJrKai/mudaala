@@ -43,6 +43,8 @@ model User {
   notifications  Notification[]
   profile        BusinessProfile?
   passwordResets PasswordReset[]
+  followingShops ShopFollow[] @relation("Follower")
+  shopFollowers ShopFollow[] @relation("ShopOwner")
 }
 
 model Session {
@@ -247,4 +249,20 @@ model PriceSnapshot {
   @@unique([date, category, unit, currency]) // upsert target - sweeps are idempotent
   @@index([date])
   @@index([category, unit, currency])
+}
+
+
+// A buyer follows a shop to keep that seller in their personal market.
+// The relationship is unique: one buyer can follow a shop once.
+model ShopFollow {
+  id         String   @id @default(cuid())
+  followerId String
+  shopOwnerId String
+  follower   User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  shopOwner  User     @relation("ShopOwner", fields: [shopOwnerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([followerId, shopOwnerId])
+  @@index([followerId, createdAt])
+  @@index([shopOwnerId, createdAt])
 }
