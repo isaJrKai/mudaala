@@ -51,8 +51,6 @@ export function ShopFollowBar({ shopId }: { shopId: string }) {
 
   const state = stateQuery.data
   const count = state?.followerCount ?? 0
-  const canFollow = Boolean(user) && !state?.ownShop
-
   return (
     <section aria-label="Follow shop" className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
