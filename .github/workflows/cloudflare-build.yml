@@ -1,0 +1,32 @@
+name: Mudaala Cloudflare build
+
+on:
+  push:
+    branches:
+      - cloudflare-mudaala
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Install Cloudflare build tooling
+        run: npm install --no-save --no-package-lock vinext @vinext/cloudflare @cloudflare/vite-plugin vite wrangler
+
+      - name: Check vinext compatibility
+        run: npx vinext check
+
+      - name: Build for Cloudflare Workers
+        run: npx vinext build
