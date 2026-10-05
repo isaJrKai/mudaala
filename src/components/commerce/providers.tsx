@@ -16,6 +16,7 @@ import { SavedSearches } from './saved-searches'
 import { NotificationsView } from './notifications-view'
 import { AccountView } from './account-view'
 import { SettingsView } from './settings-view'
+import { ShopFollowBar, FollowingView } from './shop-follow'
 import { useAppStore, hashToView, viewToHash } from '@/lib/store'
 
 function makeQueryClient() {
@@ -43,7 +44,12 @@ function CurrentView() {
     case 'listing':
       return view.id ? <ListingDetail id={view.id} /> : <ListingsBrowse />
     case 'shop':
-      return view.id ? <ShopView id={view.id} /> : <ListingsBrowse />
+      return view.id ? (
+        <>
+          <ShopView id={view.id} />
+          <ShopFollowBar shopId={view.id} />
+        </>
+      ) : <ListingsBrowse />
     case 'basket':
       return <BasketView />
     case 'publish':
@@ -60,6 +66,8 @@ function CurrentView() {
       return <AccountView />
     case 'settings':
       return <SettingsView />
+    case 'following':
+      return <FollowingView />
     case 'browse':
     default:
       return <ListingsBrowse />
