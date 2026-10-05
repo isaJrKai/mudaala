@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - cloudflare-mudaala
+  pull_request:
+    branches:
+      - cloudflare-mudaala
   workflow_dispatch:
 
 jobs:
