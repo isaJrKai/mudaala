@@ -3,10 +3,20 @@
   "name": "mudaala-cloudflare",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-05",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "keep_names": false,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }
