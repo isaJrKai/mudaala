@@ -43,6 +43,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Next.js file tracing omits pg-cloudflare's workerd-conditioned files.
+  // OpenNext needs them when bundling PostgreSQL for Cloudflare Workers.
+  outputFileTracingIncludes: {
+    "**/*": [
+      "./node_modules/pg-cloudflare/dist/**",
+      "./node_modules/pg-cloudflare/esm/**",
+    ],
+  },
   // Hide the dev-tools indicator so it never covers the mobile bottom nav.
   devIndicators: false,
   // Type errors fail the build: never ship unchecked types.
