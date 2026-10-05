@@ -35,7 +35,7 @@ function getPrisma(): PrismaClient {
     throw new Error('DATABASE_URL is required to initialize Prisma')
   }
 
-  const adapter = new PrismaPg({ connectionString })
+  const adapter = new PrismaPg({ connectionString, maxUses: 1 })
   const client = new PrismaClient({
     adapter,
     log:
