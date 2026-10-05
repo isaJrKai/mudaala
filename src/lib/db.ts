@@ -11,10 +11,20 @@ const globalForPrisma = globalThis as unknown as {
 function runtimeDatabaseUrl() {
   const value = process.env.DATABASE_URL
   if (!value) return value
-  return value.replace(
-    'postgres.xuzdkfqahshokenlgcvjh',
-    'postgres.xuzdkfqahshokenlgvjh',
-  )
+
+  // Supabase's shared transaction pooler (port 6543) does not support
+  // prepared statements. Prisma must be told it is behind PgBouncer.
+  try {
+    const url = new URL(value)
+    if (url.port === '6543') {
+      url.searchParams.set('pgbouncer', 'true')
+      return url.toString()
+    }
+  } catch {
+    // Let Prisma report a malformed DATABASE_URL below.
+  }
+
+  return value
 }
 
 function getPrisma(): PrismaClient {
