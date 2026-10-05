@@ -70,7 +70,7 @@ export function ShopFollowBar({ shopId }: { shopId: string }) {
           <Button
             type="button"
             variant={state?.following ? 'outline' : 'default'}
-            disabled={busy || stateQuery.isLoading || !canFollow}
+            disabled={busy || stateQuery.isLoading || Boolean(state?.ownShop)}
             onClick={() => {
               if (!user) {
                 setAuthOpen(true)
