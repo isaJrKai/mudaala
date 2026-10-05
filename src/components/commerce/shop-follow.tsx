@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast'
 
 type FollowState = { followerCount: number; following: boolean; signedIn: boolean; ownShop: boolean }
 
-export function ShopFollowBar({ shopId, shopName }: { shopId: string; shopName: string }) {
+export function ShopFollowBar({ shopId }: { shopId: string }) {
   const { user } = useSession()
   const { setAuthOpen, navigate } = useAppStore()
   const { toast } = useToast()
@@ -54,7 +54,7 @@ export function ShopFollowBar({ shopId, shopName }: { shopId: string; shopName: 
   const canFollow = Boolean(user) && !state?.ownShop
 
   return (
-    <section aria-label={`Follow ${shopName}`} className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+    <section aria-label="Follow shop" className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <p className="text-sm font-semibold">Keep this shop close</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
