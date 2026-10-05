@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Render currently has the Supabase project ref in the stored URL with one
-// extra "c". The canonical project ref supplied for Mudaala is the one below.
-// Normalize only that known typo; the password and host remain untouched.
+// Mudaala runs on PostgreSQL (Supabase). Cloudflare Workers needs the
+// engine-less Prisma client plus the PostgreSQL driver adapter.
 function runtimeDatabaseUrl() {
-  const value = process.env.DIRECT_URL
+  const value = process.env.DATABASE_URL
   if (!value) return value
   return value.replace(
     'postgres.xuzdkfqahshokenlgcvjh',
@@ -19,10 +19,15 @@ function runtimeDatabaseUrl() {
 const verboseQueries =
   process.env.PRISMA_LOG_QUERIES === '1' || process.env.PRISMA_LOG_QUERIES === 'true'
 
+const connectionString = runtimeDatabaseUrl()
+const adapter = connectionString
+  ? new PrismaPg({ connectionString })
+  : undefined
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasourceUrl: runtimeDatabaseUrl(),
+    ...(adapter ? { adapter } : {}),
     log: verboseQueries ? ['query'] : ['error'],
   })
 
