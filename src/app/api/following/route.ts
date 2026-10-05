@@ -21,7 +21,7 @@ export async function GET() {
                 description: true,
               },
             },
-            _count: { select: { listings: true } },
+            listings: { where: { status: 'ACTIVE' }, select: { id: true }, take: 200 },
           },
         },
       },
@@ -35,7 +35,7 @@ export async function GET() {
         area: follow.shopOwner.profile?.area ?? null,
         county: follow.shopOwner.profile?.county ?? null,
         description: follow.shopOwner.profile?.description ?? null,
-        activeListings: follow.shopOwner._count.listings,
+        activeListings: follow.shopOwner.listings.length,
         followedAt: follow.createdAt.toISOString(),
       })),
     })
