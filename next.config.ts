@@ -33,6 +33,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: [
+    "@prisma/client",
+    ".prisma/client",
+    "pg",
+    "pg-cloudflare",
+  ],
   outputFileTracingIncludes: {
     "**/*": [
       "./node_modules/pg-cloudflare/dist/**",
