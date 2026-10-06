@@ -217,6 +217,8 @@ interface ShopInfo {
   county: string | null
   country: string
   phone: string
+  additionalPhone: string | null
+  email: string | null
   whatsapp: string | null
   /** True only when the displayed phone IS the seller's login line. */
   phoneConfirmed: boolean
