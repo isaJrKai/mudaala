@@ -18,7 +18,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { cookies, headers } from 'next/headers'
 import { db } from '@/lib/db'
 import { bearerAuthEnabled } from '@/lib/env-flags'
-import type { User } from '@/generated/prisma/client'
+import type { User } from '@prisma/client'
 
 const SESSION_COOKIE = 'mudaala_session'
 const SESSION_DAYS = 30
