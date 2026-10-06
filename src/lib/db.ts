@@ -12,12 +12,17 @@ function runtimeDatabaseUrl() {
   const value = process.env.DATABASE_URL
   if (!value) return value
 
-  // Supabase's shared transaction pooler (port 6543) does not support
-  // prepared statements. Prisma must be told it is behind PgBouncer.
+  // Cloudflare Workers can open outbound PostgreSQL TCP connections. For
+  // Supabase, use the Session Pooler endpoint (5432) rather than the
+  // Transaction Pooler endpoint (6543) for Prisma's normal connection
+  // semantics. If production was configured with the transaction URL,
+  // normalize it at runtime so the secret does not need to be exposed or
+  // manually edited.
   try {
     const url = new URL(value)
-    if (url.port === '6543') {
-      url.searchParams.set('pgbouncer', 'true')
+    if (url.port === '6543' && url.hostname.endsWith('.pooler.supabase.com')) {
+      url.port = '5432'
+      url.searchParams.delete('pgbouncer')
       return url.toString()
     }
   } catch {
