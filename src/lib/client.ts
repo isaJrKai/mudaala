@@ -107,6 +107,8 @@ export interface BusinessProfileT {
   county: string | null
   area: string | null
   phone: string
+  additionalPhone: string | null
+  email: string | null
   whatsapp: string | null
   hours: string | null
   verified: boolean
