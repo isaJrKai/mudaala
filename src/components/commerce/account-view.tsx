@@ -282,6 +282,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
     county: 'none',
     area: '',
     phone: user.phone,
+    additionalPhone: '',
+    email: '',
     whatsapp: '',
     hours: '',
     momoNetwork: 'none',
