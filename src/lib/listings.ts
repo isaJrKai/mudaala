@@ -7,7 +7,7 @@ import { ApiError } from '@/lib/api'
 import { isTransitionAllowed } from '@/lib/validation'
 import { LISTING_ACTIVE_DAYS, REFRESH_COOLDOWN_HOURS, EXPIRING_SOON_DAYS } from '@/lib/constants'
 import { haversineMeters } from '@/lib/geo'
-import type { Listing, Prisma } from '@/generated/prisma/client'
+import type { Listing, Prisma } from '@prisma/client'
 import type { ListingQuery } from '@/lib/validation'
 
 function addDays(date: Date, days: number): Date {
