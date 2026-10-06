@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server'
 import { ZodError, type ZodType } from 'zod'
 import { fieldErrors } from './validation'
 import { getSessionUser } from './auth'
-import type { User } from '@prisma/client'
+import type { User } from '@/generated/prisma/client'
 
 export class ApiError extends Error {
   status: number
