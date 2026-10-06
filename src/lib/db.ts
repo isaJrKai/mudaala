@@ -1,23 +1,21 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { PrismaClient } from '@/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-// Prisma must be initialized lazily because Next.js evaluates server modules
-// during the production build, while Cloudflare provides DATABASE_URL only at
-// Worker runtime. The proxy preserves the existing db.user API.
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
 function runtimeDatabaseUrl() {
+  try {
+    const { env } = getCloudflareContext()
+    const hyperdrive = env.HYPERDRIVE as { connectionString?: string } | undefined
+    if (hyperdrive?.connectionString) return hyperdrive.connectionString
+  } catch {
+    // Fall back to the normal environment for local Node.js/dev execution.
+  }
+
   const value = process.env.DATABASE_URL
   if (!value) return value
 
-  // Cloudflare Workers can open outbound PostgreSQL TCP connections. For
-  // Supabase, use the Session Pooler endpoint (5432) rather than the
-  // Transaction Pooler endpoint (6543) for Prisma's normal connection
-  // semantics. If production was configured with the transaction URL,
-  // normalize it at runtime so the secret does not need to be exposed or
-  // manually edited.
+  // Keep compatibility with existing Supabase pooler configuration outside
+  // Cloudflare Hyperdrive.
   try {
     const url = new URL(value)
     if (url.port === '6543' && url.hostname.endsWith('.pooler.supabase.com')) {
@@ -33,24 +31,21 @@ function runtimeDatabaseUrl() {
 }
 
 function getPrisma(): PrismaClient {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma
-
   const connectionString = runtimeDatabaseUrl()
   if (!connectionString) {
-    throw new Error('DATABASE_URL is required to initialize Prisma')
+    throw new Error('DATABASE_URL or Cloudflare HYPERDRIVE is required to initialize Prisma')
   }
 
+  // Hyperdrive owns the underlying connection pool. Create a short-lived
+  // Prisma client for each access instead of retaining a Worker-global pool.
   const adapter = new PrismaPg({ connectionString, maxUses: 1 })
-  const client = new PrismaClient({
+  return new PrismaClient({
     adapter,
     log:
       process.env.PRISMA_LOG_QUERIES === '1' || process.env.PRISMA_LOG_QUERIES === 'true'
         ? ['query']
         : ['error'],
   })
-
-  globalForPrisma.prisma = client
-  return client
 }
 
 export const db = new Proxy({} as PrismaClient, {
