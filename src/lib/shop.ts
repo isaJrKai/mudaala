@@ -5,7 +5,7 @@
 // actually filled in, and the badge says exactly that.
 
 import { db } from '@/lib/db'
-import type { BusinessProfile, User } from '@/generated/prisma/client'
+import type { BusinessProfile, User } from '@prisma/client'
 import { SHOP_OWNER_INCLUDE, serializeListing, expireOverdueListings } from '@/lib/listings'
 import type { ListingWithShop } from '@/lib/listings'
 import { countryDef, categoryLabel } from '@/lib/constants'
