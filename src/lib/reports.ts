@@ -16,7 +16,7 @@
 
 import { db } from '@/lib/db'
 import { SUPPORT_EMAIL } from '@/lib/constants'
-import type { Report } from '@/generated/prisma/client'
+import type { Report } from '@prisma/client'
 
 interface CreateReportInput {
   reporterId: string | null
