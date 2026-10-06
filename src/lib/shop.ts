@@ -45,6 +45,8 @@ interface ShopPageData {
     county: string | null
     country: string
     phone: string
+    additionalPhone: string | null
+    email: string | null
     whatsapp: string | null
     // True only when the phone shown on the page IS the seller's registered
     // login line (no override, or the override resolves to the same line).
@@ -179,6 +181,8 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       country,
       // The shop's contact numbers - the same ones buyers call from listings.
       phone: profile?.phone ?? user.phone,
+      additionalPhone: profile?.additionalPhone ?? null,
+      email: profile?.email ?? null,
       whatsapp: profile?.whatsapp ?? null,
       phoneConfirmed: !profile?.phone || samePhoneLine(profile.phone, user.phone),
       shopCode: profile?.shopCode ?? null,
