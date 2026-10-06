@@ -2,20 +2,10 @@ import type { NextConfig } from "next";
 
 // Security headers (Task 4). frame-ancestors is env-tunable because the
 // sandbox/preview legitimately embeds the app in a cross-origin iframe.
-// Production should set FRAME_ANCESTORS='none' (or a specific parent origin)
-// in .env. X-Frame-Options mirrors the self/none cases; it is omitted when
-// frame-ancestors names custom origins, since XFO cannot express a list.
 const frameAncestors = process.env.FRAME_ANCESTORS ?? "'self'"
 const xFrameOptions =
   frameAncestors.trim() === "'none'" ? "DENY" : frameAncestors.trim() === "'self'" ? "SAMEORIGIN" : undefined
 
-// 'unsafe-eval' is dev-only: Next.js dev tooling (HMR / react-refresh)
-// eval-compiles in development, while production output is precompiled and
-// must not carry it. next.config.ts is evaluated by the Next.js CLI with
-// NODE_ENV "development" under next dev and "production" under next build,
-// so the check below resolves correctly per mode. 'unsafe-inline' stays for
-// now: Next.js injects inline bootstrap scripts, and a nonce-based CSP is
-// the future hardening step.
 const scriptSrc = ["'self'", "'unsafe-inline'"]
 if (process.env.NODE_ENV !== "production") scriptSrc.push("'unsafe-eval'")
 
@@ -43,34 +33,25 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  // Next.js file tracing omits pg-cloudflare's workerd-conditioned files.
-  // OpenNext needs them when bundling PostgreSQL for Cloudflare Workers.
   outputFileTracingIncludes: {
     "**/*": [
       "./node_modules/pg-cloudflare/dist/**",
       "./node_modules/pg-cloudflare/esm/**",
     ],
   },
-  // Hide the dev-tools indicator so it never covers the mobile bottom nav.
   devIndicators: false,
-  // Type errors fail the build: never ship unchecked types.
-  typescript: {
-    ignoreBuildErrors: false,
-  },
+  typescript: { ignoreBuildErrors: false },
   reactStrictMode: false,
-  // Enables forbidden()/unauthorized() from next/navigation, so the /admin
-  // moderation desk returns a real HTTP 403 for non-admins.
-  experimental: {
-    authInterrupts: true,
+  experimental: { authInterrupts: true },
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+    }
+    return config
   },
-  // Task 4: security headers on every response.
   async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: securityHeaders,
-      },
-    ];
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 
