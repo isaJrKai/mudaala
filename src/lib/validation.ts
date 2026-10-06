@@ -274,8 +274,8 @@ export const businessProfileSchema = z
     county: z.string().trim().min(1, 'Choose your district or region').max(30).nullable(),
     area: z.string().trim().max(80, 'Area must be 80 characters or fewer').nullable(),
     phone: rawPhone,
-    additionalPhone: rawPhone.nullable(),
-    email: z.string().trim().email('Enter a valid email address').max(254, 'Email address is too long').nullable(),
+    additionalPhone: rawPhone.nullable().nullish(),
+    email: z.string().trim().email('Enter a valid email address').max(254, 'Email address is too long').nullish(),
     whatsapp: rawPhone.nullable(),
     hours: z.string().trim().max(120, 'Opening hours must be 120 characters or fewer').nullable(),
     // .nullish() so older form payloads that predate the pay sheet (and the
