@@ -7,7 +7,7 @@
 
 import { ApiError, requireUser } from './api'
 import { phoneCandidates } from './validation'
-import type { User } from '@/generated/prisma/client'
+import type { User } from '@prisma/client'
 
 /** Every accepted form of every admin phone in ADMIN_PHONES. Empty env → no
  *  admins at all (fail closed: the route is unusable rather than open). */
