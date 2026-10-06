@@ -285,6 +285,20 @@ export function ShopView({ id }: { id: string }) {
                 </a>
               </Button>
             ) : null}
+            {shop.additionalPhone ? (
+              <Button asChild variant="outline" className="press h-11 flex-1 text-[15px]">
+                <a href={telLink(shop.additionalPhone)} aria-label={`Call ${shop.name} on additional number`}>
+                  <Phone className="size-4" aria-hidden /> Other number
+                </a>
+              </Button>
+            ) : null}
+            {shop.email ? (
+              <Button asChild variant="outline" className="press h-11 flex-1 text-[15px]">
+                <a href={`mailto:${shop.email}`} aria-label={`Email ${shop.name}`}>
+                  Email
+                </a>
+              </Button>
+            ) : null}
           </div>
         </div>
       </section>
