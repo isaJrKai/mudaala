@@ -3,8 +3,11 @@
 // PostgreSQL is the runtime store.
 
 generator client {
-  provider   = "prisma-client-js"
+  provider   = "prisma-client"
+  output     = "../src/generated/prisma"
   engineType = "client"
+  runtime    = "workerd"
+  moduleFormat = "esm"
 }
 
 datasource db {
