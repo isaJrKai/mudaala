@@ -71,6 +71,8 @@ export function MudaalaOnboarding() {
   function finish() {
     try {
       localStorage.setItem(storageKey(user!.id), 'done')
+      // The first-login walkthrough replaces the older one-purpose shop prompt.
+      localStorage.setItem('mudaala_shop_setup_dismissed', '1')
     } catch {
       // Continue even if local storage is unavailable.
     }
