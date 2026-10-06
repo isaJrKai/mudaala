@@ -75,6 +75,8 @@ model BusinessProfile {
   county       String?
   area         String?
   phone        String
+  additionalPhone String? // optional second public contact number
+  email        String? // optional public shop contact email; may be a personal email
   whatsapp     String?
   hours        String?
   // Verification is NOT offered in V1. This flag stays false and no verified
