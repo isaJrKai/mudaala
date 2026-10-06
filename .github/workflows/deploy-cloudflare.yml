@@ -28,6 +28,7 @@ jobs:
           SETTINGS_ENCRYPTION_KEY: ${{ secrets.SETTINGS_ENCRYPTION_KEY }}
           ADMIN_PHONES: ${{ secrets.ADMIN_PHONES }}
 
+      # Trigger deployment from the latest production commit.
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
