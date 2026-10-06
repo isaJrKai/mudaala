@@ -49,11 +49,14 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: false },
   reactStrictMode: false,
   experimental: { authInterrupts: true },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.experiments = {
       ...config.experiments,
       asyncWebAssembly: true,
     }
+    config.output.webassemblyModuleFilename = isServer
+      ? "./../static/wasm/[modulehash].wasm"
+      : "static/wasm/[modulehash].wasm"
     return config
   },
   async headers() {
