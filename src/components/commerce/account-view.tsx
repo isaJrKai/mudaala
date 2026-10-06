@@ -40,6 +40,8 @@ interface ProfileFormState {
   county: string
   area: string
   phone: string
+  additionalPhone: string
+  email: string
   whatsapp: string
   hours: string
   /** 'none' when the shop takes mobile money on their number alone. */
@@ -306,6 +308,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         county: p?.county ?? 'none',
         area: p?.area ?? '',
         phone: p?.phone ?? user.phone,
+        additionalPhone: p?.additionalPhone ?? '',
+        email: p?.email ?? '',
         whatsapp: p?.whatsapp ?? '',
         hours: p?.hours ?? '',
         momoNetwork: p?.momoNetwork ?? 'none',
@@ -393,6 +397,8 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
       county: !form.county || form.county === 'none' ? null : form.county,
       area: form.area.trim() === '' ? null : form.area.trim(),
       phone: form.phone,
+      additionalPhone: form.additionalPhone.trim() === '' ? null : form.additionalPhone.trim(),
+      email: form.email.trim() === '' ? null : form.email.trim(),
       whatsapp: form.whatsapp.trim() === '' ? null : form.whatsapp.trim(),
       hours: form.hours.trim() === '' ? null : form.hours.trim(),
       // The merchant identity is one bundle: code, network, and the name
@@ -557,6 +563,20 @@ function BusinessProfileSection({ user }: { user: SessionUser }) {
         <Label htmlFor="bp-phone">Contact phone</Label>
         <Input id="bp-phone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} required />
         {errors.phone ? <p role="alert" className="text-sm text-destructive">{errors.phone}</p> : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="bp-phone2">Additional phone number</Label>
+          <Input id="bp-phone2" type="tel" inputMode="tel" value={form.additionalPhone} onChange={(e) => set('additionalPhone', e.target.value)} placeholder="Optional second number" />
+          {errors.additionalPhone ? <p role="alert" className="text-sm text-destructive">{errors.additionalPhone}</p> : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="bp-email">Shop email address</Label>
+          <Input id="bp-email" type="email" inputMode="email" autoComplete="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="yourname@example.com" />
+          <p className="text-xs text-muted-foreground">A personal email is fine. Buyers can use it to contact your shop.</p>
+          {errors.email ? <p role="alert" className="text-sm text-destructive">{errors.email}</p> : null}
+        </div>
       </div>
 
       <div className="space-y-1.5">
