@@ -30,6 +30,13 @@ export async function PUT(request: Request) {
         phone: 'Invalid phone number for your country',
       })
     }
+    const additionalPhone = data.additionalPhone ? normalizePhone(data.additionalPhone, country) : null
+    if (data.additionalPhone && !additionalPhone) {
+      throw new ApiError(400, 'Enter a valid additional phone number for your country', {
+        additionalPhone: 'Invalid phone number for your country',
+      })
+    }
+
     const whatsapp = data.whatsapp ? normalizePhone(data.whatsapp, country) : null
     if (data.whatsapp && !whatsapp) {
       throw new ApiError(400, 'Enter a valid WhatsApp number for your country', {
@@ -39,10 +46,10 @@ export async function PUT(request: Request) {
 
     const profile = await db.businessProfile.upsert({
       where: { userId: user.id },
-      create: { userId: user.id, ...data, phone, whatsapp, verified: false, shopCode: await generateShopCode() },
+      create: { userId: user.id, ...data, phone, additionalPhone, whatsapp, verified: false, shopCode: await generateShopCode() },
       // On update the shop code is deliberately untouched: it is the shop's
       // permanent identity, never recycled or re-rolled.
-      update: { ...data, phone, whatsapp, verified: false },
+      update: { ...data, phone, additionalPhone, whatsapp, verified: false },
     })
     return jsonOk({ profile })
   })
