@@ -1,37 +1,21 @@
-name: Deploy Mudaala to Cloudflare
+name: Legacy Cloudflare deploy (disabled)
+
+# Production deploys are owned by isaJrKai/mudaala-cloudflare.
+# This workflow is intentionally a no-op to prevent two repositories from
+# deploying different code to the same Cloudflare Worker. The file remains
+# here for auditability; do not add a deploy step back without changing the
+# single-source-of-truth decision first.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.4.2"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build OpenNext Worker
-        run: npx --yes @opennextjs/cloudflare@1.20.8 build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SETTINGS_ENCRYPTION_KEY: ${{ secrets.SETTINGS_ENCRYPTION_KEY }}
-          ADMIN_PHONES: ${{ secrets.ADMIN_PHONES }}
-
-      # Trigger deployment from the latest production commit.
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+      - name: Explain disabled legacy deployment
+        run: echo "No deployment performed. Use isaJrKai/mudaala-cloudflare for production."
