@@ -29,10 +29,13 @@ export function SettingsView() {
   if (isLoading) return <ListingListSkeleton count={3} />
   if (!user) return <EmptyState title="Sign in to manage settings" description="Your account settings are available after you sign in." action={<Button onClick={() => setAuthOpen(true)}>Sign in</Button>} />
 
+  // Capture the authenticated user after the guard so async handlers retain a non-null type.
+  const signedInUser = user
+
   async function requestCode() {
     setBusy(true); setError('')
     try {
-      const result = await apiPost<{ ok: boolean; message: string }>('/api/auth/forgot-password', { phone: user.phone })
+      const result = await apiPost<{ ok: boolean; message: string }>('/api/auth/forgot-password', { phone: signedInUser.phone })
       setStep('code')
       toast({ title: 'Check your phone', description: result.message })
     } catch (err) {
@@ -45,7 +48,7 @@ export function SettingsView() {
     if (password !== confirmPassword) { setError('The passwords do not match.'); return }
     setBusy(true)
     try {
-      const result = await apiPost<{ ok: boolean; message: string }>('/api/auth/reset-password', { phone: user.phone, code: code.trim(), newPassword: password })
+      const result = await apiPost<{ ok: boolean; message: string }>('/api/auth/reset-password', { phone: signedInUser.phone, code: code.trim(), newPassword: password })
       toast({ title: 'Password updated', description: result.message })
       // Password reset revokes all sessions. Clear this browser's token too.
       clearSessionToken()
@@ -66,7 +69,7 @@ export function SettingsView() {
       <Section icon={<LockKeyhole className="size-4" aria-hidden />} title="Account & security" description="Change your password using a code sent to your registered phone.">
         <div className="rounded-lg border bg-card p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div><p className="text-sm font-medium">Password</p><p className="mt-0.5 text-sm text-muted-foreground">Registered phone: {user.phone}</p></div>
+            <div><p className="text-sm font-medium">Password</p><p className="mt-0.5 text-sm text-muted-foreground">Registered phone: {signedInUser.phone}</p></div>
             {step === 'request' ? <Button onClick={requestCode} disabled={busy}>{busy ? 'Sending code…' : 'Change password'}</Button> : null}
           </div>
           {step === 'code' ? <form onSubmit={updatePassword} className="mt-4 space-y-3 border-t pt-4">
