@@ -5,6 +5,7 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-mango: var(--mango);
   --color-foreground: var(--foreground);
   /* ONE sans for everything except the logo and shop names: Inter where a
      device ships it, system-ui otherwise. No display sans, no mono voices. */
@@ -55,35 +56,36 @@
  */
 :root {
   --radius: 0.5rem;
+  --mango: #F6C94C;                        /* ripe mango, with a stronger yellow tinge */
   --background: oklch(0.977 0.004 85);        /* warm off-white */
   --foreground: oklch(0.235 0.012 95);        /* warm near-black */
   --card: oklch(0.995 0.002 90);
   --card-foreground: oklch(0.235 0.012 95);
   --popover: oklch(0.995 0.002 90);
   --popover-foreground: oklch(0.235 0.012 95);
-  --primary: oklch(0.40 0.075 155);           /* dark green */
-  --primary-foreground: oklch(0.985 0.005 120);
+  --primary: #0F3D2E;                         /* Mudaala forest green */
+  --primary-foreground: #FFFFFF;
   --secondary: oklch(0.952 0.006 85);         /* warm stone */
   --secondary-foreground: oklch(0.32 0.012 95);
   --muted: oklch(0.952 0.006 85);
   --muted-foreground: oklch(0.51 0.014 90);
-  --accent: oklch(0.94 0.025 150);            /* light green tint */
-  --accent-foreground: oklch(0.34 0.07 155);
+  --accent: #FFE7A0;                           /* visible mango-yellow accent */
+  --accent-foreground: #0F3D2E;
   /* Warm brick red - earthy, not alarm-neon. Darker than the shadcn stock
      value, so white badge text on it clears WCAG AA properly. */
   --destructive: oklch(0.55 0.17 26);
   --border: oklch(0.906 0.008 85);
   --input: oklch(0.885 0.008 85);
-  --ring: oklch(0.48 0.075 155);
-  --chart-1: oklch(0.40 0.075 155);
-  --chart-2: oklch(0.72 0.13 70);
+  --ring: #39765D;
+  --chart-1: #0F3D2E;
+  --chart-2: #F6C94C;
   --chart-3: oklch(0.55 0.10 140);
   --chart-4: oklch(0.75 0.08 95);
   --chart-5: oklch(0.50 0.10 25);
   --sidebar: oklch(0.985 0.003 90);
   --sidebar-foreground: oklch(0.235 0.012 95);
-  --sidebar-primary: oklch(0.40 0.075 155);
-  --sidebar-primary-foreground: oklch(0.985 0.005 120);
+  --sidebar-primary: #0F3D2E;
+  --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: oklch(0.952 0.006 85);
   --sidebar-accent-foreground: oklch(0.32 0.012 95);
   --sidebar-border: oklch(0.906 0.008 85);
@@ -97,29 +99,29 @@
   --card-foreground: oklch(0.96 0.004 90);
   --popover: oklch(0.225 0.01 100);
   --popover-foreground: oklch(0.96 0.004 90);
-  --primary: oklch(0.72 0.11 152);
-  --primary-foreground: oklch(0.19 0.03 155);
+  --primary: #86B99C;                         /* accessible green on dark surfaces */
+  --primary-foreground: #102D22;
   --secondary: oklch(0.27 0.01 100);
   --secondary-foreground: oklch(0.96 0.004 90);
   --muted: oklch(0.27 0.01 100);
   --muted-foreground: oklch(0.68 0.01 90);
-  --accent: oklch(0.30 0.03 155);
-  --accent-foreground: oklch(0.93 0.03 150);
+  --accent: #5B4A1B;                          /* dark golden accent surface */
+  --accent-foreground: #FFF2C7;
   /* Darkened just enough that white badge text on it clears WCAG AA
      (4.63:1) - the stock-shadcn-style value sat at 3.62 and failed. */
   --destructive: oklch(0.58 0.16 26);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.60 0.09 155);
-  --chart-1: oklch(0.72 0.11 152);
-  --chart-2: oklch(0.75 0.13 70);
+  --ring: #86B99C;
+  --chart-1: #86B99C;
+  --chart-2: #F6C94C;
   --chart-3: oklch(0.60 0.10 140);
   --chart-4: oklch(0.78 0.08 95);
   --chart-5: oklch(0.62 0.12 25);
   --sidebar: oklch(0.225 0.01 100);
   --sidebar-foreground: oklch(0.96 0.004 90);
-  --sidebar-primary: oklch(0.72 0.11 152);
-  --sidebar-primary-foreground: oklch(0.19 0.03 155);
+  --sidebar-primary: #86B99C;
+  --sidebar-primary-foreground: #102D22;
   --sidebar-accent: oklch(0.27 0.01 100);
   --sidebar-accent-foreground: oklch(0.96 0.004 90);
   --sidebar-border: oklch(1 0 0 / 12%);
