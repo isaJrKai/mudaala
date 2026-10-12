@@ -17,7 +17,6 @@ import {
   Bell,
   Store,
   Settings,
-  Leaf,
   ScanLine,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -84,20 +83,6 @@ export function AppSidebar() {
       aria-label="Primary"
       className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r bg-card lg:flex"
     >
-      {/* Brand - the same leaf + lowercase serif wordmark as the header, so
-          the rail reads as part of the same shop, not a different app. */}
-      <button
-        type="button"
-        onClick={() => navigate({ name: 'home' })}
-        className="flex items-center gap-1.5 px-5 pb-2 pt-5 text-left"
-        aria-label="Mudaala home"
-      >
-        <Leaf className="size-[18px] fill-primary/15 text-primary" aria-hidden />
-        <span className="font-display text-[19px] font-bold lowercase leading-none tracking-tight text-primary">
-          mudaala
-        </span>
-      </button>
-
       <nav className="flex-1 overflow-y-auto px-3 py-2" aria-label="Sections">
         <ul className="space-y-0.5">
           {items.map((item) => {
