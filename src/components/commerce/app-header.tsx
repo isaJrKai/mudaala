@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Settings, LogOut, User, Leaf } from 'lucide-react'
+import { Settings, LogOut, User } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useSession, useSignOut } from '@/hooks/use-session'
 import { Button } from '@/components/ui/button'
@@ -71,13 +71,9 @@ export function AppHeader() {
   }, [units])
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-40 border-b-[3px] border-b-[#F6C94C] bg-card pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
-        <button type="button" onClick={() => navigate({ name: 'home' })} className="flex items-center gap-1.5" aria-label="Mudaala home">
-          {/* The wordmark is the signboard: lowercase serif in the brand
-              green, the way the market paints a good shop name - with one
-              leaf for the goods that come out of the ground. No icon chip. */}
-          <Leaf className="size-[18px] fill-primary/15 text-primary" aria-hidden />
+        <button type="button" onClick={() => navigate({ name: 'home' })} className="flex items-center" aria-label="Mudaala home">
           <span className="font-display text-[19px] font-bold lowercase leading-none tracking-tight text-primary">
             mudaala
           </span>

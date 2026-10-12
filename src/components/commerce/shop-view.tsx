@@ -145,20 +145,22 @@ export function ShopView({ id }: { id: string }) {
           one: the flat grey tile (shop name + camera) stands in - no stock,
           no seed, no generated images anywhere. */}
       <section className="overflow-hidden rounded-lg border bg-card" aria-label={`Shop: ${shop.name}`}>
-        {shop.photoUrl ? (
+        {(shop.coverPhotoUrl || shop.photoUrl) ? (
           <div className="relative">
             <img
-              src={shop.photoUrl}
-              alt={`Photo of ${shop.name}`}
+              src={shop.coverPhotoUrl || shop.photoUrl || ''}
+              alt={`Cover photo of ${shop.name}`}
               className="h-36 w-full object-cover object-center sm:h-48"
             />
             <MudaalaCurve className="absolute inset-x-0 bottom-0 block h-5 w-full text-card sm:h-6" />
-            <img
-              src={shop.photoUrl}
-              alt=""
-              loading="lazy"
-              className="absolute -bottom-4 left-4 z-10 size-14 rounded-lg border border-border bg-card object-cover sm:-bottom-5 sm:left-5 sm:size-16"
-            />
+            {shop.photoUrl ? (
+              <img
+                src={shop.photoUrl}
+                alt={`${shop.name} profile photo`}
+                loading="lazy"
+                className="absolute -bottom-4 left-4 z-10 size-14 rounded-lg border border-border bg-card object-cover sm:-bottom-5 sm:left-5 sm:size-16"
+              />
+            ) : null}
           </div>
         ) : (
           // PLACEHOLDER RULE - no photo yet: the neutral grey tile with the

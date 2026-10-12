@@ -39,6 +39,7 @@ interface ShopPageData {
     id: string
     name: string
     photoUrl: string | null
+    coverPhotoUrl: string | null
     description: string | null
     hours: string | null
     area: string | null
@@ -174,6 +175,7 @@ export async function getShopPage(userId: string): Promise<ShopPageData | null> 
       // The shop name the seller chose - the account name is the fallback.
       name: profile?.businessName?.trim() || user.name,
       photoUrl: profile?.photoUrl ?? null,
+      coverPhotoUrl: profile?.coverPhotoUrl ?? null,
       description: profile?.description ?? null,
       hours: profile?.hours ?? null,
       area: profile?.area ?? null,

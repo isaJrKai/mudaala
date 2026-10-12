@@ -63,7 +63,8 @@ model BusinessProfile {
   userId       String  @unique
   user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessName String
-  photoUrl     String? // shop photo shown on listings and the About-the-seller card
+  photoUrl     String? // shop profile photo shown beside the name and on listings
+  coverPhotoUrl String? // optional wide shop cover; photoUrl remains the profile image
   // PLACEHOLDER RULE - see User.isSeed: seed shops and their photos are
   // removable-in-one-step development fixtures.
   isSeed       Boolean @default(false)

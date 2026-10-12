@@ -18,12 +18,14 @@ interface PhotoPickerProps {
   value: string[]
   onChange: (photos: string[]) => void
   max?: number
-  /** Single-photo mode (shop avatar) renders one round tile. */
+  /** Single-photo mode (shop avatar or cover) stores one URL. */
   single?: boolean
+  /** Wide preview and replace controls for a shop cover image. */
+  cover?: boolean
   label?: string
 }
 
-export function PhotoPicker({ value, onChange, max = 4, single = false, label }: PhotoPickerProps) {
+export function PhotoPicker({ value, onChange, max = 4, single = false, cover = false, label }: PhotoPickerProps) {
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
   const inputId = useId().replace(/:/g, '')
@@ -74,10 +76,45 @@ export function PhotoPicker({ value, onChange, max = 4, single = false, label }:
         type="file"
         accept="image/jpeg,image/png,image/webp"
         className="sr-only"
-        onChange={(e) => upload(e.target.files)}
+        onChange={(e) => {
+          upload(e.target.files)
+          // Allow the same gallery photo to be selected again after a failed
+          // upload or after replacing the current image.
+          e.currentTarget.value = ''
+        }}
       />
 
-      {single ? (
+      {single && cover ? (
+        <div className="space-y-2">
+          {value[0] ? (
+            <div className="relative overflow-hidden rounded-md border bg-secondary/30">
+              <img src={value[0]} alt="Shop cover preview" className="h-28 w-full object-cover sm:h-36" />
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full border bg-card/95 text-muted-foreground hover:text-destructive"
+                aria-label="Remove shop cover photo"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </div>
+          ) : (
+            <div className="flex h-28 items-center justify-center rounded-md border border-dashed bg-secondary/30 px-3 text-center text-xs text-muted-foreground sm:h-36">
+              No cover photo yet
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <label htmlFor={cameraId} className={cn('inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium hover:bg-accent', busy && 'pointer-events-none opacity-60')}>
+              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
+              {busy ? 'Uploading…' : 'Take photo'}
+            </label>
+            <label htmlFor={galleryId} className={cn('inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium hover:bg-accent', busy && 'pointer-events-none opacity-60')}>
+              <ImagePlus className="size-4" aria-hidden /> Choose photo
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">Use a wide landscape photo. JPG, PNG or WebP; up to 8 MB.</p>
+        </div>
+      ) : single ? (
         <div className="flex items-center gap-3">
           {value[0] ? (
             <div className="relative">
