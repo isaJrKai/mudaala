@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Check, CheckCircle2, Minus, Phone, Plus, Smartphone, Store, Trash2, TriangleAlert } from 'lucide-react'
+import { Check, CircleCheck, Minus, Phone, Plus, Smartphone, Store, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ToastAction } from '@/components/ui/toast'
 import { PaySheet } from '@/components/commerce/pay-sheet'
@@ -197,7 +197,7 @@ export function BasketView() {
             waiting === 0 ? 'font-medium text-emerald-700' : 'text-muted-foreground',
           )}
         >
-          {waiting === 0 ? <CheckCircle2 className="size-3.5 shrink-0" aria-hidden /> : null}
+          {waiting === 0 ? <CircleCheck className="size-3.5 shrink-0" aria-hidden /> : null}
           {waiting === 0 ? copy.basket.waitingNone : waiting === 1 ? copy.basket.waitingOne : copy.basket.waitingMany(waiting)}
         </p>
       </div>
@@ -510,7 +510,7 @@ function BasketShopSection({
             onClick={() => markShopDone(shopId, !done)}
             aria-label={done ? copy.basket.doneUndoAria(shop.name) : copy.basket.markDoneAria(shop.name)}
           >
-            {done ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
+            {done ? <CircleCheck className="size-3.5" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
             {done ? copy.basket.doneChip : copy.basket.markDone}
           </Button>
           <Button
