@@ -88,7 +88,7 @@ export function SettingsView() {
         <Button variant="outline" onClick={() => navigate({ name: 'account' })}>Manage My business</Button>
       </Section>
 
-      <Section icon={<Bell className="size-4" aria-hidden />} title="Notifications" description="Manage saved searches and review alerts in their existing sections—no duplicate controls.">
+      <Section icon={<Bell className="size-4" aria-hidden />} title="Notifications" description="Manage saved searches and review alerts in their existing sections-no duplicate controls.">
         <div className="divide-y rounded-lg border bg-card">
           <SettingsLink icon={<Search className="size-4" aria-hidden />} title="Saved-search alerts" description="Manage searches that generate new-match alerts." onClick={() => navigate({ name: 'saved' })} />
           <SettingsLink icon={<Bell className="size-4" aria-hidden />} title="Your alerts" description="Review new matches and listing-expiry notifications." onClick={() => navigate({ name: 'notifications' })} />
