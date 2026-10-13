@@ -1722,7 +1722,7 @@ async function main() {
     const phoneTry = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: localPhone })
     ok('the phone number itself as password is refused', phoneTry.status === 400 && (phoneTry.json?.error ?? '').includes('phone number'))
     const goodC = await call('POST', '/api/auth/reset-password', { phone: pwC.user!.phone, code: codeC!, newPassword: NEW_PW })
-    ok('the code survives weak-password attempts and still completes the reset', goodC.status === 200)
+    ok('the code survives weak-password attempts and still completes the reset', goodC.status === 200, `status=${goodC.status}; body=${JSON.stringify(goodC.json)}`)
     const rejReg = await call('POST', '/api/auth/register', { phone: await absentPhone(), name: 'Common Pass', password: '12345678', country: 'UG', acceptTerms: true })
     ok('register shares the same rulebook and refuses common passwords too', rejReg.status === 400 && (rejReg.json?.error ?? '').includes('too easy to guess'))
 
