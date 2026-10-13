@@ -293,9 +293,9 @@ export async function notifySavedSearchMatches(listing: Listing): Promise<void> 
 
     // Recompute the honest total of currently matching ACTIVE listings.
     const total = await db.listing.count({ where: { ...whereFromQuery(parsed), status: 'ACTIVE' } })
-    await db.$transaction([
-      db.savedSearch.update({ where: { id: search.id }, data: { lastMatchCount: total, lastCheckedAt: new Date() } }),
-      db.notification.create({
+    await db.$transaction(async (tx) => {
+      await tx.savedSearch.update({ where: { id: search.id }, data: { lastMatchCount: total, lastCheckedAt: new Date() } })
+      await tx.notification.create({
         data: {
           userId: search.userId,
           type: 'NEW_MATCH',
@@ -303,8 +303,8 @@ export async function notifySavedSearchMatches(listing: Listing): Promise<void> 
           body: `"${listing.title}" (${listing.county}) matches your saved search.`,
           listingId: listing.id,
         },
-      }),
-    ])
+      })
+    })
   }
 }
 
