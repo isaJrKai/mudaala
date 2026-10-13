@@ -10,7 +10,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, Check, Clock, Copy, Eye, Leaf, MapPin, Pencil, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
+import { ArrowLeft, CircleCheck, Check, Clock, Copy, Eye, Leaf, MapPin, Pencil, Phone, Printer, QrCode, Share2, Store, X } from 'lucide-react'
 import { WhatsAppIcon } from '@/components/commerce/brand-icons'
 import QRCode from 'react-qr-code'
 import { Button } from '@/components/ui/button'
@@ -222,7 +222,7 @@ export function ShopView({ id }: { id: string }) {
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               {shop.phoneConfirmed ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground ring-1 ring-inset ring-primary/15">
-                  <BadgeCheck className="size-3.5" aria-hidden /> Phone confirmed
+                  <CircleCheck className="size-3.5 text-emerald-700" aria-hidden /> Phone confirmed
                 </span>
               ) : null}
               {isOwner ? (

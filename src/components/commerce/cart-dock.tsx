@@ -37,7 +37,7 @@
 // simply not mounted and nothing changes.
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, CheckCircle2, ChevronLeft, ChevronRight, ChevronUp, ShoppingCart, Trash2, X } from 'lucide-react'
+import { Check, CircleCheck, ChevronLeft, ChevronRight, ChevronUp, ShoppingCart, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/format'
 import { useAppStore, type ViewName } from '@/lib/store'
@@ -518,7 +518,7 @@ function RailShop({
           )}
           aria-label={done ? copy.basket.doneUndoAria(shop.name) : copy.basket.markDoneAria(shop.name)}
         >
-          {done ? <CheckCircle2 className="size-3" aria-hidden /> : <Check className="size-3" aria-hidden />}
+          {done ? <CircleCheck className="size-3" aria-hidden /> : <Check className="size-3" aria-hidden />}
           {done ? copy.basket.doneChip : copy.basket.markDone}
         </button>
       </div>
