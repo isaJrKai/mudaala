@@ -58,13 +58,13 @@ export async function POST(request: Request) {
       return jsonError(400, pwProblem, { newPassword: pwProblem })
     }
 
-    await db.$transaction([
-      db.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(data.newPassword) } }),
+    await db.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: user.id }, data: { passwordHash: hashPassword(data.newPassword) } })
       // A password change revokes EVERYWHERE - every device, every channel.
-      db.session.deleteMany({ where: { userId: user.id } }),
-      db.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date(), attempts: reset.attempts } }),
-      db.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } }),
-    ])
+      await tx.session.deleteMany({ where: { userId: user.id } })
+      await tx.passwordReset.update({ where: { id: reset.id }, data: { usedAt: new Date(), attempts: reset.attempts } })
+      await tx.passwordReset.deleteMany({ where: { userId: user.id, usedAt: null } })
+    })
 
     // Clear any stale failed-login lockout so the new password works right away.
     for (const phone of candidates) await clear(`login:fail:${phone}`)
