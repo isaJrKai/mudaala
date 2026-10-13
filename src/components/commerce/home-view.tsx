@@ -341,6 +341,29 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
     placeholderData: (prev) => prev,
   })
 
+  // A selected area is a preference, not a dead end. If it has no offers,
+  // retry the same category across the whole market and keep each seller's
+  // actual place visible on their row. Never silently imply these are local.
+  const fallbackParams = new URLSearchParams({ type: 'OFFER', page: '1', pageSize: '8' })
+  if (category !== 'any') fallbackParams.set('category', category)
+  if (refSpot) {
+    fallbackParams.set('sort', 'nearest')
+    fallbackParams.set('lat', String(refSpot.lat))
+    fallbackParams.set('lng', String(refSpot.lng))
+  }
+  const fallbackQuery = useQuery({
+    queryKey: ['home-offers-fallback', fallbackParams.toString()],
+    queryFn: () => apiGet<ListingsPage>(`/api/listings?${fallbackParams.toString()}`),
+    enabled: Boolean(chosen.county) && offersQuery.isFetched && offersQuery.data?.items.length === 0,
+    placeholderData: (prev) => prev,
+  })
+  const showingFallback =
+    Boolean(chosen.county) &&
+    offersQuery.isFetched &&
+    offersQuery.data?.items.length === 0 &&
+    (fallbackQuery.data?.items.length ?? 0) > 0
+  const visibleOffers = showingFallback ? fallbackQuery.data!.items : offersQuery.data?.items ?? []
+
   const locationLabel = chosen.county
     ? chosen.isDefault && location.area
       ? `${location.area}, ${location.county}`
@@ -387,13 +410,16 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
         )}
       </div>
 
-      {offersQuery.isLoading ? (
+      {offersQuery.isLoading ||
+      ((offersQuery.data?.items.length ?? 0) === 0 &&
+        Boolean(chosen.county) &&
+        fallbackQuery.isLoading) ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-20 rounded-lg" />
           ))}
         </div>
-      ) : (offersQuery.data?.items.length ?? 0) === 0 ? (
+      ) : visibleOffers.length === 0 ? (
         <div className="rounded-lg border bg-card px-4 py-10 text-center">
           <p className="text-sm font-medium">{copy.home.noOffersTitle}</p>
           <p className="mt-1 text-xs text-muted-foreground">{copy.home.noOffersIn(chosen.county)}</p>
@@ -403,7 +429,12 @@ function BestOffers({ location }: { location: HomeData['location'] }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {offersQuery.data!.items.map((listing) => (
+          {showingFallback ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              No offers in {chosen.county} yet. Showing offers from other areas.
+            </p>
+          ) : null}
+          {visibleOffers.map((listing) => (
             <OfferRow key={listing.id} listing={listing} refSpot={refSpot} onOpen={(id) => navigate({ name: 'listing', id })} />
           ))}
         </div>
