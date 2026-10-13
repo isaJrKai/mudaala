@@ -1679,7 +1679,7 @@ async function main() {
     }
     ok('four wrong codes → 400 with one generic message, every time', wrongStatuses.every((s) => s === 400) && wrongMsg.length > 10)
     const rightA = await call('POST', '/api/auth/reset-password', { phone: pwA.user!.phone, code: codeA!, newPassword: NEW_PW })
-    ok('the correct code on the 5th submission still works (the kill counts WRONG tries)', rightA.status === 200)
+    ok('the correct code on the 5th submission still works (the kill counts WRONG tries)', rightA.status === 200, `status=${rightA.status}; body=${JSON.stringify(rightA.json)}`)
 
     // ---- Consequences of a successful reset (pwA) ----
     const meOld = await call('GET', '/api/auth/me', undefined, { cookie: '', token: tokenBeforeReset })
@@ -1691,7 +1691,7 @@ async function main() {
     const reuseA = await call('POST', '/api/auth/reset-password', { phone: pwA.user!.phone, code: codeA!, newPassword: 'anotherpass99' })
     ok('a consumed code cannot be reused', reuseA.status === 400 && reuseA.json?.error === wrongMsg)
     const usedRow = await db.passwordReset.findFirst({ where: { userId: pwA.user!.id }, orderBy: { createdAt: 'desc' } })
-    ok('the consumed code is marked used in the database', Boolean(usedRow?.usedAt))
+    ok('the consumed code is marked used in the database', Boolean(usedRow?.usedAt), `row=${JSON.stringify(usedRow)}`)
 
     // ---- Five wrong tries kill the code (pwB) ----
     const forgotB = await call('POST', '/api/auth/forgot-password', { phone: pwB.user!.phone })
