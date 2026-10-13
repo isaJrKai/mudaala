@@ -100,9 +100,9 @@ async function autoHideListingIfFlagged(listingId: string): Promise<void> {
   // a fulfilled sale by hiding it, and never hide twice.
   if (!listing || listing.status !== 'ACTIVE') return
 
-  await db.$transaction([
-    db.listing.update({ where: { id: listing.id }, data: { status: 'HIDDEN' } }),
-    db.notification.create({
+  await db.$transaction(async (tx) => {
+    await tx.listing.update({ where: { id: listing.id }, data: { status: 'HIDDEN' } })
+    await tx.notification.create({
       data: {
         userId: listing.userId,
         type: 'LISTING_HIDDEN',
@@ -113,16 +113,16 @@ async function autoHideListingIfFlagged(listingId: string): Promise<void> {
           `If you believe this was a mistake, email ${SUPPORT_EMAIL} and we will look again within a day.`,
         listingId: listing.id,
       },
-    }),
-    db.auditLog.create({
+    })
+    await tx.auditLog.create({
       data: {
         actorId: null, // the system acted on the community's behalf
         action: 'AUTO_HIDE_LISTING',
         targetType: 'LISTING',
         targetId: listing.id,
       },
-    }),
-  ])
+    })
+  })
 }
 
 /** Admin manual hide - same owner notification, human actor in the log. */
@@ -134,9 +134,9 @@ export async function hideListingByAdmin(listingId: string, adminId: string): Pr
   if (!listing) throw new TargetNotFoundError('This ad no longer exists')
 
   if (listing.status === 'ACTIVE') {
-    await db.$transaction([
-      db.listing.update({ where: { id: listing.id }, data: { status: 'HIDDEN' } }),
-      db.notification.create({
+    await db.$transaction(async (tx) => {
+      await tx.listing.update({ where: { id: listing.id }, data: { status: 'HIDDEN' } })
+      await tx.notification.create({
         data: {
           userId: listing.userId,
           type: 'LISTING_HIDDEN',
@@ -146,8 +146,8 @@ export async function hideListingByAdmin(listingId: string, adminId: string): Pr
             `If you believe this was a mistake, email ${SUPPORT_EMAIL} and we will look again within a day.`,
           listingId: listing.id,
         },
-      }),
-    ])
+      })
+    })
   }
   await db.auditLog.create({
     data: { actorId: adminId, action: 'HIDE_LISTING', targetType: 'LISTING', targetId: listingId },
@@ -175,10 +175,10 @@ export async function dismissReportByAdmin(reportId: string, adminId: string): P
   const report = await db.report.findUnique({ where: { id: reportId }, select: { id: true } })
   if (!report) throw new TargetNotFoundError('This report no longer exists')
 
-  await db.$transaction([
-    db.report.update({ where: { id: reportId }, data: { status: 'DISMISSED' } }),
-    db.auditLog.create({
+  await db.$transaction(async (tx) => {
+    await tx.report.update({ where: { id: reportId }, data: { status: 'DISMISSED' } })
+    await tx.auditLog.create({
       data: { actorId: adminId, action: 'DISMISS_REPORT', targetType: 'REPORT', targetId: reportId },
-    }),
-  ])
+    })
+  })
 }
