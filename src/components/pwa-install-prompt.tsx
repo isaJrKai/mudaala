@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Download, X } from 'lucide-react'
 
 type InstallPromptEvent = Event & {
@@ -8,23 +8,43 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
 }
 
+let installedByEvent = false
+
+function getInstalledSnapshot() {
+  if (typeof window === 'undefined') return false
+  return installedByEvent ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+}
+
+function subscribeToInstalledState(onChange: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const displayMode = window.matchMedia('(display-mode: standalone)')
+  const onDisplayModeChange = () => onChange()
+  const onInstalled = () => {
+    installedByEvent = true
+    onChange()
+  }
+  displayMode.addEventListener('change', onDisplayModeChange)
+  window.addEventListener('appinstalled', onInstalled)
+  return () => {
+    displayMode.removeEventListener('change', onDisplayModeChange)
+    window.removeEventListener('appinstalled', onInstalled)
+  }
+}
+
 export function PwaInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null)
-  const [installed, setInstalled] = useState(false)
+  const installed = useSyncExternalStore(subscribeToInstalledState, getInstalledSnapshot, () => false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true
-    setInstalled(standalone)
-
     const onBeforeInstall = (event: Event) => {
       event.preventDefault()
       setInstallEvent(event as InstallPromptEvent)
     }
     const onInstalled = () => {
-      setInstalled(true)
       setInstallEvent(null)
       setHelpOpen(false)
     }
