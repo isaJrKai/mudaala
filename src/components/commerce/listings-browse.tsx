@@ -135,6 +135,23 @@ export function ListingsBrowse() {
     placeholderData: (prev) => prev,
   })
 
+  // A chosen district should narrow the first attempt, not hide the rest of
+  // the market. If it has no matching results, retry without only that filter.
+  const widerQuery = filtersToQuery({ ...filters, county: 'any', page: 1 })
+  const widerResults = useQuery({
+    queryKey: ['listings-wider-area', widerQuery, nearParams],
+    queryFn: () => apiGet<ListingsPage>(`/api/listings?${widerQuery}${nearParams}`),
+    enabled: filters.county !== 'any' && codeQuery === '' && !isLoading && data?.items.length === 0,
+    placeholderData: (prev) => prev,
+  })
+  const showingWiderArea =
+    filters.county !== 'any' &&
+    codeQuery === '' &&
+    !isLoading &&
+    data?.items.length === 0 &&
+    (widerResults.data?.items.length ?? 0) > 0
+  const visibleListings = showingWiderArea ? widerResults.data!.items : data?.items ?? []
+
   const codeLookup = useQuery({
     queryKey: ['shop-code', codeQuery],
     queryFn: () => apiGet<ShopLookupResponse>(`/api/shops/lookup?code=${encodeURIComponent(codeQuery)}`),
@@ -351,14 +368,15 @@ export function ListingsBrowse() {
             <ShopCodeCard shop={codeShop} onOpen={() => navigate({ name: 'shop', id: codeShop.id })} />
           </div>
         ) : null
-      ) : isLoading ? (
+      ) : isLoading ||
+      (data?.items.length === 0 && filters.county !== 'any' && widerResults.isLoading) ? (
         <ListingGridSkeleton />
       ) : isError ? (
         <ErrorState
           message={error instanceof Error ? error.message : 'Could not load listings'}
           onRetry={() => refetch()}
         />
-      ) : data && data.items.length === 0 ? (
+      ) : visibleListings.length === 0 ? (
         <EmptyState
           title={activeFilterCount > 0 || filters.q ? copy.browse.emptyFilteredTitle : copy.browse.emptyTitle}
           description={
@@ -377,13 +395,18 @@ export function ListingsBrowse() {
       ) : data ? (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_240px] lg:items-start lg:gap-4">
           <div className={isFetching ? 'space-y-3 opacity-60 transition-opacity' : 'space-y-3'}>
+            {showingWiderArea ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                No matching listings in {filters.county}. Showing results from other areas.
+              </p>
+            ) : null}
             <p className="text-sm text-muted-foreground" role="status">
-              {copy.browse.resultsFound(data.total, data.pageCount > 1 ? { page: data.page, pageCount: data.pageCount } : undefined)}
+              {copy.browse.resultsFound(showingWiderArea ? widerResults.data!.total : data.total, (showingWiderArea ? widerResults.data!.pageCount : data.pageCount) > 1 ? { page: showingWiderArea ? widerResults.data!.page : data.page, pageCount: showingWiderArea ? widerResults.data!.pageCount : data.pageCount } : undefined)}
             </p>
             {/* Rows on the phone (small photo on the side), compact blocks in
                 a grid on desktop - the same card flips at sm. */}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-              {data.items.map((listing) => (
+              {visibleListings.map((listing) => (
                 <ListingBlock
                   key={listing.id}
                   listing={listing}
@@ -396,8 +419,12 @@ export function ListingsBrowse() {
               ))}
             </div>
 
-            {data.pageCount > 1 ? (
-              <Pagination page={data.page} pageCount={data.pageCount} onPage={(p) => setFilters({ page: p })} />
+            {(showingWiderArea ? widerResults.data!.pageCount : data.pageCount) > 1 ? (
+              <Pagination
+                page={showingWiderArea ? widerResults.data!.page : data.page}
+                pageCount={showingWiderArea ? widerResults.data!.pageCount : data.pageCount}
+                onPage={(p) => setFilters({ page: p })}
+              />
             ) : null}
           </div>
 
