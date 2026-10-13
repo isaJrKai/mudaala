@@ -60,6 +60,8 @@ export function MudaalaOnboarding() {
 
   useEffect(() => {
     if (!user || isLoading) return
+    // Sync the per-user onboarding preference from localStorage once the session is known.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(!hasCompletedOnboarding(user.id))
   }, [user, isLoading])
 
