@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, Package, Share2, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -54,23 +54,21 @@ export function hasCompletedOnboarding(userId: string): boolean {
 
 export function MudaalaOnboarding() {
   const { user, isLoading } = useSession()
-  const navigate = useAppStore((s) => s.navigate)
-  const [open, setOpen] = useState(false)
-  const [step, setStep] = useState(0)
-
-  useEffect(() => {
-    if (!user || isLoading) return
-    setOpen(!hasCompletedOnboarding(user.id))
-  }, [user, isLoading])
-
   if (!user || isLoading) return null
+  return <OnboardingForUser key={user.id} userId={user.id} />
+}
+
+function OnboardingForUser({ userId }: { userId: string }) {
+  const navigate = useAppStore((s) => s.navigate)
+  const [open, setOpen] = useState(() => !hasCompletedOnboarding(userId))
+  const [step, setStep] = useState(0)
 
   const current = STEPS[step]
   const Icon = current.icon
 
   function finish() {
     try {
-      localStorage.setItem(storageKey(user!.id), 'done')
+      localStorage.setItem(storageKey(userId), 'done')
       // The first-login walkthrough replaces the older one-purpose shop prompt.
       localStorage.setItem('mudaala_shop_setup_dismissed', '1')
     } catch {
