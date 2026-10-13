@@ -17,6 +17,8 @@ export function PwaInstallPrompt() {
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true
+    // Sync initial install state from browser-only display-mode APIs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInstalled(standalone)
 
     const onBeforeInstall = (event: Event) => {
