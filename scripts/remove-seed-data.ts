@@ -86,13 +86,14 @@ async function main() {
   console.log(`rows referencing ${SEED_PATH}: ${orphanSeedPhotosInDb}`)
 
   if (MARK) {
-    const r = await db.$transaction([
-      db.user.updateMany({ where: { id: { in: seedUserIds } }, data: { isSeed: true } }),
-      db.listing.updateMany({ where: { userId: { in: seedUserIds } }, data: { isSeed: true } }),
-      db.businessProfile.updateMany({ where: { userId: { in: seedUserIds } }, data: { isSeed: true } }),
-    ])
+    const r = await db.$transaction(async (tx) => {
+      const users = await tx.user.updateMany({ where: { id: { in: seedUserIds } }, data: { isSeed: true } })
+      const listings = await tx.listing.updateMany({ where: { userId: { in: seedUserIds } }, data: { isSeed: true } })
+      const profiles = await tx.businessProfile.updateMany({ where: { userId: { in: seedUserIds } }, data: { isSeed: true } })
+      return { users, listings, profiles }
+    })
     console.log(
-      `--mark: flagged ${r[0].count} user(s), ${r[1].count} listing(s), ${r[2].count} shop profile(s). No rows deleted.`,
+      `--mark: flagged ${r.users.count} user(s), ${r.listings.count} listing(s), ${r.profiles.count} shop profile(s). No rows deleted.`,
     )
     await db.$disconnect()
     return
